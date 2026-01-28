@@ -65,6 +65,13 @@ GLPI_GMX_PASSWORD=sua_senha
 GLPI_USER_ADM=usuario_admin_glpi
 GLPI_USER_ADM_PASSWORD=senha_admin_glpi
 
+# OAuth2 (GLPI 11+)
+GLPI_PETA_OAUTH_CLIENT_ID=seu_client_id
+GLPI_PETA_OAUTH_CLIENT_SECRET=seu_client_secret
+
+# Cron Sync
+CRON_SECRET=seu_segredo
+
 # Supabase (cache)
 NEXT_PUBLIC_SUPABASE_URL=sua_url_supabase
 SUPABASE_SERVICE_KEY=sua_service_key
@@ -169,7 +176,7 @@ curl -H "x-cron-secret: SEU_SEGREDO" \
 
 1. **Session Token (REST v1)** - Se `app_token` + `user_token` (PETA/GMX)  
 2. **Session Token com Credenciais** - Se `app_token` + `username` + `password` (PETA/GMX)
-3. **OAuth2 (HL)** - Apenas GMX, com `client_id`/`client_secret` + `username` + `password`
+3. **OAuth2 (HL)** - Se `client_id`/`client_secret` + `username` + `password` estiverem disponíveis
 4. **Degradação** - Continua com outras instâncias se uma falhar
 
 ### Fallback de credenciais
