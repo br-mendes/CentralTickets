@@ -9,7 +9,7 @@ type InstanceEnv = {
   appToken?: string;
   userToken?: string;
 
-  // OAuth2 (opcional)
+  // OAuth2 (opcional, apenas GMX)
   oauthClientId?: string;
   oauthClientSecret?: string;
   username?: string;

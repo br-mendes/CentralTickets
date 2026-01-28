@@ -54,16 +54,14 @@ GLPI_GMX_URL=https://glpi.gmxtecnologia.com.br
 GLPI_GMX_API_URL=https://glpi.gmxtecnologia.com.br/api.php/v2.1
 GLPI_GMX_APP_TOKEN=seu_app_token
 GLPI_GMX_USER_TOKEN=seu_user_token
+GLPI_GMX_OAUTH_CLIENT_ID=seu_client_id
+GLPI_GMX_OAUTH_CLIENT_SECRET=seu_client_secret
 
 # Autenticação Alternativa (fallback)
 GLPI_PETA_USER=srv_centraltickets
 GLPI_PETA_PASSWORD=sua_senha
 GLPI_GMX_USER=srv_centraltickets  
 GLPI_GMX_PASSWORD=sua_senha
-
-# OAuth2 (GLPI 11+)
-GLPI_PETA_OAUTH_CLIENT_ID=seu_client_id
-GLPI_PETA_OAUTH_CLIENT_SECRET=seu_client_secret
 
 # Supabase (cache)
 NEXT_PUBLIC_SUPABASE_URL=sua_url_supabase
@@ -127,9 +125,9 @@ Retorna tickets unificados das instâncias configuradas.
 
 ## Estratégia de Autenticação
 
-1. **Tenta OAuth2 (HL)** - Se `client_id`/`client_secret` configurados
-2. **Fallback Session Token** - Se `app_token` + `user_token` disponíveis  
-3. **Fallback Credenciais** - Se `app_token` + `username` + `password`
+1. **Session Token (REST v1)** - Se `app_token` + `user_token` (PETA/GMX)  
+2. **Session Token com Credenciais** - Se `app_token` + `username` + `password` (PETA/GMX)
+3. **OAuth2 (HL)** - Apenas GMX, com `client_id`/`client_secret` + `username` + `password`
 4. **Degradação** - Continua com outras instâncias se uma falhar
 
 ## Métricas e SLA
