@@ -17,11 +17,22 @@ type Ticket = {
 };
 
 async function loadTickets(): Promise<Ticket[]> {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL ?? ""}/api/tickets`, {
-    cache: "no-store",
-  });
-  const json = await res.json();
-  return json?.data ?? [];
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL ?? ""}/api/tickets`, {
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      return [];
+    }
+    const contentType = res.headers.get("content-type") ?? "";
+    if (!contentType.includes("application/json")) {
+      return [];
+    }
+    const json = await res.json();
+    return json?.data ?? [];
+  } catch {
+    return [];
+  }
 }
 
 export default async function Page() {
