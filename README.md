@@ -113,6 +113,47 @@ Retorna tickets unificados das instâncias configuradas.
 }
 ```
 
+### GET `/api/cron/sync` (Cron Sync)
+
+Força a sincronização de tickets e SLA no cache. Este endpoint é pensado para uso por cron/worker externo.
+
+**Autenticação**
+- Variável de ambiente: `CRON_SECRET`
+- Métodos aceitos:
+  - Query string: `?secret=SEU_SEGREDO`
+  - Header: `x-cron-secret: SEU_SEGREDO`
+
+Se `CRON_SECRET` estiver definido e o segredo não for enviado ou estiver incorreto, a resposta será `401`.
+
+**O que é atualizado**
+- **Tabela `tickets`**: upsert por `glpi_id` + `instance`, atualizando campos do ticket, timestamps e os percentuais de SLA.
+- **Tabela `sla_history`**: registra quando o SLA cruza o limiar de alerta (>= 70%) para **primeiro atendimento** ou **resolução**.
+
+**Como o SLA é calculado**
+- O percentual é: `(tempo decorrido / SLA alvo) * 100`, limitado entre 0 e 9999, com 2 casas decimais.
+- **Primeiro atendimento**: diferença entre `date_opening` e `date_takeaccount` (ou agora se ainda não atendido).
+- **Resolução**: diferença entre `date_opening` e `date_solve` (ou agora se ainda não resolvido), menos `waiting_duration`.
+- Se não houver `start` ou `allowedSeconds` válido, o percentual retorna `null`.
+
+**Exemplo de chamada**
+
+```bash
+curl -H "x-cron-secret: SEU_SEGREDO" \
+  https://seu-dominio.com/api/cron/sync
+```
+
+**Exemplo de resposta**
+
+```json
+{
+  "ok": true,
+  "results": [
+    { "instance": "PETA", "count": 120 },
+    { "instance": "GMX", "count": 98 }
+  ]
+}
+```
+
 ## Tecnologias
 
 - **Next.js 16** com Turbopack
