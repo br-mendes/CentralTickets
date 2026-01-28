@@ -18,7 +18,7 @@ async function upsertTickets(tickets: any[]) {
 async function loadExisting(instance: string) {
   const { data, error } = await getSupabaseAdmin()
     .from("tickets")
-    .select("glpi_id, instance, sla_percentage_first, sla_percentage_resolve")
+    .select("glpi_id, instance, sla_percentage_first, sla_percentage_resolve, created_at")
     .eq("instance", instance);
 
   if (error) throw new Error(`Supabase select tickets falhou: ${error.message}`);
@@ -65,6 +65,8 @@ export async function GET(req: NextRequest) {
         waitingSeconds: t.waiting_duration ?? 0,
       });
 
+      const old = prev.get(t.glpi_id);
+
       const row = {
         glpi_id: t.glpi_id,
         instance: t.instance,
@@ -84,11 +86,11 @@ export async function GET(req: NextRequest) {
         sla_percentage_resolve: resolve.percent,
         is_overdue_first: first.overdue,
         is_overdue_resolve: resolve.overdue,
+        created_at: old?.created_at ?? nowIso,
         updated_at: nowIso,
       };
 
       // History: cruzou threshold
-      const old = prev.get(t.glpi_id);
       const hist: any[] = [];
 
       if (old) {
