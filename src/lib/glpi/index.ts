@@ -9,7 +9,7 @@ type InstanceEnv = {
   appToken?: string;
   userToken?: string;
 
-  // OAuth2 (opcional, apenas GMX)
+  // OAuth2 (opcional)
   oauthClientId?: string;
   oauthClientSecret?: string;
   username?: string;
@@ -32,6 +32,8 @@ export function getInstanceEnvs(): InstanceEnv[] {
       apiUrl: must(process.env.GLPI_PETA_API_URL, "GLPI_PETA_API_URL"),
       appToken: process.env.GLPI_PETA_APP_TOKEN,
       userToken: process.env.GLPI_PETA_USER_TOKEN,
+      oauthClientId: process.env.GLPI_PETA_OAUTH_CLIENT_ID,
+      oauthClientSecret: process.env.GLPI_PETA_OAUTH_CLIENT_SECRET,
       username: process.env.GLPI_PETA_USER ?? fallbackUser,
       password: process.env.GLPI_PETA_PASSWORD ?? fallbackPassword,
     },
