@@ -92,7 +92,8 @@ Retorna tickets unificados das instâncias configuradas.
 
 ```json
 {
-  "tickets": [
+  "ok": true,
+  "data": [
     {
       "glpi_id": 12345,
       "instance": "PETA",
@@ -107,9 +108,7 @@ Retorna tickets unificados das instâncias configuradas.
       "is_overdue_first": false,
       "is_overdue_resolve": false
     }
-  ],
-  "fromCache": false,
-  "warning": "PETA indisponivel: Connection timeout"
+  ]
 }
 ```
 
