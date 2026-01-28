@@ -62,6 +62,8 @@ GLPI_PETA_USER=srv_centraltickets
 GLPI_PETA_PASSWORD=sua_senha
 GLPI_GMX_USER=srv_centraltickets  
 GLPI_GMX_PASSWORD=sua_senha
+GLPI_USER_ADM=usuario_admin_glpi
+GLPI_USER_ADM_PASSWORD=senha_admin_glpi
 
 # Supabase (cache)
 NEXT_PUBLIC_SUPABASE_URL=sua_url_supabase
@@ -128,6 +130,10 @@ Retorna tickets unificados das instâncias configuradas.
 2. **Session Token com Credenciais** - Se `app_token` + `username` + `password` (PETA/GMX)
 3. **OAuth2 (HL)** - Apenas GMX, com `client_id`/`client_secret` + `username` + `password`
 4. **Degradação** - Continua com outras instâncias se uma falhar
+
+### Fallback de credenciais
+
+As variáveis `GLPI_USER_ADM` e `GLPI_USER_ADM_PASSWORD` são usadas como fallback quando a instância não define `GLPI_PETA_USER`/`GLPI_PETA_PASSWORD` ou `GLPI_GMX_USER`/`GLPI_GMX_PASSWORD`. Isso garante que `getInstanceEnvs` sempre tente credenciais por instância primeiro e só recorra ao usuário/senha globais quando não houver valores específicos configurados.
 
 ## Métricas e SLA
 
