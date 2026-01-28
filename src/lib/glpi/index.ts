@@ -22,6 +22,9 @@ function must(v: string | undefined, name: string) {
 }
 
 export function getInstanceEnvs(): InstanceEnv[] {
+  const fallbackUser = process.env.GLPI_USER_ADM;
+  const fallbackPassword = process.env.GLPI_USER_ADM_PASSWORD;
+
   return [
     {
       instance: "PETA",
@@ -29,8 +32,8 @@ export function getInstanceEnvs(): InstanceEnv[] {
       apiUrl: must(process.env.GLPI_PETA_API_URL, "GLPI_PETA_API_URL"),
       appToken: process.env.GLPI_PETA_APP_TOKEN,
       userToken: process.env.GLPI_PETA_USER_TOKEN,
-      username: process.env.GLPI_PETA_USER,
-      password: process.env.GLPI_PETA_PASSWORD,
+      username: process.env.GLPI_PETA_USER ?? fallbackUser,
+      password: process.env.GLPI_PETA_PASSWORD ?? fallbackPassword,
     },
     {
       instance: "GMX",
@@ -40,8 +43,8 @@ export function getInstanceEnvs(): InstanceEnv[] {
       userToken: process.env.GLPI_GMX_USER_TOKEN,
       oauthClientId: process.env.GLPI_GMX_OAUTH_CLIENT_ID,
       oauthClientSecret: process.env.GLPI_GMX_OAUTH_CLIENT_SECRET,
-      username: process.env.GLPI_GMX_USER,
-      password: process.env.GLPI_GMX_PASSWORD,
+      username: process.env.GLPI_GMX_USER ?? fallbackUser,
+      password: process.env.GLPI_GMX_PASSWORD ?? fallbackPassword,
     },
   ];
 }
