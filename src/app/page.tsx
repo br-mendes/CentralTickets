@@ -1,6 +1,7 @@
 import { statusLabel, isAlert } from "@/lib/utils";
 import { ManualSyncButton } from "@/components/manual-sync-button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { AutoRefreshStatus } from "@/components/auto-refresh";
 
 type Ticket = {
   id: number;
@@ -96,6 +97,22 @@ export default async function Page() {
       <header className="page-header">
         <div>
           <div className="eyebrow">Central de Tickets</div>
+          <div className="header-logos">
+            <div className="header-logo-card">
+              <img
+                src="https://i.ibb.co/Xr6CrgTJ/logo-GMX-preto-1.png"
+                alt="Logo GMX"
+                loading="lazy"
+              />
+            </div>
+            <div className="header-logo-card header-logo-card-dark">
+              <img
+                src="https://i.ibb.co/qLpHTnB1/logo-big-white.png"
+                alt="Logo PETA"
+                loading="lazy"
+              />
+            </div>
+          </div>
           <h1 className="page-title">Painel de operação</h1>
           <p className="page-subtitle">
             Tickets ativos (PETA + GMX). Alerta vermelho quando SLA ≥ {threshold}%.
@@ -103,6 +120,7 @@ export default async function Page() {
         </div>
         <div className="toolbar">
           <div className="sync-pill">Última sincronização {lastSyncLabel}</div>
+          <AutoRefreshStatus />
           <ManualSyncButton />
           <ThemeToggle />
         </div>
@@ -173,7 +191,48 @@ export default async function Page() {
         </div>
         {tickets.length === 0 ? (
           <div className="empty-state">
-            Nenhum ticket disponível no momento.
+            <div>Nenhum ticket disponível no momento.</div>
+            <div className="empty-state-hint">
+              Se a autenticação via API falhar, acompanhe diretamente pelos painéis de assistência:
+              <ul>
+                <li>
+                  <a
+                    href="https://glpi.petacorp.com.br/front/central.php?embed&dashboard=assistance&entities_id=0&is_recursive=1&token=12ed3e1e-1be6-5584-a013-ee0fb1b4465b"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    PETA
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://glpi.gmxtecnologia.com.br/front/central.php?embed&dashboard=assistance&entities_id=0&is_recursive=1&token=a15a6318-1b97-5ba1-bb90-a374e92cc0b4"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    GMX
+                  </a>
+                </li>
+              </ul>
+            </div>
+            <div className="empty-state-panels">
+              <div className="panel-card">
+                <div className="panel-title">PETA</div>
+                <iframe
+                  title="Painel de assistência PETA"
+                  src="https://glpi.petacorp.com.br/front/central.php?embed&dashboard=assistance&entities_id=0&is_recursive=1&token=12ed3e1e-1be6-5584-a013-ee0fb1b4465b"
+                  loading="lazy"
+                />
+              </div>
+              <div className="panel-card">
+                <div className="panel-title">GMX</div>
+                <iframe
+                  title="Painel de assistência GMX"
+                  src="https://glpi.gmxtecnologia.com.br/front/central.php?embed&dashboard=assistance&entities_id=0&is_recursive=1&token=a15a6318-1b97-5ba1-bb90-a374e92cc0b4"
+                  loading="lazy"
+                />
+              </div>
+            </div>
           </div>
         ) : (
           <table className="table">
