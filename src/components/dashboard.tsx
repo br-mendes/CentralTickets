@@ -51,6 +51,24 @@ export function Dashboard() {
           <div>
             <h1 className="text-2xl font-bold text-zinc-900">Central de Tickets</h1>
             <p className="text-zinc-600">PETA + GMX em uma tela</p>
+            <div className="flex flex-wrap items-center gap-3 mt-3">
+              <div className="px-3 py-2 rounded-md bg-white shadow-sm border border-zinc-200">
+                <img
+                  src="https://i.ibb.co/Xr6CrgTJ/logo-GMX-preto-1.png"
+                  alt="Logo GMX"
+                  className="h-6 w-auto"
+                  loading="lazy"
+                />
+              </div>
+              <div className="px-3 py-2 rounded-md bg-zinc-900 shadow-sm">
+                <img
+                  src="https://i.ibb.co/qLpHTnB1/logo-big-white.png"
+                  alt="Logo PETA"
+                  className="h-6 w-auto"
+                  loading="lazy"
+                />
+              </div>
+            </div>
             <p className="text-xs text-zinc-500 mt-1">
               Próxima atualização automática em {countdownLabel}
             </p>
