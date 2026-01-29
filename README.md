@@ -121,6 +121,13 @@ Retorna tickets unificados das instâncias configuradas.
 }
 ```
 
+## Painéis GLPI (Embedded)
+
+Links para acessar os dashboards de assistência diretamente nas instâncias:
+
+- **PETA**: https://glpi.petacorp.com.br/front/central.php?embed&dashboard=assistance&entities_id=0&is_recursive=1&token=12ed3e1e-1be6-5584-a013-ee0fb1b4465b
+- **GMX**: https://glpi.gmxtecnologia.com.br/front/central.php?embed&dashboard=assistance&entities_id=0&is_recursive=1&token=a15a6318-1b97-5ba1-bb90-a374e92cc0b4
+
 ### GET `/api/cron/sync` (Cron Sync)
 
 Força a sincronização de tickets e SLA no cache. Este endpoint é pensado para uso por cron/worker externo.
