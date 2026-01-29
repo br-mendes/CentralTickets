@@ -16,39 +16,57 @@ type InstanceEnv = {
   password?: string;
 };
 
-function must(v: string | undefined, name: string) {
-  if (!v) throw new Error(`Env ausente: ${name}`);
-  return v;
-}
-
 export function getInstanceEnvs(): InstanceEnv[] {
   const fallbackUser = process.env.GLPI_USER_ADM;
   const fallbackPassword = process.env.GLPI_USER_ADM_PASSWORD;
 
-  return [
-    {
+  const instances: InstanceEnv[] = [];
+
+  const petaUrl = process.env.GLPI_PETA_URL;
+  const petaApiUrl = process.env.GLPI_PETA_API_URL;
+  if (petaUrl && petaApiUrl) {
+    instances.push({
       instance: "PETA",
-      glpiUrl: must(process.env.GLPI_PETA_URL, "GLPI_PETA_URL"),
-      apiUrl: must(process.env.GLPI_PETA_API_URL, "GLPI_PETA_API_URL"),
+      glpiUrl: petaUrl,
+      apiUrl: petaApiUrl,
       appToken: process.env.GLPI_PETA_APP_TOKEN,
       userToken: process.env.GLPI_PETA_USER_TOKEN,
       oauthClientId: process.env.GLPI_PETA_OAUTH_CLIENT_ID,
       oauthClientSecret: process.env.GLPI_PETA_OAUTH_CLIENT_SECRET,
       username: process.env.GLPI_PETA_USER ?? fallbackUser,
       password: process.env.GLPI_PETA_PASSWORD ?? fallbackPassword,
-    },
-    {
+    });
+  } else {
+    console.warn(
+      "[PETA] Ignorando instância por falta de GLPI_PETA_URL ou GLPI_PETA_API_URL."
+    );
+  }
+
+  const gmxUrl = process.env.GLPI_GMX_URL;
+  const gmxApiUrl = process.env.GLPI_GMX_API_URL;
+  if (gmxUrl && gmxApiUrl) {
+    instances.push({
       instance: "GMX",
-      glpiUrl: must(process.env.GLPI_GMX_URL, "GLPI_GMX_URL"),
-      apiUrl: must(process.env.GLPI_GMX_API_URL, "GLPI_GMX_API_URL"),
+      glpiUrl: gmxUrl,
+      apiUrl: gmxApiUrl,
       appToken: process.env.GLPI_GMX_APP_TOKEN,
       userToken: process.env.GLPI_GMX_USER_TOKEN,
       oauthClientId: process.env.GLPI_GMX_OAUTH_CLIENT_ID,
       oauthClientSecret: process.env.GLPI_GMX_OAUTH_CLIENT_SECRET,
       username: process.env.GLPI_GMX_USER ?? fallbackUser,
       password: process.env.GLPI_GMX_PASSWORD ?? fallbackPassword,
-    },
-  ];
+    });
+  } else {
+    console.warn(
+      "[GMX] Ignorando instância por falta de GLPI_GMX_URL ou GLPI_GMX_API_URL."
+    );
+  }
+
+  if (instances.length === 0) {
+    throw new Error("Nenhuma instância configurada. Defina GLPI_*_URL e GLPI_*_API_URL.");
+  }
+
+  return instances;
 }
 
 export async function fetchTicketsForInstance(env: InstanceEnv): Promise<GlpiTicket[]> {
