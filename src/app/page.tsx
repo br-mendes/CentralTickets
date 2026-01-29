@@ -190,7 +190,31 @@ export default async function Page() {
         </div>
         {tickets.length === 0 ? (
           <div className="empty-state">
-            Nenhum ticket disponível no momento.
+            <div>Nenhum ticket disponível no momento.</div>
+            <div className="empty-state-hint">
+              Se a autenticação via API ou o usuário srv_centraltickets/srv_centraltickets falhar,
+              acompanhe diretamente pelos painéis de assistência:
+              <ul>
+                <li>
+                  <a
+                    href="https://glpi.petacorp.com.br/front/central.php?embed&dashboard=assistance&entities_id=0&is_recursive=1&token=12ed3e1e-1be6-5584-a013-ee0fb1b4465b"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    PETA
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://glpi.gmxtecnologia.com.br/front/central.php?embed&dashboard=assistance&entities_id=0&is_recursive=1&token=a15a6318-1b97-5ba1-bb90-a374e92cc0b4"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    GMX
+                  </a>
+                </li>
+              </ul>
+            </div>
           </div>
         ) : (
           <table className="table">

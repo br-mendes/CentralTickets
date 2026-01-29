@@ -295,3 +295,23 @@ body {
   text-align: center;
   color: var(--muted);
 }
+
+.empty-state-hint {
+  margin-top: 12px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.empty-state-hint ul {
+  margin: 12px auto 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+
+.empty-state-hint a {
+  color: var(--accent);
+  font-weight: 600;
+}
