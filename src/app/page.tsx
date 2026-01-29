@@ -1,4 +1,5 @@
 import { statusLabel, isAlert } from "@/lib/utils";
+import { ManualSyncButton } from "@/components/manual-sync-button";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 type Ticket = {
@@ -15,6 +16,7 @@ type Ticket = {
   sla_percentage_resolve: number | null;
   is_overdue_first: boolean | null;
   is_overdue_resolve: boolean | null;
+  updated_at: string | null;
 };
 
 async function loadTickets(): Promise<Ticket[]> {
@@ -67,11 +69,27 @@ export default async function Page() {
   };
   const averageFirst = average(tickets.map((t) => t.sla_percentage_first));
   const averageResolve = average(tickets.map((t) => t.sla_percentage_resolve));
+  const lastSyncAt = tickets.reduce<Date | null>((latest, ticket) => {
+    if (!ticket.updated_at) return latest;
+    const date = new Date(ticket.updated_at);
+    if (Number.isNaN(date.getTime())) return latest;
+    if (!latest || date > latest) return date;
+    return latest;
+  }, null);
   const todayLabel = today.toLocaleDateString("pt-BR", {
     day: "2-digit",
     month: "short",
     year: "numeric",
   });
+  const lastSyncLabel = lastSyncAt
+    ? lastSyncAt.toLocaleString("pt-BR", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "Sem sincronização";
 
   return (
     <main className="page">
@@ -84,7 +102,8 @@ export default async function Page() {
           </p>
         </div>
         <div className="toolbar">
-          <div className="sync-pill">Atualizado em {todayLabel}</div>
+          <div className="sync-pill">Última sincronização {lastSyncLabel}</div>
+          <ManualSyncButton />
           <ThemeToggle />
         </div>
       </header>
@@ -149,7 +168,7 @@ export default async function Page() {
             </div>
           </div>
           <div className="table-subtitle">
-            Sync: <code>/api/cron/sync?secret=...</code>
+            Sync manual disponível acima.
           </div>
         </div>
         {tickets.length === 0 ? (
