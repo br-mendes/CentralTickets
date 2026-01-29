@@ -1,8 +1,35 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+  --background: #f2efe8;
+  --foreground: #1f2328;
+  --muted: #57606a;
+  --card: #fffaf2;
+  --card-muted: #f7f1e7;
+  --card-border: #e4ded2;
+  --accent: #0f766e;
+  --accent-strong: #115e59;
+  --table-header: #f3ece2;
+  --danger-bg: #ffe7e9;
+  --danger-text: #b42318;
+  --shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #0c1116;
+  --foreground: #eef2f6;
+  --muted: #9aa5b1;
+  --card: #131a22;
+  --card-muted: #0f141b;
+  --card-border: #223041;
+  --accent: #38bdf8;
+  --accent-strong: #0ea5e9;
+  --table-header: #111820;
+  --danger-bg: #3b0a12;
+  --danger-text: #fca5a5;
+  --shadow: 0 16px 32px rgba(0, 0, 0, 0.35);
 }
 
 @theme inline {
@@ -12,15 +39,203 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
 }
 
 body {
+  margin: 0;
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), "Inter", "Segoe UI", sans-serif;
+}
+
+.page {
+  min-height: 100vh;
+  padding: 32px 24px 48px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.page-title {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 6px 0;
+}
+
+.page-subtitle {
+  margin: 0;
+  color: var(--muted);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sync-pill {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: var(--card-muted);
+  border: 1px solid var(--card-border);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--card-border);
+  background: var(--card);
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+
+.theme-toggle__icon {
+  font-size: 16px;
+}
+
+.stats-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--card-border);
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 8px 0 4px;
+}
+
+.stat-meta {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.table-card {
+  border-radius: 18px;
+  border: 1px solid var(--card-border);
+  background: var(--card);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+.table-card-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--card-border);
+  background: var(--card-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.table-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.table-subtitle {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table thead th {
+  text-align: left;
+  padding: 12px 16px;
+  background: var(--table-header);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.table tbody td {
+  padding: 12px 16px;
+  border-top: 1px solid var(--card-border);
+}
+
+.alert-row {
+  background: var(--danger-bg);
+}
+
+.badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+}
+
+.badge.peta {
+  background: rgba(14, 116, 144, 0.2);
+  color: #0e7490;
+}
+
+.badge.gmx {
+  background: rgba(99, 102, 241, 0.2);
+  color: #4338ca;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.danger-text {
+  color: var(--danger-text);
+  font-weight: 700;
+}
+
+.empty-state {
+  padding: 32px;
+  text-align: center;
+  color: var(--muted);
 }

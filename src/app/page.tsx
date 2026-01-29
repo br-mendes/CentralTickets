@@ -1,4 +1,5 @@
 import { statusLabel, isAlert } from "@/lib/utils";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 type Ticket = {
   id: number;
@@ -42,78 +43,191 @@ export default async function Page() {
   const alertCount = tickets.filter((t) =>
     isAlert(t.sla_percentage_first, t.sla_percentage_resolve, threshold)
   ).length;
+  const totalPeta = tickets.filter((t) => t.instance === "PETA").length;
+  const totalGmx = tickets.filter((t) => t.instance === "GMX").length;
+  const overdueFirst = tickets.filter((t) => t.is_overdue_first).length;
+  const overdueResolve = tickets.filter((t) => t.is_overdue_resolve).length;
+  const uniqueTechnicians = new Set(
+    tickets.map((t) => t.technician).filter((name): name is string => Boolean(name))
+  ).size;
+  const uniqueCategories = new Set(
+    tickets.map((t) => t.category).filter((name): name is string => Boolean(name))
+  ).size;
+  const today = new Date();
+  const openedToday = tickets.filter((t) => {
+    if (!t.date_opening) return false;
+    const date = new Date(t.date_opening);
+    if (Number.isNaN(date.getTime())) return false;
+    return date.toDateString() === today.toDateString();
+  }).length;
+  const average = (values: Array<number | null>) => {
+    const valid = values.filter((value): value is number => typeof value === "number");
+    if (valid.length === 0) return null;
+    return valid.reduce((acc, value) => acc + value, 0) / valid.length;
+  };
+  const averageFirst = average(tickets.map((t) => t.sla_percentage_first));
+  const averageResolve = average(tickets.map((t) => t.sla_percentage_resolve));
+  const todayLabel = today.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 
   return (
-    <main style={{ padding: 24, fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif" }}>
-      <h1 style={{ fontSize: 22, fontWeight: 700 }}>Central de Tickets</h1>
-      <p style={{ marginTop: 6, color: "#555" }}>
-        Tickets ativos (PETA + GMX). Alerta vermelho quando SLA ≥ {threshold}%.
-      </p>
-
-      <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
-        <div style={{ padding: 12, border: "1px solid #eee", borderRadius: 12 }}>
-          <div style={{ fontSize: 12, color: "#666" }}>Total</div>
-          <div style={{ fontSize: 20, fontWeight: 700 }}>{tickets.length}</div>
+    <main className="page">
+      <header className="page-header">
+        <div>
+          <div className="eyebrow">Central de Tickets</div>
+          <h1 className="page-title">Painel de operação</h1>
+          <p className="page-subtitle">
+            Tickets ativos (PETA + GMX). Alerta vermelho quando SLA ≥ {threshold}%.
+          </p>
         </div>
-        <div style={{ padding: 12, border: "1px solid #eee", borderRadius: 12 }}>
-          <div style={{ fontSize: 12, color: "#666" }}>Em alerta</div>
-          <div style={{ fontSize: 20, fontWeight: 700 }}>{alertCount}</div>
+        <div className="toolbar">
+          <div className="sync-pill">Atualizado em {todayLabel}</div>
+          <ThemeToggle />
         </div>
-      </div>
+      </header>
 
-      <div style={{ marginTop: 18, border: "1px solid #eee", borderRadius: 12, overflow: "hidden" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead style={{ background: "#fafafa" }}>
-            <tr>
-              {["Instância", "Ticket", "Título", "Status", "Responsável", "Entidade", "Categoria", "SLA 1ª", "SLA Solução"].map((h) => (
-                <th key={h} style={{ textAlign: "left", fontSize: 12, padding: 10, borderBottom: "1px solid #eee" }}>
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {tickets.map((t) => {
-              const alert = isAlert(t.sla_percentage_first, t.sla_percentage_resolve, threshold);
-              return (
-                <tr key={t.id} style={{ background: alert ? "#fff1f2" : "white" }}>
-                  <td style={{ padding: 10, borderBottom: "1px solid #f2f2f2", fontWeight: 600 }}>
-                    {t.instance}
-                  </td>
-                  <td style={{ padding: 10, borderBottom: "1px solid #f2f2f2" }}>
-                    #{t.glpi_id}
-                  </td>
-                  <td style={{ padding: 10, borderBottom: "1px solid #f2f2f2" }}>
-                    {t.title ?? "-"}
-                  </td>
-                  <td style={{ padding: 10, borderBottom: "1px solid #f2f2f2" }}>
-                    {statusLabel(t.status)}
-                  </td>
-                  <td style={{ padding: 10, borderBottom: "1px solid #f2f2f2" }}>
-                    {t.technician ?? "-"}
-                  </td>
-                  <td style={{ padding: 10, borderBottom: "1px solid #f2f2f2" }}>
-                    {t.entity ?? "-"}
-                  </td>
-                  <td style={{ padding: 10, borderBottom: "1px solid #f2f2f2" }}>
-                    {t.category ?? "-"}
-                  </td>
-                  <td style={{ padding: 10, borderBottom: "1px solid #f2f2f2", color: (t.sla_percentage_first ?? 0) >= threshold ? "#b91c1c" : undefined, fontWeight: (t.sla_percentage_first ?? 0) >= threshold ? 700 : 400 }}>
-                    {t.sla_percentage_first != null ? `${t.sla_percentage_first.toFixed(2)}%` : "-"}
-                  </td>
-                  <td style={{ padding: 10, borderBottom: "1px solid #f2f2f2", color: (t.sla_percentage_resolve ?? 0) >= threshold ? "#b91c1c" : undefined, fontWeight: (t.sla_percentage_resolve ?? 0) >= threshold ? 700 : 400 }}>
-                    {t.sla_percentage_resolve != null ? `${t.sla_percentage_resolve.toFixed(2)}%` : "-"}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      <section className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-label">Total de tickets</div>
+          <div className="stat-value">{tickets.length}</div>
+          <div className="stat-meta">{alertCount} em alerta crítico</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Instâncias ativas</div>
+          <div className="stat-value">{totalPeta + totalGmx}</div>
+          <div className="stat-meta">
+            PETA: {totalPeta} · GMX: {totalGmx}
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Vencidos</div>
+          <div className="stat-value">{overdueFirst + overdueResolve}</div>
+          <div className="stat-meta">
+            1ª resposta: {overdueFirst} · solução: {overdueResolve}
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Abertos hoje</div>
+          <div className="stat-value">{openedToday}</div>
+          <div className="stat-meta">{todayLabel}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Responsáveis</div>
+          <div className="stat-value">{uniqueTechnicians}</div>
+          <div className="stat-meta">Técnicos com tickets ativos</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Categorias</div>
+          <div className="stat-value">{uniqueCategories}</div>
+          <div className="stat-meta">Distribuição atual</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">SLA médio 1ª</div>
+          <div className="stat-value">
+            {averageFirst != null ? `${averageFirst.toFixed(1)}%` : "-"}
+          </div>
+          <div className="stat-meta">Meta crítica em {threshold}%</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">SLA médio solução</div>
+          <div className="stat-value">
+            {averageResolve != null ? `${averageResolve.toFixed(1)}%` : "-"}
+          </div>
+          <div className="stat-meta">Meta crítica em {threshold}%</div>
+        </div>
+      </section>
 
-      <p style={{ marginTop: 12, fontSize: 12, color: "#666" }}>
-        Sync: chame <code>/api/cron/sync?secret=...</code> para atualizar o cache.
-      </p>
+      <section className="table-card">
+        <div className="table-card-header">
+          <div>
+            <div className="table-title">Fila detalhada</div>
+            <div className="table-subtitle">
+              Indicadores de SLA destacados em vermelho.
+            </div>
+          </div>
+          <div className="table-subtitle">
+            Sync: <code>/api/cron/sync?secret=...</code>
+          </div>
+        </div>
+        {tickets.length === 0 ? (
+          <div className="empty-state">
+            Nenhum ticket disponível no momento.
+          </div>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr>
+                {[
+                  "Instância",
+                  "Ticket",
+                  "Título",
+                  "Status",
+                  "Responsável",
+                  "Entidade",
+                  "Categoria",
+                  "SLA 1ª",
+                  "SLA Solução",
+                ].map((h) => (
+                  <th key={h}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {tickets.map((t) => {
+                const alert = isAlert(
+                  t.sla_percentage_first,
+                  t.sla_percentage_resolve,
+                  threshold
+                );
+                return (
+                  <tr key={t.id} className={alert ? "alert-row" : undefined}>
+                    <td>
+                      <span
+                        className={`badge ${
+                          t.instance === "PETA" ? "peta" : "gmx"
+                        }`}
+                      >
+                        {t.instance}
+                      </span>
+                    </td>
+                    <td>#{t.glpi_id}</td>
+                    <td>{t.title ?? "-"}</td>
+                    <td>{statusLabel(t.status)}</td>
+                    <td>{t.technician ?? "-"}</td>
+                    <td>{t.entity ?? "-"}</td>
+                    <td>{t.category ?? "-"}</td>
+                    <td
+                      className={
+                        (t.sla_percentage_first ?? 0) >= threshold
+                          ? "danger-text"
+                          : undefined
+                      }
+                    >
+                      {t.sla_percentage_first != null
+                        ? `${t.sla_percentage_first.toFixed(2)}%`
+                        : "-"}
+                    </td>
+                    <td
+                      className={
+                        (t.sla_percentage_resolve ?? 0) >= threshold
+                          ? "danger-text"
+                          : undefined
+                      }
+                    >
+                      {t.sla_percentage_resolve != null
+                        ? `${t.sla_percentage_resolve.toFixed(2)}%`
+                        : "-"}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </section>
     </main>
   );
 }
