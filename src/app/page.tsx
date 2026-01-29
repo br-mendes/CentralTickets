@@ -42,6 +42,7 @@ async function loadTickets(): Promise<Ticket[]> {
 export default async function Page() {
   const tickets = await loadTickets();
   const threshold = 70;
+  const refreshIntervalSeconds = 60;
 
   const alertCount = tickets.filter((t) =>
     isAlert(t.sla_percentage_first, t.sla_percentage_resolve, threshold)
@@ -117,6 +118,20 @@ export default async function Page() {
           <p className="page-subtitle">
             Tickets ativos (PETA + GMX). Alerta vermelho quando SLA ≥ {threshold}%.
           </p>
+          <div className="brand-logos" aria-label="Logotipos das instâncias">
+            <img
+              src="https://i.ibb.co/qLpHTnB1/logo-big-white.png"
+              alt="Logo PETA"
+              className="brand-logo"
+              loading="lazy"
+            />
+            <img
+              src="https://i.ibb.co/Xr6CrgTJ/logo-GMX-preto-1.png"
+              alt="Logo GMX"
+              className="brand-logo"
+              loading="lazy"
+            />
+          </div>
         </div>
         <div className="toolbar">
           <div className="sync-pill">Última sincronização {lastSyncLabel}</div>
