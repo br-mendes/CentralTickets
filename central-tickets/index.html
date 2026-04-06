@@ -94,7 +94,7 @@
             gap: 16px;
         }
 
-        .header h1 {
+        .header h1, .header-title-link {
             font-size: 1.5rem;
             font-weight: 700;
             color: var(--text-primary);
@@ -103,20 +103,32 @@
             gap: 12px;
         }
 
-        .header h1 .page-title {
+        .header-title-link {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .header-title-link:hover {
+            opacity: 0.8;
+        }
+
+        .header h1 .page-title,
+        .header-title-link .page-title {
             display: flex;
             flex-direction: column;
             gap: 2px;
         }
 
-        .header h1 .title-main {
+        .header h1 .title-main,
+        .header-title-link .title-main {
             font-size: 1.25rem;
             font-weight: 700;
             color: var(--text-primary);
             line-height: 1.2;
         }
 
-        .header h1 .subtitle {
+        .header h1 .subtitle,
+        .header-title-link .subtitle {
             font-size: 0.8rem;
             font-weight: 500;
             color: var(--text-secondary);
@@ -130,7 +142,7 @@
             align-items: center;
             justify-content: center;
             overflow: hidden;
-            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
             flex-shrink: 0;
         }
 
@@ -1330,7 +1342,7 @@
         <header class="header">
             <div class="header-content">
                 <div class="header-left">
-                    <h1>
+                    <a href="index.html" class="header-title-link">
                         <span class="header-logo">
                             <img src="favicon-peta.png" alt="Logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                             <span class="header-logo-fallback" style="display: none;">
@@ -1344,7 +1356,7 @@
                             <span class="title-main">Central de Tickets</span>
                             <span class="subtitle">Dashboard</span>
                         </span>
-                    </h1>
+                    </a>
                 </div>
                 <nav class="header-nav">
                     <a href="index.html" class="nav-link">
