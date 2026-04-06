@@ -281,6 +281,32 @@
             color: var(--text-muted);
         }
 
+        .countdown {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .countdown-label {
+            color: var(--text-muted);
+        }
+
+        .countdown-time {
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .countdown-warning {
+            color: #f59e0b !important;
+        }
+
+        .countdown-danger {
+            color: #ef4444 !important;
+        }
+
         .btn {
             display: inline-flex;
             align-items: center;
@@ -852,6 +878,7 @@
                         </svg>
                     </button>
                     <span class="last-update" id="lastUpdate"></span>
+                    <span class="countdown" id="countdown"></span>
                     <button class="btn btn-primary" id="refreshBtn" onclick="refreshTickets()">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M21 2v6h-6"></path>
@@ -936,9 +963,39 @@
         const INITIAL_LOAD = 100;
         const LOAD_MORE = 50;
 
-        // Intervalo de atualização automática (1 minuto)
+        // Intervalo de atualização automática (3 minutos)
         const REFRESH_INTERVAL = 180000;
         let refreshTimer = null;
+        let countdownTimer = null;
+        let countdownSeconds = REFRESH_INTERVAL / 1000;
+
+        function startCountdown() {
+            countdownSeconds = REFRESH_INTERVAL / 1000;
+            updateCountdownDisplay();
+            
+            if (countdownTimer) clearInterval(countdownTimer);
+            
+            countdownTimer = setInterval(() => {
+                countdownSeconds--;
+                if (countdownSeconds < 0) countdownSeconds = 0;
+                updateCountdownDisplay();
+            }, 1000);
+        }
+
+        function updateCountdownDisplay() {
+            const countdownEl = document.getElementById('countdown');
+            if (!countdownEl) return;
+            
+            const mins = Math.floor(countdownSeconds / 60);
+            const secs = countdownSeconds % 60;
+            const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
+            
+            let colorClass = '';
+            if (countdownSeconds <= 30) colorClass = 'countdown-danger';
+            else if (countdownSeconds <= 60) colorClass = 'countdown-warning';
+            
+            countdownEl.innerHTML = `<span class="countdown-label">Próxima atualização em:</span> <span class="countdown-time ${colorClass}">${timeStr}</span>`;
+        }
 
         // Função para alternar entre visualizações
         function setView(view) {
@@ -1561,6 +1618,9 @@ ${JSON.stringify(error, null, 2)}
                     lastUpdateEl.textContent = `Última atualização: ${getCurrentTimeFormatted()}`;
                 }
                 
+                // Reiniciar countdown
+                startCountdown();
+                
                 console.log('✅ Atualização concluída com sucesso');
             } catch (error) {
                 console.error('❌ Erro na atualização:', error);
@@ -1605,6 +1665,7 @@ ${JSON.stringify(error, null, 2)}
 
             // Configurar atualização automática
             refreshTimer = setInterval(refreshTickets, REFRESH_INTERVAL);
+            startCountdown();
         });
 
         // Cleanup ao sair da página
