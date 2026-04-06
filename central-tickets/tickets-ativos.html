@@ -720,44 +720,6 @@
             color: #ea580c;
         }
 
-        .filter-instance-group {
-            display: flex;
-            gap: 4px;
-        }
-
-        .instance-filter-btn {
-            padding: 8px 12px;
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            background: var(--surface);
-            color: var(--text-secondary);
-            font-size: 0.875rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .instance-filter-btn:hover {
-            background: var(--background);
-        }
-
-        .instance-filter-btn.active {
-            border-color: var(--primary);
-            background: rgba(37, 99, 235, 0.1);
-            color: var(--primary);
-        }
-
-        .instance-filter-btn.peta.active {
-            border-color: #2563eb;
-            background: rgba(37, 99, 235, 0.15);
-            color: #2563eb;
-        }
-
-        .instance-filter-btn.gmx.active {
-            border-color: #ea580c;
-            background: rgba(234, 88, 12, 0.15);
-            color: #ea580c;
-        }
-
         .quick-filters {
             display: flex;
             gap: 6px;
@@ -1004,9 +966,20 @@
             <option value="late">Fora do prazo</option>
         </select>
 
-        <div class="filter-instance-group">
-            <button class="instance-filter-btn peta active" id="btnPeta" onclick="toggleInstance('Peta')">Peta</button>
-            <button class="instance-filter-btn gmx active" id="btnGmx" onclick="toggleInstance('GMX')">GMX</button>
+        <div class="filter-select" style="position: relative;">
+            <div class="multi-select-header" onclick="toggleInstanceDropdown()" style="padding: 10px 32px 10px 12px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
+                <span id="instanceSelectLabel">Instâncias</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+            <div id="instanceDropdown" class="multi-select-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); max-height: 300px; overflow-y: auto; z-index: 50;">
+                <label class="multi-select-option" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; cursor: pointer; transition: background 0.2s;">
+                    <input type="checkbox" id="instanceAll" checked onchange="toggleAllInstances(this)">
+                    <span>Todas instâncias</span>
+                </label>
+                <div id="instanceOptions"></div>
+            </div>
         </div>
 
         <div class="quick-filters">
@@ -1101,12 +1074,104 @@
         }
 
         function initInstanceButtons() {
-            const btnPeta = document.getElementById('btnPeta');
-            const btnGmx = document.getElementById('btnGmx');
+            populateInstanceFilter();
+        }
+
+        function toggleInstanceDropdown() {
+            const dropdown = document.getElementById('instanceDropdown');
+            const isVisible = dropdown.style.display === 'block';
+            closeAllDropdowns();
+            dropdown.style.display = isVisible ? 'none' : 'block';
+        }
+
+        function populateInstanceFilter() {
+            const container = document.getElementById('instanceOptions');
+            container.innerHTML = '';
             
-            if (btnPeta && btnGmx) {
-                btnPeta.classList.toggle('active', selectedInstances.includes('Peta'));
-                btnGmx.classList.toggle('active', selectedInstances.includes('GMX'));
+            const instances = ['Peta', 'GMX'];
+            instances.forEach(instance => {
+                const label = document.createElement('label');
+                label.className = 'multi-select-option';
+                label.style.display = 'flex';
+                label.style.alignItems = 'center';
+                label.style.gap = '8px';
+                label.style.padding = '8px 12px';
+                label.style.cursor = 'pointer';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = instance;
+                checkbox.checked = selectedInstances.length === 0 || selectedInstances.includes(instance);
+                checkbox.style.cursor = 'pointer';
+                checkbox.onchange = () => updateInstanceSelection();
+                
+                const span = document.createElement('span');
+                span.textContent = instance;
+                if (instance === 'Peta') {
+                    span.style.color = 'var(--primary)';
+                    span.style.fontWeight = '600';
+                } else {
+                    span.style.color = 'var(--status-processing)';
+                    span.style.fontWeight = '600';
+                }
+                
+                label.appendChild(checkbox);
+                label.appendChild(span);
+                container.appendChild(label);
+            });
+
+            if (selectedInstances.length === 0) {
+                document.getElementById('instanceAll').checked = true;
+            }
+            updateInstanceLabel();
+        }
+
+        function toggleAllInstances(checkbox) {
+            const options = document.querySelectorAll('#instanceOptions input[type="checkbox"]');
+            options.forEach(opt => {
+                opt.checked = checkbox.checked;
+            });
+            
+            if (checkbox.checked) {
+                selectedInstances = [];
+            } else {
+                selectedInstances = ['Peta', 'GMX'];
+                options.forEach(opt => opt.checked = true);
+            }
+            
+            updateInstanceLabel();
+            applyFilters();
+        }
+
+        function updateInstanceSelection() {
+            const allCheckbox = document.getElementById('instanceAll');
+            const options = document.querySelectorAll('#instanceOptions input[type="checkbox"]');
+            
+            selectedInstances = [];
+            let allSelected = true;
+            
+            options.forEach(opt => {
+                if (opt.checked) {
+                    selectedInstances.push(opt.value);
+                } else {
+                    allSelected = false;
+                }
+            });
+
+            allCheckbox.checked = allSelected;
+            updateInstanceLabel();
+            applyFilters();
+        }
+
+        function updateInstanceLabel() {
+            const label = document.getElementById('instanceSelectLabel');
+            
+            if (selectedInstances.length === 0 || selectedInstances.length === 2) {
+                label.textContent = 'Instâncias';
+            } else if (selectedInstances.length === 1) {
+                label.textContent = selectedInstances[0];
+            } else {
+                label.textContent = `${selectedInstances.length} instâncias`;
             }
         }
 
@@ -1136,23 +1201,6 @@
             }
         }
 
-        function toggleInstance(instance) {
-            const btn = document.getElementById('btn' + instance);
-            
-            if (selectedInstances.includes(instance)) {
-                if (selectedInstances.length > 1) {
-                    selectedInstances = selectedInstances.filter(i => i !== instance);
-                    btn.classList.remove('active');
-                }
-            } else {
-                selectedInstances.push(instance);
-                btn.classList.add('active');
-            }
-            
-            console.log('Instâncias selecionadas:', selectedInstances);
-            applyFilters();
-        }
-
         function toggleEntityDropdown() {
             const dropdown = document.getElementById('entityDropdown');
             const isVisible = dropdown.style.display === 'block';
@@ -1178,6 +1226,7 @@
             document.getElementById('entityDropdown').style.display = 'none';
             document.getElementById('categoryDropdown').style.display = 'none';
             document.getElementById('groupDropdown').style.display = 'none';
+            document.getElementById('instanceDropdown').style.display = 'none';
         }
 
         document.addEventListener('click', function(e) {
@@ -1459,17 +1508,16 @@
             selectedEntities = [];
             selectedCategories = [];
             selectedGroups = [];
-            selectedInstances = ['Peta', 'GMX'];
+            selectedInstances = [];
             quickFilters = { slaLate: false, pending: false };
             
-            document.getElementById('btnPeta').classList.add('active');
-            document.getElementById('btnGmx').classList.add('active');
             document.getElementById('btnSlaLate').classList.remove('active');
             document.getElementById('btnPending').classList.remove('active', 'pending-btn');
             
             document.getElementById('entityAll').checked = true;
             document.getElementById('categoryAll').checked = true;
             document.getElementById('groupAll').checked = true;
+            document.getElementById('instanceAll').checked = true;
             
             const entityOptions = document.querySelectorAll('#entityOptions input[type="checkbox"]');
             entityOptions.forEach(opt => opt.checked = true);
@@ -1480,9 +1528,13 @@
             const groupOptions = document.querySelectorAll('#groupOptions input[type="checkbox"]');
             groupOptions.forEach(opt => opt.checked = true);
             
+            const instanceOptions = document.querySelectorAll('#instanceOptions input[type="checkbox"]');
+            instanceOptions.forEach(opt => opt.checked = true);
+            
             updateEntityLabel();
             updateCategoryLabel();
             updateGroupLabel();
+            updateInstanceLabel();
             
             applyFilters();
         }
