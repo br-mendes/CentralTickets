@@ -1,0 +1,48 @@
+{
+  "exportedAt": "2024-01-01T00:00:00.000Z",
+  "totalTickets": 0,
+  "instances": {
+    "peta": 0,
+    "gmx": 0
+  },
+  "tickets": [],
+  "instructions": {
+    "description": "Arquivo de backup dos tickets da Central de Tickets",
+    "howToUse": [
+      "1. Na página Dashboard ou Kanban, clique no botão de exportar (seta para baixo)",
+      "2. Salve o arquivo .json com a data atual",
+      "3. Para restaurar, clique no botão de importar (seta para cima)",
+      "4. Selecione o arquivo .json salvo anteriormente"
+    ],
+    "howToOpenInExcel": [
+      "1. Abra o Microsoft Excel",
+      "2. Vá em Dados > Obter Dados > De Arquivo > De JSON",
+      "3. Selecione o arquivo .json exportado",
+      "4. Na tela do Power Query, clique em 'Para Tabela'",
+      "5. Expanda as colunas conforme necessário",
+      "6. Clique em 'Fechar e Carregar'"
+    ],
+    "structure": {
+      "exportedAt": "Data e hora da exportação (ISO 8601)",
+      "totalTickets": "Quantidade total de tickets exportados",
+      "instances": {
+        "peta": "Quantidade de tickets da instância Peta",
+        "gmx": "Quantidade de tickets da instância GMX"
+      },
+      "tickets": "Array com todos os tickets",
+      "ticketFields": {
+        "id": "ID do ticket no GLPI",
+        "title": "Título do ticket",
+        "entity": "Entidade/Cliente",
+        "category": "Categoria do ticket",
+        "status": "Status (new, processing, pending, solved, closed)",
+        "statusName": "Nome do status",
+        "statusColor": "Cor hexadecimal do status",
+        "dateCreated": "Data de criação",
+        "dueDate": "Data limite/SLA",
+        "instance": "Instância de origem (Peta ou GMX)",
+        "instanceUrl": "URL base para abrir o ticket no GLPI"
+      }
+    }
+  }
+}
