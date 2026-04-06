@@ -1,0 +1,2342 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Central de Tickets - Dashboard de Tickets GLPI">
+    <title>Central de Tickets</title>
+    <link rel="icon" href="favicon-peta.png" type="image/png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #64748b;
+            --background: #f8fafc;
+            --surface: #ffffff;
+            --border: #e2e8f0;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            
+            --status-new: #3b82f6;
+            --status-processing: #f59e0b;
+            --status-pending: #8b5cf6;
+            --status-solved: #10b981;
+            --status-closed: #6b7280;
+            
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            
+            --radius-sm: 6px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+        }
+
+        [data-theme="dark"] {
+            --background: #0f172a;
+            --surface: #1e293b;
+            --border: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--background);
+            color: var(--text-primary);
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .app {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow-sm);
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        .header-content {
+            max-width: 1800px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header h1 .page-title {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .header h1 .title-main {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.2;
+        }
+
+        .header h1 .subtitle {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .header-logo {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            flex-shrink: 0;
+        }
+
+        .header-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .header-logo-fallback {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header-logo-fallback svg {
+            width: 22px;
+            height: 22px;
+            color: white;
+        }
+
+        .theme-toggle {
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .theme-toggle:hover {
+            background: var(--border);
+        }
+
+        .theme-toggle svg {
+            width: 20px;
+            height: 20px;
+            color: var(--text-primary);
+        }
+            color: white;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .last-update {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .main {
+            flex: 1;
+            padding: 24px;
+            max-width: 1800px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+            gap: 16px;
+        }
+
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+
+        .error-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+            gap: 16px;
+            text-align: center;
+            padding: 24px;
+        }
+
+        .error-icon {
+            width: 64px;
+            height: 64px;
+            color: #ef4444;
+        }
+
+        .error-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .error-message {
+            color: var(--text-secondary);
+            max-width: 400px;
+        }
+
+        .kanban-board {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            min-height: calc(100vh - 180px);
+        }
+
+        .filtered-board {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            min-height: calc(100vh - 180px);
+        }
+
+        @media (max-width: 1600px) {
+            .kanban-board {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 1100px) {
+            .kanban-board {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .filtered-board {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 700px) {
+            .kanban-board {
+                grid-template-columns: 1fr;
+            }
+            .filtered-board {
+                grid-template-columns: 1fr;
+            }
+            .summary-dashboard {
+                grid-template-columns: 1fr 1fr;
+            }
+            .nav-links {
+                flex-wrap: wrap;
+            }
+            .nav-link {
+                flex: 1;
+                justify-content: center;
+                min-width: 120px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .kanban-board {
+                grid-template-columns: 1fr;
+            }
+            
+            .header-content {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .header-actions {
+                width: 100%;
+                justify-content: space-between;
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+            
+            .main {
+                padding: 16px;
+            }
+
+            .summary-dashboard {
+                grid-template-columns: 1fr;
+                padding: 0;
+            }
+
+            .instance-cards {
+                grid-template-columns: 1fr;
+            }
+
+            .quick-actions {
+                flex-direction: column;
+            }
+
+            .quick-action {
+                width: 100%;
+            }
+
+            .header-nav {
+                width: 100%;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+
+            .nav-link {
+                flex: 1;
+                justify-content: center;
+                min-width: 100px;
+            }
+
+            .header-right {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 500px) {
+            .header-nav {
+                display: none;
+            }
+        }
+
+        .kanban-column {
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            max-height: calc(100vh - 180px);
+            overflow: hidden;
+        }
+
+        .column-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .column-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .status-dot.new { background: var(--status-new); }
+        .status-dot.processing { background: var(--status-processing); }
+        .status-dot.pending { background: var(--status-pending); }
+        .status-dot.solved { background: var(--status-solved); }
+        .status-dot.closed { background: var(--status-closed); }
+
+        .column-count {
+            background: var(--background);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .column-content {
+            flex: 1;
+            padding: 12px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .column-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .column-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .column-content::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        .load-more-btn {
+            width: 100%;
+            padding: 10px;
+            margin-top: 8px;
+            background: var(--background);
+            border: 1px dashed var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .load-more-btn:hover {
+            background: var(--surface);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .ticket-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 14px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .ticket-card:hover {
+            border-color: var(--primary);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .ticket-card.new { border-left: 3px solid var(--status-new); }
+        .ticket-card.processing { border-left: 3px solid var(--status-processing); }
+        .ticket-card.pending { border-left: 3px solid var(--status-pending); }
+        .ticket-card.solved { border-left: 3px solid var(--status-solved); }
+        .ticket-card.closed { border-left: 3px solid var(--status-closed); }
+
+        .ticket-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .ticket-id {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .ticket-entity {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            background: var(--background);
+            padding: 2px 8px;
+            border-radius: 4px;
+            max-width: 100px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .ticket-category {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .ticket-category svg {
+            width: 16px;
+            height: 16px;
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        .ticket-dates {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            padding-top: 10px;
+            border-top: 1px solid var(--border);
+        }
+
+        .ticket-date-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .ticket-date-label {
+            color: var(--text-muted);
+        }
+
+        .ticket-date-value {
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .pending-time {
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--status-pending);
+            padding: 6px 10px;
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .pending-time svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .empty-column {
+            text-align: center;
+            padding: 24px;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .btn-secondary {
+            background: var(--surface);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--background);
+        }
+
+        .btn-secondary.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .view-indicator {
+            background: var(--primary);
+            color: white;
+            padding: 4px 12px;
+            border-radius: var(--radius-md);
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        .view-indicator.processing {
+            background: var(--status-processing);
+        }
+
+        .view-indicator.pending {
+            background: var(--status-pending);
+        }
+
+        .ticket-card.urgent {
+            border-color: #f59e0b;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.05), transparent);
+        }
+
+        .ticket-card.urgent.processing {
+            border-left-color: var(--status-processing);
+        }
+
+        .ticket-card.urgent.pending {
+            border-left-color: var(--status-pending);
+        }
+
+        .instance-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .instance-badge.peta {
+            background: rgba(37, 99, 235, 0.15);
+            color: #2563eb;
+        }
+
+        .instance-badge.gmx {
+            background: rgba(234, 88, 12, 0.15);
+            color: #ea580c;
+        }
+
+        .ticket-entity-mini {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .ticket-card .ticket-id a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .ticket-card .ticket-id a:hover {
+            text-decoration: underline;
+        }
+
+        .summary-dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .summary-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            transition: all 0.2s;
+        }
+
+        .summary-card:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .summary-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .summary-card-title {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .summary-card-title svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .summary-card-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .summary-card-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .summary-subitem {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+        }
+
+        .summary-subitem-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .summary-subitem-label {
+            color: var(--text-secondary);
+        }
+
+        .summary-subitem-value {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .summary-section {
+            margin-bottom: 8px;
+        }
+
+        .summary-section-title {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+
+        .summary-bar-container {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .summary-bar-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.75rem;
+        }
+
+        .summary-bar-label {
+            min-width: 100px;
+            color: var(--text-secondary);
+        }
+
+        .summary-bar {
+            flex: 1;
+            height: 8px;
+            background: var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .summary-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .summary-bar-value {
+            min-width: 30px;
+            text-align: right;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .team-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .team-item:last-child {
+            border-bottom: none;
+        }
+
+        .team-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: white;
+        }
+
+        .team-name {
+            flex: 1;
+            font-size: 0.8rem;
+            color: var(--text-primary);
+        }
+
+        .team-count {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 12px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover {
+            background: var(--border);
+            color: var(--text-primary);
+        }
+
+        .nav-link.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .nav-link.active:hover {
+            background: var(--primary-dark);
+            color: white;
+        }
+
+        .nav-link svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .header-nav {
+            display: flex;
+            gap: 8px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .cache-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        .cache-btn {
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .cache-btn:hover {
+            background: var(--border);
+            color: var(--primary);
+        }
+
+        .cache-btn svg {
+            width: 16px;
+            height: 16px;
+            color: var(--text-secondary);
+        }
+
+        .cache-btn:hover svg {
+            color: var(--primary);
+        }
+
+        .dashboard-section {
+            margin-bottom: 32px;
+        }
+
+        .dashboard-section-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dashboard-section-title svg {
+            width: 20px;
+            height: 20px;
+            color: var(--primary);
+        }
+
+        .instance-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+        }
+
+        .instance-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+        }
+
+        .instance-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .instance-card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .instance-badge-large {
+            padding: 4px 12px;
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .instance-badge-large.peta {
+            background: rgba(37, 99, 235, 0.15);
+            color: #2563eb;
+        }
+
+        .instance-badge-large.gmx {
+            background: rgba(234, 88, 12, 0.15);
+            color: #ea580c;
+        }
+
+        .instance-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .instance-stat {
+            background: var(--background);
+            padding: 12px;
+            border-radius: var(--radius-md);
+        }
+
+        .instance-stat-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .instance-stat-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .instance-stat-bar {
+            margin-top: 8px;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .instance-stat-bar-fill {
+            height: 100%;
+            border-radius: 2px;
+        }
+
+        .avg-pending {
+            margin-top: 12px;
+            padding: 12px;
+            background: var(--background);
+            border-radius: var(--radius-md);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .avg-pending-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .avg-pending-value {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .avg-pending-value.warning {
+            color: #f59e0b;
+        }
+
+        .avg-pending-value.danger {
+            color: #ef4444;
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .quick-action {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 20px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            flex: 1;
+            min-width: 150px;
+            justify-content: center;
+        }
+
+        .quick-action:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .quick-action svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .period-filter {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .period-btn {
+            padding: 6px 14px;
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .period-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .period-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .period-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .period-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+        }
+
+        .period-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .period-card-title {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .period-card-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .period-card-meta {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .instance-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .instance-summary {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+        }
+
+        .instance-summary-header {
+            padding: 16px 20px;
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(37, 99, 235, 0.05));
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .instance-summary-header.gmx {
+            background: linear-gradient(135deg, rgba(234, 88, 12, 0.1), rgba(234, 88, 12, 0.05));
+        }
+
+        .instance-summary-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .instance-summary-title svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .instance-summary-title.peta svg {
+            color: #2563eb;
+        }
+
+        .instance-summary-title.gmx svg {
+            color: #ea580c;
+        }
+
+        .instance-summary-badge {
+            padding: 4px 12px;
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .instance-summary-badge.peta {
+            background: rgba(37, 99, 235, 0.15);
+            color: #2563eb;
+        }
+
+        .instance-summary-badge.gmx {
+            background: rgba(234, 88, 12, 0.15);
+            color: #ea580c;
+        }
+
+        .instance-summary-body {
+            padding: 20px;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .status-item {
+            background: var(--background);
+            border-radius: var(--radius-md);
+            padding: 12px;
+            text-align: center;
+        }
+
+        .status-item-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .status-item-label {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-item.new .status-item-value { color: #3b82f6; }
+        .status-item.processing .status-item-value { color: #f59e0b; }
+        .status-item.pending .status-item-value { color: #8b5cf6; }
+        .status-item.solved .status-item-value { color: #10b981; }
+        .status-item.closed .status-item-value { color: #6b7280; }
+
+        .instance-metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .metric-card {
+            background: var(--background);
+            border-radius: var(--radius-md);
+            padding: 12px;
+        }
+
+        .metric-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .metric-value {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .metric-value.warning {
+            color: #f59e0b;
+        }
+
+        .metric-value.danger {
+            color: #ef4444;
+        }
+
+        @media (max-width: 900px) {
+            .instance-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .status-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <header class="header">
+            <div class="header-content">
+                <div class="header-left">
+                    <h1>
+                        <span class="header-logo">
+                            <img src="favicon-peta.png" alt="Logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <span class="header-logo-fallback" style="display: none;">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                    <polyline points="22,6 12,13 2,6"></polyline>
+                                </svg>
+                            </span>
+                        </span>
+                        <span class="page-title">
+                            <span class="title-main">Central de Tickets</span>
+                            <span class="subtitle">Dashboard</span>
+                        </span>
+                    </h1>
+                </div>
+                <nav class="header-nav">
+                    <a href="index.html" class="nav-link">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="7" height="7"></rect>
+                            <rect x="14" y="3" width="7" height="7"></rect>
+                            <rect x="14" y="14" width="7" height="7"></rect>
+                            <rect x="3" y="14" width="7" height="7"></rect>
+                        </svg>
+                        Dashboard
+                    </a>
+                    <a href="kanban.html" class="nav-link">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="9" y1="3" x2="9" y2="21"></line>
+                            <line x1="15" y1="3" x2="15" y2="21"></line>
+                        </svg>
+                        Kanban
+                    </a>
+                    <a href="tickets-ativos.html" class="nav-link">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                            <polyline points="22,6 12,13 2,6"></polyline>
+                        </svg>
+                        Tickets Ativos
+                    </a>
+                </nav>
+                <div class="header-right">
+                    <div class="cache-actions">
+                        <button class="cache-btn" onclick="exportToJSON()" title="Exportar dados para JSON">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                        </button>
+                        <button class="cache-btn" onclick="importFromJSON()" title="Importar dados de JSON">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                        </button>
+                        <button class="cache-btn" onclick="if(confirm('Limpar cache local?')) { clearCache(); location.reload(); }" title="Limpar cache">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <button class="theme-toggle" onclick="toggleTheme()" title="Alternar tema">
+                        <svg id="sunIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="5"></circle>
+                            <line x1="12" y1="1" x2="12" y2="3"></line>
+                            <line x1="12" y1="21" x2="12" y2="23"></line>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                            <line x1="1" y1="12" x2="3" y2="12"></line>
+                            <line x1="21" y1="12" x2="23" y2="12"></line>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                        </svg>
+                        <svg id="moonIcon" style="display:none;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                        </svg>
+                    </button>
+                    <span class="last-update" id="lastUpdate"></span>
+                    <button class="btn btn-primary" id="refreshBtn" onclick="refreshTickets()">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 2v6h-6"></path>
+                            <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
+                            <path d="M3 22v-6h6"></path>
+                            <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+                        </svg>
+                        Atualizar
+                    </button>
+                </div>
+            </div>
+        </header>
+        
+        <main class="main" id="mainContent">
+            <div class="loading-container" id="loadingState">
+                <div class="spinner"></div>
+                <p class="loading-text">Carregando tickets...</p>
+            </div>
+        </main>
+    </div>
+
+    <script src="config.js"></script>
+    <script>
+        // Usar configurações do config.js
+        const INSTANCES = window.INSTANCES;
+
+        // Mapeamento de status do GLPI
+        const TICKET_STATUS = {
+            1: { name: 'Novo', key: 'new', color: '#3b82f6' },
+            2: { name: 'Em atendimento', key: 'processing', color: '#f59e0b' },
+            3: { name: 'Em atendimento', key: 'processing', color: '#f59e0b' },
+            4: { name: 'Pendente', key: 'pending', color: '#8b5cf6' },
+            5: { name: 'Solucionado', key: 'solved', color: '#10b981' },
+            6: { name: 'Fechado', key: 'closed', color: '#6b7280' },
+        };
+
+        // Ordem dos status no Kanban (removido 'new')
+        const STATUS_ORDER = ['processing', 'pending', 'solved', 'closed'];
+
+        const STATUS_LABELS = {
+            'new': 'Novo',
+            'processing': 'Em atendimento',
+            'pending': 'Pendente',
+            'solved': 'Solucionado',
+            'closed': 'Fechado',
+        };
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const isDark = html.getAttribute('data-theme') === 'dark';
+            
+            if (isDark) {
+                html.removeAttribute('data-theme');
+                localStorage.setItem('theme', 'light');
+                document.getElementById('sunIcon').style.display = 'block';
+                document.getElementById('moonIcon').style.display = 'none';
+            } else {
+                html.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+                document.getElementById('sunIcon').style.display = 'none';
+                document.getElementById('moonIcon').style.display = 'block';
+            }
+        }
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                document.getElementById('sunIcon').style.display = 'none';
+                document.getElementById('moonIcon').style.display = 'block';
+            }
+        }
+
+        // Estado da aplicação
+        let sessionTokens = {};
+        let tickets = [];
+        let ticketsByStatus = {};
+        let isLoading = false;
+        let currentView = 'all';
+        let selectedInstances = ['Peta', 'GMX'];
+        let loadedCounts = { processing: 100, pending: 100, solved: 100, closed: 100 };
+        const INITIAL_LOAD = 100;
+        const LOAD_MORE = 50;
+
+        // Intervalo de atualização automática (1 minuto)
+        const REFRESH_INTERVAL = 180000;
+        let refreshTimer = null;
+
+        // Função para alternar entre visualizações
+        function setView(view) {
+            currentView = view;
+            
+            // Atualizar botões
+            document.getElementById('btnAll').classList.toggle('active', view === 'all');
+            document.getElementById('btnActive').classList.toggle('active', view === 'active');
+            
+            // Atualizar indicador
+            const indicator = document.getElementById('viewIndicator');
+            if (view === 'active') {
+                indicator.style.display = 'inline-block';
+                indicator.textContent = 'Em atendimento + Pendente';
+                indicator.className = 'view-indicator';
+            } else {
+                indicator.style.display = 'none';
+            }
+            
+            // Re-renderizar
+            renderKanban(tickets);
+        }
+
+        // Função para encerrar sessão
+        async function killSession() {
+            for (const instanceName of Object.keys(INSTANCES)) {
+                if (sessionTokens[instanceName]) {
+                    try {
+                        await fetch(`${INSTANCES[instanceName].BASE_URL}/killSession/`, {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Session-Token': sessionTokens[instanceName],
+                                'App-Token': INSTANCES[instanceName].APP_TOKEN,
+                            },
+                        });
+                    } catch (error) {
+                        console.error(`Erro ao encerrar sessão ${instanceName}:`, error);
+                    }
+                }
+            }
+            sessionTokens = {};
+        }
+
+        // Função para iniciar sessão em uma instância
+        async function initSession(instanceName) {
+            const instance = INSTANCES[instanceName];
+            try {
+                const response = await fetch(`${instance.BASE_URL}/initSession/`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `user_token ${instance.USER_TOKEN}`,
+                        'App-Token': instance.APP_TOKEN,
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Erro ao iniciar sessão em ${instanceName}: ${response.status}`);
+                }
+
+                const data = await response.json();
+                sessionTokens[instanceName] = data.session_token;
+                return data.session_token;
+            } catch (error) {
+                console.error(`Erro na autenticação ${instanceName}:`, error);
+                throw error;
+            }
+        }
+
+        // Função para buscar tickets de uma instância
+        async function getTicketsFromInstance(instanceName, retryCount = 0) {
+            const instance = INSTANCES[instanceName];
+            
+            if (!sessionTokens[instanceName]) {
+                await initSession(instanceName);
+            }
+
+            try {
+                const allTickets = [];
+                let page = 0;
+                const pageSize = 100;
+                let hasMore = true;
+                let consecutiveErrors = 0;
+
+                while (hasMore) {
+                    const start = page * pageSize;
+                    const end = start + pageSize - 1;
+
+                    const searchParams = new URLSearchParams({
+                        'range': `${start}-${end}`,
+                        'expand_dropdowns': 'true',
+                        'get_hateoas': 'false',
+                    });
+
+                    const response = await fetch(
+                        `${instance.BASE_URL}/search/Ticket/?${searchParams.toString()}`,
+                        {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Session-Token': sessionTokens[instanceName],
+                                'App-Token': instance.APP_TOKEN,
+                            },
+                        }
+                    );
+
+                    if (!response.ok) {
+                        consecutiveErrors++;
+                        if (response.status === 401 && retryCount < 2) {
+                            console.log(`🔄 Sessão expirada para ${instanceName}, reautenticando...`);
+                            sessionTokens[instanceName] = null;
+                            await initSession(instanceName);
+                            return getTicketsFromInstance(instanceName, retryCount + 1);
+                        }
+                        throw new Error(`Erro ao buscar tickets de ${instanceName}: ${response.status}`);
+                    }
+
+                    consecutiveErrors = 0;
+                    const data = await response.json();
+                    
+                    if (data.data) {
+                        const ticketsArray = Array.isArray(data.data) ? data.data : Object.values(data.data);
+                        
+                        if (ticketsArray.length === 0) {
+                            hasMore = false;
+                        } else {
+                            allTickets.push(...ticketsArray);
+                            page++;
+                            
+                            if (ticketsArray.length < pageSize || page >= 50) {
+                                hasMore = false;
+                            }
+                        }
+                    } else {
+                        hasMore = false;
+                    }
+                }
+
+                return processTickets(allTickets, instanceName);
+            } catch (error) {
+                console.error(`Erro ao buscar tickets de ${instanceName}:`, error);
+                throw error;
+            }
+        }
+
+        // Função para buscar tickets de todas as instâncias
+        async function getAllTickets() {
+            const allTickets = [];
+            const errors = [];
+            
+            for (const instanceName of selectedInstances) {
+                try {
+                    await initSession(instanceName);
+                    const instanceTickets = await getTicketsFromInstance(instanceName);
+                    allTickets.push(...instanceTickets);
+                    console.log(`✅ ${instanceName}: ${instanceTickets.length} tickets carregados`);
+                } catch (error) {
+                    console.error(`❌ Falha ao carregar tickets de ${instanceName}:`, error);
+                    errors.push({ instance: instanceName, error: error.message });
+                }
+            }
+            
+            if (allTickets.length === 0 && errors.length > 0) {
+                throw new Error(`Falha ao carregar tickets: ${errors.map(e => e.instance).join(', ')}`);
+            }
+            
+            console.log(`📊 Total de tickets carregados: ${allTickets.length}`);
+            return allTickets;
+        }
+
+        // Função para processar tickets da API
+        function processTickets(rawTickets, instanceName) {
+            return rawTickets.map(ticket => {
+                const statusId = parseInt(ticket[12]) || 1;
+                const statusInfo = TICKET_STATUS[statusId] || TICKET_STATUS[1];
+                
+                let category = 'Não categorizado';
+                if (ticket[4]) {
+                    if (Array.isArray(ticket[4])) {
+                        category = ticket[4].join(', ');
+                    } else {
+                        category = ticket[4];
+                    }
+                } else if (ticket[7]) {
+                    category = ticket[7];
+                }
+
+                return {
+                    id: ticket[2] || ticket.id,
+                    title: ticket[1] || 'Sem título',
+                    entity: ticket[80] || 'Entidade não definida',
+                    category: category,
+                    statusId: statusId,
+                    status: statusInfo.key,
+                    statusName: statusInfo.name,
+                    statusColor: statusInfo.color,
+                    dateCreated: ticket[15] || ticket.date_creation,
+                    dueDate: ticket[151] || ticket.due_date,
+                    timePending: statusInfo.key === 'pending' ? calculatePendingTime(ticket) : null,
+                    instance: instanceName,
+                    instanceUrl: INSTANCES[instanceName].TICKET_URL,
+                };
+            });
+        }
+
+        // Função para calcular tempo em pendência
+        function calculatePendingTime(ticket) {
+            const lastUpdate = ticket[91] || ticket.date_creation;
+            if (!lastUpdate) return null;
+
+            const updateDate = new Date(lastUpdate);
+            const now = new Date();
+            const diffMs = now - updateDate;
+
+            return formatDuration(diffMs);
+        }
+
+        // Função para formatar duração
+        function formatDuration(ms) {
+            const seconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            const days = Math.floor(hours / 24);
+
+            if (days > 0) {
+                const remainingHours = hours % 24;
+                if (remainingHours > 0) {
+                    return `há ${days} dia${days > 1 ? 's' : ''} e ${remainingHours} hora${remainingHours > 1 ? 's' : ''}`;
+                }
+                return `há ${days} dia${days > 1 ? 's' : ''}`;
+            }
+            
+            if (hours > 0) {
+                return `há ${hours} hora${hours > 1 ? 's' : ''}`;
+            }
+            
+            if (minutes > 0) {
+                return `há ${minutes} minuto${minutes > 1 ? 's' : ''}`;
+            }
+            
+            return 'há poucos segundos';
+        }
+
+        // Função para formatar data
+        function formatShortDate(dateString) {
+            if (!dateString) return 'N/A';
+            
+            try {
+                const date = new Date(dateString);
+                if (isNaN(date.getTime())) return 'N/A';
+                
+                return date.toLocaleDateString('pt-BR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                });
+            } catch {
+                return 'N/A';
+            }
+        }
+
+        // Função para obter hora formatada
+        function getCurrentTimeFormatted() {
+            return new Date().toLocaleTimeString('pt-BR', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+            });
+        }
+
+        // Função para exibir tela de loading
+        function showLoading() {
+            const mainContent = document.getElementById('mainContent');
+            mainContent.innerHTML = `
+                <div class="loading-container">
+                    <div class="spinner"></div>
+                    <p class="loading-text">Carregando tickets...</p>
+                </div>
+            `;
+        }
+
+        // Função para exibir erro
+        function showError(message, details, error = null) {
+            const mainContent = document.getElementById('mainContent');
+            
+            let debugInfo = '';
+            if (error) {
+                debugInfo = `
+                    <details style="margin-top: 16px; text-align: left; max-width: 500px;">
+                        <summary style="cursor: pointer; color: var(--text-muted); font-size: 0.75rem;">
+                            Detalhes técnicos
+                        </summary>
+                        <pre style="margin-top: 8px; padding: 12px; background: var(--background); 
+                            border-radius: var(--radius-sm); font-size: 0.75rem; 
+                            overflow-x: auto; text-align: left; color: var(--text-secondary);">
+${JSON.stringify(error, null, 2)}
+                        </pre>
+                    </details>
+                `;
+            }
+            
+            mainContent.innerHTML = `
+                <div class="error-container">
+                    <svg class="error-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <h2 class="error-title">${message}</h2>
+                    <p class="error-message">${details}</p>
+                    <button class="btn btn-primary" onclick="refreshTickets()">
+                        Tentar novamente
+                    </button>
+                    ${debugInfo}
+                </div>
+            `;
+        }
+
+        function getInstanceStats(tickets, instanceName) {
+            const instanceTickets = tickets.filter(t => t.instance === instanceName);
+            return {
+                total: instanceTickets.length,
+                new: instanceTickets.filter(t => t.status === 'new').length,
+                processing: instanceTickets.filter(t => t.status === 'processing').length,
+                pending: instanceTickets.filter(t => t.status === 'pending').length,
+                solved: instanceTickets.filter(t => t.status === 'solved').length,
+                closed: instanceTickets.filter(t => t.status === 'closed').length,
+                tickets: instanceTickets
+            };
+        }
+
+        function getAvgPendingTime(tickets) {
+            const pending = tickets.filter(t => t.status === 'pending');
+            if (pending.length === 0) return { time: 'N/A', class: '', count: 0 };
+            
+            let totalMs = 0;
+            let count = 0;
+            pending.forEach(t => {
+                if (t.dateCreated) {
+                    totalMs += (new Date() - new Date(t.dateCreated));
+                    count++;
+                }
+            });
+            
+            if (count === 0) return { time: 'N/A', class: '', count: pending.length };
+            
+            const avgMs = totalMs / count;
+            const days = Math.floor(avgMs / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((avgMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            
+            let timeStr, timeClass;
+            if (days > 2) {
+                timeStr = days > 0 ? `${days}d ${hours}h` : `${hours}h`;
+                timeClass = 'danger';
+            } else if (days > 0 || hours > 24) {
+                timeStr = days > 0 ? `${days}d ${hours}h` : `${hours}h`;
+                timeClass = 'warning';
+            } else {
+                timeStr = `${hours}h`;
+                timeClass = '';
+            }
+            
+            return { time: timeStr, class: timeClass, count: pending.length };
+        }
+
+        function getTicketsByPeriod(tickets, days) {
+            const now = new Date();
+            const startDate = new Date(now.getTime() - (days * 24 * 60 * 60 * 1000));
+            return tickets.filter(t => {
+                if (!t.dateCreated) return false;
+                const created = new Date(t.dateCreated);
+                return created >= startDate;
+            });
+        }
+
+        function getTicketsClosedInPeriod(tickets, days) {
+            const now = new Date();
+            const startDate = new Date(now.getTime() - (days * 24 * 60 * 60 * 1000));
+            return tickets.filter(t => {
+                if (t.status !== 'closed' && t.status !== 'solved') return false;
+                if (!t.dateCreated) return false;
+                const created = new Date(t.dateCreated);
+                return created >= startDate;
+            });
+        }
+
+        function renderInstanceSummary(instanceName, stats, avgPending, color) {
+            return `
+                <div class="instance-summary">
+                    <div class="instance-summary-header ${instanceName.toLowerCase()}">
+                        <span class="instance-summary-title ${instanceName.toLowerCase()}">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                ${instanceName === 'Peta' ? '<circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>' : '<polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline>'}
+                            </svg>
+                            ${instanceName === 'Peta' ? 'Peta' : 'GMX'} ${instanceName === 'Peta' ? '' : 'Tecnologia'}
+                        </span>
+                        <span class="instance-summary-badge ${instanceName.toLowerCase()}">${instanceName.toUpperCase()}</span>
+                    </div>
+                    <div class="instance-summary-body">
+                        <div class="status-grid">
+                            <div class="status-item new">
+                                <div class="status-item-value">${stats.new}</div>
+                                <div class="status-item-label">Novos</div>
+                            </div>
+                            <div class="status-item processing">
+                                <div class="status-item-value">${stats.processing}</div>
+                                <div class="status-item-label">Em Att</div>
+                            </div>
+                            <div class="status-item pending">
+                                <div class="status-item-value">${stats.pending}</div>
+                                <div class="status-item-label">Pendente</div>
+                            </div>
+                            <div class="status-item solved">
+                                <div class="status-item-value">${stats.solved}</div>
+                                <div class="status-item-label">Solucionado</div>
+                            </div>
+                            <div class="status-item closed">
+                                <div class="status-item-value">${stats.closed}</div>
+                                <div class="status-item-label">Fechado</div>
+                            </div>
+                        </div>
+                        <div class="instance-metrics">
+                            <div class="metric-card">
+                                <div class="metric-label">Total</div>
+                                <div class="metric-value">${stats.total}</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Em Andamento</div>
+                                <div class="metric-value">${stats.processing + stats.pending}</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Tmp. Médio Pendência</div>
+                                <div class="metric-value ${avgPending.class}">${avgPending.time}</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Tickets Pendentes</div>
+                                <div class="metric-value">${avgPending.count}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderFullDashboard(tickets) {
+            const petaStats = getInstanceStats(tickets, 'Peta');
+            const gmxStats = getInstanceStats(tickets, 'GMX');
+            const petaAvgPending = getAvgPendingTime(petaStats.tickets);
+            const gmxAvgPending = getAvgPendingTime(gmxStats.tickets);
+            const overallAvgPending = getAvgPendingTime(tickets);
+
+            const now = new Date();
+            const currentMonth = now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+
+            const currentMonthTickets = getTicketsByPeriod(tickets, 30);
+            const petaCurrentMonth = getTicketsByPeriod(petaStats.tickets, 30);
+            const gmxCurrentMonth = getTicketsByPeriod(gmxStats.tickets, 30);
+
+            const closedCurrentMonth = getTicketsClosedInPeriod(tickets, 30);
+            const petaClosedMonth = getTicketsClosedInPeriod(petaStats.tickets, 30);
+            const gmxClosedMonth = getTicketsClosedInPeriod(gmxStats.tickets, 30);
+
+            return `
+                <div class="dashboard-section">
+                    <h2 class="dashboard-section-title">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                            <line x1="8" y1="21" x2="16" y2="21"></line>
+                            <line x1="12" y1="17" x2="12" y2="21"></line>
+                        </svg>
+                        Resumo por Instância
+                    </h2>
+                    <div class="instance-row">
+                        ${renderInstanceSummary('Peta', petaStats, petaAvgPending, '#2563eb')}
+                        ${renderInstanceSummary('GMX', gmxStats, gmxAvgPending, '#ea580c')}
+                    </div>
+                </div>
+
+                <div class="dashboard-section">
+                    <h2 class="dashboard-section-title">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                        Tickets por Período
+                    </h2>
+                    <div class="period-filter">
+                        <button class="period-btn active" data-period="30" onclick="updatePeriodFilter(this, tickets)">Este Mês</button>
+                        <button class="period-btn" data-period="60" onclick="updatePeriodFilter(this, tickets)">Últimos 60 dias</button>
+                        <button class="period-btn" data-period="90" onclick="updatePeriodFilter(this, tickets)">Últimos 90 dias</button>
+                    </div>
+                    <div id="periodContent">
+                        ${renderPeriodContent(tickets, 30)}
+                    </div>
+                </div>
+
+                <div class="dashboard-section">
+                    <h2 class="dashboard-section-title">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                        </svg>
+                        Ações Rápidas
+                    </h2>
+                    <div class="quick-actions">
+                        <a href="kanban.html" class="quick-action">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="7" height="7"></rect>
+                                <rect x="14" y="3" width="7" height="7"></rect>
+                                <rect x="14" y="14" width="7" height="7"></rect>
+                                <rect x="3" y="14" width="7" height="7"></rect>
+                            </svg>
+                            Visualizar Kanban
+                        </a>
+                        <a href="tickets-ativos.html" class="quick-action">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                <polyline points="22,6 12,13 2,6"></polyline>
+                            </svg>
+                            Tickets Ativos
+                        </a>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderPeriodContent(tickets, days) {
+            const periodTickets = getTicketsByPeriod(tickets, days);
+            const closedTickets = getTicketsClosedInPeriod(tickets, days);
+
+            const petaPeriod = getTicketsByPeriod(periodTickets.filter(t => t.instance === 'Peta'), days);
+            const gmxPeriod = getTicketsByPeriod(periodTickets.filter(t => t.instance === 'GMX'), days);
+            const petaClosed = getTicketsClosedInPeriod(closedTickets.filter(t => t.instance === 'Peta'), days);
+            const gmxClosed = getTicketsClosedInPeriod(closedTickets.filter(t => t.instance === 'GMX'), days);
+
+            const periodLabel = days === 30 ? 'Este Mês' : `Últimos ${days} dias`;
+
+            return `
+                <div class="period-summary">
+                    <div class="period-card">
+                        <div class="period-card-header">
+                            <span class="period-card-title">Abertos</span>
+                        </div>
+                        <div class="period-card-value">${periodTickets.length}</div>
+                        <div class="period-card-meta">
+                            <span style="color: #2563eb;">Peta: ${petaPeriod.length}</span> · 
+                            <span style="color: #ea580c;">GMX: ${gmxPeriod.length}</span>
+                        </div>
+                    </div>
+                    <div class="period-card">
+                        <div class="period-card-header">
+                            <span class="period-card-title">Fechados</span>
+                        </div>
+                        <div class="period-card-value">${closedTickets.length}</div>
+                        <div class="period-card-meta">
+                            <span style="color: #2563eb;">Peta: ${petaClosed.length}</span> · 
+                            <span style="color: #ea580c;">GMX: ${gmxClosed.length}</span>
+                        </div>
+                    </div>
+                    <div class="period-card">
+                        <div class="period-card-header">
+                            <span class="period-card-title">Em Aberto</span>
+                        </div>
+                        <div class="period-card-value">${periodTickets.length - closedTickets.length}</div>
+                        <div class="period-card-meta">
+                            Saldo do período
+                        </div>
+                    </div>
+                    <div class="period-card">
+                        <div class="period-card-header">
+                            <span class="period-card-title">Taxa Fechamento</span>
+                        </div>
+                        <div class="period-card-value">${periodTickets.length > 0 ? Math.round(closedTickets.length / periodTickets.length * 100) : 0}%</div>
+                        <div class="period-card-meta">
+                            Fechados / Abertos
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updatePeriodFilter(btn, tickets) {
+            document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const days = parseInt(btn.dataset.period);
+            document.getElementById('periodContent').innerHTML = renderPeriodContent(tickets, days);
+        }
+
+        function renderKanban(tickets) {
+            const mainContent = document.getElementById('mainContent');
+            mainContent.innerHTML = renderFullDashboard(tickets);
+        }
+
+        // Função para renderizar card de ticket
+        function renderTicketCard(ticket, isFiltered = false) {
+            let pendingHTML = '';
+            if (ticket.status === 'pending' && ticket.timePending) {
+                pendingHTML = `
+                    <div class="pending-time">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                        ${ticket.timePending}
+                    </div>
+                `;
+            }
+            
+            const urgentClass = isFiltered ? 'urgent' : '';
+            const instanceClass = ticket.instance ? ticket.instance.toLowerCase() : '';
+            const cardClass = `ticket-card ${ticket.status} ${urgentClass}`.trim();
+
+            return `
+                <div class="${cardClass}">
+                    <div class="ticket-header">
+                        <span class="ticket-id">
+                            <a href="${ticket.instanceUrl}${ticket.id}" target="_blank" title="${ticket.title}">
+                                #${ticket.id}
+                            </a>
+                        </span>
+                        <span class="instance-badge ${instanceClass}">${ticket.instance}</span>
+                    </div>
+                    
+                    <div class="ticket-entity-mini" title="${ticket.entity}">${ticket.entity}</div>
+                    
+                    <div class="ticket-category" title="${ticket.title}">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                            <polyline points="22,6 12,13 2,6"></polyline>
+                        </svg>
+                        ${ticket.category}
+                    </div>
+                    
+                    <div class="ticket-dates">
+                        <div class="ticket-date-row">
+                            <span class="ticket-date-label">Abertura:</span>
+                            <span class="ticket-date-value">${formatShortDate(ticket.dateCreated)}</span>
+                        </div>
+                        <div class="ticket-date-row">
+                            <span class="ticket-date-label">Previsto:</span>
+                            <span class="ticket-date-value">${formatShortDate(ticket.dueDate)}</span>
+                        </div>
+                    </div>
+                    
+                    ${pendingHTML}
+                </div>
+            `;
+        }
+
+        // ========== SISTEMA DE CACHE ==========
+        const CACHE_KEY = 'central_tickets_cache';
+        const CACHE_TIMESTAMP_KEY = 'central_tickets_cache_timestamp';
+
+        function saveCache() {
+            try {
+                const cacheData = {
+                    tickets: tickets,
+                    timestamp: new Date().toISOString(),
+                    version: '1.0'
+                };
+                localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+                localStorage.setItem(CACHE_TIMESTAMP_KEY, new Date().toISOString());
+                console.log('💾 Cache salvo com sucesso');
+                return true;
+            } catch (error) {
+                console.error('❌ Erro ao salvar cache:', error);
+                return false;
+            }
+        }
+
+        function loadCache() {
+            try {
+                const cached = localStorage.getItem(CACHE_KEY);
+                if (cached) {
+                    const cacheData = JSON.parse(cached);
+                    console.log('📂 Cache carregado de:', new Date(cacheData.timestamp).toLocaleString('pt-BR'));
+                    return cacheData.tickets;
+                }
+            } catch (error) {
+                console.error('❌ Erro ao carregar cache:', error);
+            }
+            return null;
+        }
+
+        function getCacheTimestamp() {
+            return localStorage.getItem(CACHE_TIMESTAMP_KEY);
+        }
+
+        function clearCache() {
+            localStorage.removeItem(CACHE_KEY);
+            localStorage.removeItem(CACHE_TIMESTAMP_KEY);
+            console.log('🗑️ Cache limpo');
+        }
+
+        function exportToJSON() {
+            if (tickets.length === 0) {
+                alert('Nenhum ticket para exportar. Carregue os dados primeiro.');
+                return;
+            }
+
+            const exportData = {
+                exportedAt: new Date().toISOString(),
+                totalTickets: tickets.length,
+                instances: {
+                    peta: tickets.filter(t => t.instance === 'Peta').length,
+                    gmx: tickets.filter(t => t.instance === 'GMX').length
+                },
+                tickets: tickets
+            };
+
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `tickets_backup_${new Date().toISOString().slice(0,10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            console.log('📤 Exportação concluída');
+        }
+
+        function importFromJSON() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            
+            input.onchange = function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const importedData = JSON.parse(e.target.result);
+                        
+                        if (importedData.tickets && Array.isArray(importedData.tickets)) {
+                            if (confirm(`Importar ${importedData.tickets.length} tickets de ${importedData.exportedAt ? new Date(importedData.exportedAt).toLocaleDateString('pt-BR') : 'data desconhecida'}?\n\nIsso substituirá os dados atuais.`)) {
+                                tickets = importedData.tickets;
+                                saveCache();
+                                loadedCounts = { processing: INITIAL_LOAD, pending: INITIAL_LOAD, solved: INITIAL_LOAD, closed: INITIAL_LOAD };
+                                renderKanban(tickets);
+                                alert(`✅ ${tickets.length} tickets importados com sucesso!`);
+                            }
+                        } else {
+                            alert('❌ Arquivo JSON inválido. Verifique o formato.');
+                        }
+                    } catch (error) {
+                        alert('❌ Erro ao ler arquivo: ' + error.message);
+                    }
+                };
+                reader.readAsText(file);
+            };
+            
+            input.click();
+        }
+
+        // Função para atualizar tickets
+        async function refreshTickets() {
+            if (isLoading) return;
+            
+            isLoading = true;
+            const refreshBtn = document.getElementById('refreshBtn');
+            if (refreshBtn) refreshBtn.disabled = true;
+            showLoading();
+            
+            console.log('🔄 Iniciando atualização de tickets...');
+
+            try {
+                tickets = await getAllTickets();
+                saveCache();
+                loadedCounts = { processing: INITIAL_LOAD, pending: INITIAL_LOAD, solved: INITIAL_LOAD, closed: INITIAL_LOAD };
+                renderKanban(tickets);
+                
+                // Atualizar última atualização
+                const lastUpdateEl = document.getElementById('lastUpdate');
+                if (lastUpdateEl) {
+                    lastUpdateEl.textContent = `Última atualização: ${getCurrentTimeFormatted()}`;
+                }
+                
+                console.log('✅ Atualização concluída com sucesso');
+            } catch (error) {
+                console.error('❌ Erro na atualização:', error);
+                showError(
+                    'Erro ao carregar tickets',
+                    'Verifique sua conexão, credenciais ou tente novamente mais tarde.',
+                    {
+                        message: error.message,
+                        baseUrl: INSTANCES['Peta']?.BASE_URL || 'não configurado',
+                        stack: error.stack
+                    }
+                );
+            } finally {
+                isLoading = false;
+                if (refreshBtn) refreshBtn.disabled = false;
+            }
+        }
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            
+            // Tentar carregar do cache primeiro para carregamento rápido
+            const cachedTickets = loadCache();
+            if (cachedTickets && cachedTickets.length > 0) {
+                tickets = cachedTickets;
+                loadedCounts = { processing: INITIAL_LOAD, pending: INITIAL_LOAD, solved: INITIAL_LOAD, closed: INITIAL_LOAD };
+                renderKanban(tickets);
+                
+                const lastUpdateEl = document.getElementById('lastUpdate');
+                if (lastUpdateEl) {
+                    const cacheTime = getCacheTimestamp();
+                    lastUpdateEl.textContent = `Cache: ${cacheTime ? new Date(cacheTime).toLocaleString('pt-BR') : 'desconhecido'}`;
+                }
+                
+                // Atualizar em background
+                console.log('📂 Dados carregados do cache. Atualizando em background...');
+                refreshTickets();
+            } else {
+                refreshTickets();
+            }
+
+            // Configurar atualização automática
+            refreshTimer = setInterval(refreshTickets, REFRESH_INTERVAL);
+        });
+
+        // Cleanup ao sair da página
+        window.addEventListener('beforeunload', () => {
+            if (refreshTimer) {
+                clearInterval(refreshTimer);
+            }
+            killSession();
+        });
+    </script>
+</body>
+</html>

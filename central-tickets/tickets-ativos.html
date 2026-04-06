@@ -1,0 +1,1853 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Central de Tickets - Ativos</title>
+    <link rel="icon" href="favicon-peta.png" type="image/png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --background: #f8fafc;
+            --surface: #ffffff;
+            --border: #e2e8f0;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --status-processing: #f59e0b;
+            --status-pending: #8b5cf6;
+            --sla-ok: #10b981;
+            --sla-late: #ef4444;
+            --radius-sm: 6px;
+            --radius-md: 8px;
+        }
+
+        [data-theme="dark"] {
+            --background: #0f172a;
+            --surface: #1e293b;
+            --border: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--background);
+            color: var(--text-primary);
+            line-height: 1.5;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        .header-content {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header h1 .page-title {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .header h1 .title-main {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.2;
+        }
+
+        .header h1 .subtitle {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .header-logo {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            flex-shrink: 0;
+        }
+
+        .header-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .header-logo-fallback {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header-logo-fallback svg {
+            width: 22px;
+            height: 22px;
+            color: white;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover {
+            background: var(--border);
+            color: var(--text-primary);
+        }
+
+        .nav-link.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .nav-link.active:hover {
+            background: var(--primary-dark);
+            color: white;
+        }
+
+        .nav-link svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .header-nav {
+            display: flex;
+            gap: 8px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 12px;
+        }
+
+        .header-stats .stat {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.875rem;
+        }
+
+        .theme-toggle {
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .theme-toggle:hover {
+            background: var(--border);
+        }
+
+        .theme-toggle svg {
+            width: 20px;
+            height: 20px;
+            color: var(--text-primary);
+        }
+
+        .header-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .stats {
+            display: flex;
+            gap: 16px;
+        }
+
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.875rem;
+        }
+
+        .stat-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .stat-dot.processing { background: var(--status-processing); }
+        .stat-dot.pending { background: var(--status-pending); }
+        .stat-dot.sla-late { background: var(--sla-late); }
+
+        .stat-value {
+            font-weight: 600;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .last-update {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .filters-bar {
+            max-width: 1600px;
+            margin: 0 auto 16px;
+            padding: 0 24px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 250px;
+            max-width: 400px;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 12px 10px 40px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            background: var(--surface);
+            color: var(--text-primary);
+            transition: all 0.2s;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .search-box svg {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            color: var(--text-muted);
+        }
+
+        .filter-select {
+            padding: 10px 32px 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            background: var(--surface);
+            color: var(--text-primary);
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            transition: all 0.2s;
+        }
+
+        .filter-select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .filter-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+
+        .filter-checkbox:hover {
+            background: var(--background);
+        }
+
+        .filter-checkbox input {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        .multi-select-header {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            user-select: none;
+        }
+
+        .multi-select-header:hover {
+            background: var(--background);
+        }
+
+        .multi-select-dropdown label:hover {
+            background: var(--background);
+        }
+
+        .multi-select-option {
+            font-size: 0.875rem;
+            color: var(--text-primary);
+        }
+
+        .multi-select-option input {
+            cursor: pointer;
+        }
+
+        .selected-entities {
+            display: inline-flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-left: 8px;
+        }
+
+        .selected-entity-tag {
+            background: var(--primary);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+        }
+
+        .results-count {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-left: auto;
+        }
+
+        .main {
+            padding: 0 24px 24px;
+            max-width: 98%;
+            margin: 0 auto;
+        }
+
+        .table-container {
+            background: var(--surface);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            overflow-x: auto;
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+
+        thead {
+            background: var(--background);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            transition: background-color 0.3s;
+        }
+
+        th {
+            padding: 12px 10px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            user-select: none;
+            transition: color 0.2s;
+        }
+
+        td {
+            padding: 10px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+            transition: border-color 0.3s;
+        }
+
+        th:hover {
+            color: var(--primary);
+        }
+
+        th .sort-icon {
+            margin-left: 4px;
+            opacity: 0.3;
+        }
+
+        th.sorted .sort-icon {
+            opacity: 1;
+        }
+
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+            transition: border-color 0.3s;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(37, 99, 235, 0.02);
+        }
+
+        [data-theme="dark"] tr:hover td {
+            background: rgba(37, 99, 235, 0.05);
+        }
+
+        .ticket-id {
+            font-weight: 600;
+            color: var(--primary);
+            width: 70px;
+        }
+
+        .ticket-id a {
+            color: var(--primary);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .ticket-id a:hover {
+            color: var(--primary-dark);
+            text-decoration: underline;
+        }
+
+        .col-instance {
+            width: 80px;
+        }
+
+        .entity {
+            color: var(--text-secondary);
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .col-entity {
+            width: 130px;
+        }
+
+        .col-category {
+            width: auto;
+            min-width: 180px;
+        }
+
+        .category {
+            max-width: 250px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .col-status {
+            width: 140px;
+        }
+
+        .col-group {
+            width: 160px;
+        }
+
+        .col-date {
+            width: 140px;
+        }
+
+        .col-pending {
+            width: 90px;
+        }
+
+        .col-sla {
+            width: 100px;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .status-badge.processing {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--status-processing);
+        }
+
+        .status-badge.pending {
+            background: rgba(139, 92, 246, 0.15);
+            color: var(--status-pending);
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .status-badge.processing .status-dot { background: var(--status-processing); }
+        .status-badge.pending .status-dot { background: var(--status-pending); }
+
+        .date {
+            white-space: nowrap;
+            color: var(--text-secondary);
+        }
+
+        .sla-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .sla-badge.ok {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--sla-ok);
+        }
+
+        .sla-badge.late {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--sla-late);
+        }
+
+        @keyframes blink-red {
+            0%, 50% { background-color: rgba(239, 68, 68, 0.15); }
+            51%, 100% { background-color: transparent; }
+        }
+
+        .row-sla-late {
+            animation: blink-red 1s infinite;
+        }
+
+        [data-theme="dark"] .row-sla-late {
+            animation: blink-red-dark 1s infinite;
+        }
+
+        @keyframes blink-red-dark {
+            0%, 50% { background-color: rgba(239, 68, 68, 0.25); }
+            51%, 100% { background-color: rgba(239, 68, 68, 0.1); }
+        }
+
+        .pending-reason {
+            font-size: 0.75rem;
+            color: var(--status-pending);
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .pending-time {
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .instance-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .instance-badge.peta {
+            background: rgba(37, 99, 235, 0.15);
+            color: #2563eb;
+        }
+
+        .instance-badge.gmx {
+            background: rgba(234, 88, 12, 0.15);
+            color: #ea580c;
+        }
+
+        .filter-instance-group {
+            display: flex;
+            gap: 4px;
+        }
+
+        .instance-filter-btn {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: var(--surface);
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .instance-filter-btn:hover {
+            background: var(--background);
+        }
+
+        .instance-filter-btn.active {
+            border-color: var(--primary);
+            background: rgba(37, 99, 235, 0.1);
+            color: var(--primary);
+        }
+
+        .instance-filter-btn.peta.active {
+            border-color: #2563eb;
+            background: rgba(37, 99, 235, 0.15);
+            color: #2563eb;
+        }
+
+        .instance-filter-btn.gmx.active {
+            border-color: #ea580c;
+            background: rgba(234, 88, 12, 0.15);
+            color: #ea580c;
+        }
+
+        .quick-filters {
+            display: flex;
+            gap: 6px;
+        }
+
+        .quick-filter-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 10px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: var(--surface);
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .quick-filter-btn:hover {
+            background: var(--background);
+            border-color: var(--primary);
+        }
+
+        .quick-filter-btn.active {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: #ef4444;
+            color: #ef4444;
+        }
+
+        .quick-filter-btn.active.pending-btn {
+            background: rgba(139, 92, 246, 0.1);
+            border-color: #8b5cf6;
+            color: #8b5cf6;
+        }
+
+        .filters-bar .search-box {
+            flex: 1;
+        }
+
+        @media (max-width: 900px) {
+            .header-content {
+                flex-wrap: wrap;
+                gap: 16px;
+            }
+
+            .header-stats {
+                order: 3;
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 700px) {
+            .header-nav {
+                width: 100%;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+
+            .nav-link {
+                flex: 1;
+                justify-content: center;
+                min-width: 100px;
+            }
+
+            .header-right {
+                width: 100%;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 12px;
+            }
+
+            .header-stats {
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 500px) {
+            .header-nav {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="header-left">
+                <h1>
+                    <span class="header-logo">
+                        <img src="favicon-peta.png" alt="Logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <span class="header-logo-fallback" style="display: none;">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                <polyline points="22,6 12,13 2,6"></polyline>
+                            </svg>
+                        </span>
+                    </span>
+                    <span class="page-title">
+                        <span class="title-main">Central de Tickets</span>
+                        <span class="subtitle">Tickets Ativos</span>
+                    </span>
+                </h1>
+            </div>
+            <nav class="header-nav">
+                <a href="index.html" class="nav-link">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="14" width="7" height="7"></rect>
+                        <rect x="3" y="14" width="7" height="7"></rect>
+                    </svg>
+                    Dashboard
+                </a>
+                <a href="kanban.html" class="nav-link">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="9" y1="3" x2="9" y2="21"></line>
+                        <line x1="15" y1="3" x2="15" y2="21"></line>
+                    </svg>
+                    Kanban
+                </a>
+                <a href="tickets-ativos.html" class="nav-link active">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                        <polyline points="22,6 12,13 2,6"></polyline>
+                    </svg>
+                    Tickets Ativos
+                </a>
+            </nav>
+            <div class="header-right">
+                <div class="header-stats">
+                    <div class="stat">
+                        <span class="stat-dot processing"></span>
+                        <span class="stat-value" id="countProcessing">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-dot pending"></span>
+                        <span class="stat-value" id="countPending">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-dot sla-late"></span>
+                        <span class="stat-value" id="countSlaLate">0</span>
+                    </div>
+                </div>
+                <button class="theme-toggle" onclick="toggleTheme()" title="Alternar tema">
+                    <svg id="sunIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                    <svg id="moonIcon" style="display:none;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                </button>
+                <span class="last-update" id="lastUpdate"></span>
+                <button class="btn btn-primary" id="refreshBtn" onclick="refreshTickets()">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 2v6h-6"></path>
+                        <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
+                        <path d="M3 22v-6h6"></path>
+                        <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+                    </svg>
+                    Atualizar
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="filters-bar">
+        <div class="search-box" style="flex: 2; min-width: 200px; max-width: 350px;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="searchInput" placeholder="Buscar tickets..." oninput="applyFilters()">
+        </div>
+        
+        <div class="filter-select" style="position: relative;">
+            <div class="multi-select-header" onclick="toggleEntityDropdown()" style="padding: 10px 32px 10px 12px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
+                <span id="entitySelectLabel">Entidades</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+            <div id="entityDropdown" class="multi-select-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); max-height: 300px; overflow-y: auto; z-index: 50;">
+                <label class="multi-select-option" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; cursor: pointer; transition: background 0.2s;">
+                    <input type="checkbox" id="entityAll" checked onchange="toggleAllEntities(this)">
+                    <span>Todas entidades</span>
+                </label>
+                <div id="entityOptions"></div>
+            </div>
+        </div>
+
+        <div class="filter-select" style="position: relative;">
+            <div class="multi-select-header" onclick="toggleCategoryDropdown()" style="padding: 10px 32px 10px 12px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
+                <span id="categorySelectLabel">Categorias</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+            <div id="categoryDropdown" class="multi-select-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); max-height: 300px; overflow-y: auto; z-index: 50;">
+                <label class="multi-select-option" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; cursor: pointer; transition: background 0.2s;">
+                    <input type="checkbox" id="categoryAll" checked onchange="toggleAllCategories(this)">
+                    <span>Todas categorias</span>
+                </label>
+                <div id="categoryOptions"></div>
+            </div>
+        </div>
+
+        <div class="filter-select" style="position: relative;">
+            <div class="multi-select-header" onclick="toggleGroupDropdown()" style="padding: 10px 32px 10px 12px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
+                <span id="groupSelectLabel">Responsáveis</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+            <div id="groupDropdown" class="multi-select-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); max-height: 300px; overflow-y: auto; z-index: 50;">
+                <label class="multi-select-option" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; cursor: pointer; transition: background 0.2s;">
+                    <input type="checkbox" id="groupAll" checked onchange="toggleAllGroups(this)">
+                    <span>Todos responsáveis</span>
+                </label>
+                <div id="groupOptions"></div>
+            </div>
+        </div>
+
+        <select class="filter-select" id="statusFilter" onchange="applyFilters()">
+            <option value="">Status: Todos</option>
+            <option value="processing">Em atendimento</option>
+            <option value="pending">Pendente</option>
+        </select>
+
+        <select class="filter-select" id="slaFilter" onchange="applyFilters()">
+            <option value="">SLA: Todos</option>
+            <option value="ok">No prazo</option>
+            <option value="late">Fora do prazo</option>
+        </select>
+
+        <div class="filter-instance-group">
+            <button class="instance-filter-btn peta active" id="btnPeta" onclick="toggleInstance('Peta')">Peta</button>
+            <button class="instance-filter-btn gmx active" id="btnGmx" onclick="toggleInstance('GMX')">GMX</button>
+        </div>
+
+        <div class="quick-filters">
+            <button class="quick-filter-btn" id="btnSlaLate" onclick="toggleQuickFilter('slaLate')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                SLA fora
+            </button>
+            <button class="quick-filter-btn" id="btnPending" onclick="toggleQuickFilter('pending')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                Pendentes
+            </button>
+            <button class="quick-filter-btn" id="btnClearFilters" onclick="clearAllFilters()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+                Limpar
+            </button>
+        </div>
+
+        <span class="results-count" id="resultsCount"></span>
+    </div>
+
+    <main class="main" id="mainContent">
+        <div class="loading-container" id="loadingState">
+            <div class="spinner"></div>
+            <p class="loading-text">Carregando tickets ativos...</p>
+        </div>
+    </main>
+
+    <script src="config.js"></script>
+    <script>
+        const INSTANCES = window.INSTANCES;
+
+        const STATUS_CONFIG = {
+            2: { name: 'Em atendimento', key: 'processing' },
+            3: { name: 'Em atendimento', key: 'processing' },
+            4: { name: 'Pendente', key: 'pending' },
+        };
+
+        let sessionTokens = {};
+        let tickets = [];
+        let filteredTickets = [];
+        let isLoading = false;
+        let currentSort = { field: 'sla', direction: 'asc' };
+        let selectedEntities = [];
+        let allEntities = [];
+        let selectedCategories = [];
+        let allCategories = [];
+        let selectedGroups = [];
+        let allGroups = [];
+        let selectedInstances = ['Peta', 'GMX'];
+        let quickFilters = { slaLate: false, pending: false };
+        const REFRESH_INTERVAL = 180000;
+        let refreshTimer = null;
+
+        function initInstanceButtons() {
+            const btnPeta = document.getElementById('btnPeta');
+            const btnGmx = document.getElementById('btnGmx');
+            
+            if (btnPeta && btnGmx) {
+                btnPeta.classList.toggle('active', selectedInstances.includes('Peta'));
+                btnGmx.classList.toggle('active', selectedInstances.includes('GMX'));
+            }
+        }
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const isDark = html.getAttribute('data-theme') === 'dark';
+            
+            if (isDark) {
+                html.removeAttribute('data-theme');
+                localStorage.setItem('theme', 'light');
+                document.getElementById('sunIcon').style.display = 'block';
+                document.getElementById('moonIcon').style.display = 'none';
+            } else {
+                html.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+                document.getElementById('sunIcon').style.display = 'none';
+                document.getElementById('moonIcon').style.display = 'block';
+            }
+        }
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                document.getElementById('sunIcon').style.display = 'none';
+                document.getElementById('moonIcon').style.display = 'block';
+            }
+        }
+
+        function toggleInstance(instance) {
+            const btn = document.getElementById('btn' + instance);
+            
+            if (selectedInstances.includes(instance)) {
+                if (selectedInstances.length > 1) {
+                    selectedInstances = selectedInstances.filter(i => i !== instance);
+                    btn.classList.remove('active');
+                }
+            } else {
+                selectedInstances.push(instance);
+                btn.classList.add('active');
+            }
+            
+            console.log('Instâncias selecionadas:', selectedInstances);
+            applyFilters();
+        }
+
+        function toggleEntityDropdown() {
+            const dropdown = document.getElementById('entityDropdown');
+            const isVisible = dropdown.style.display === 'block';
+            closeAllDropdowns();
+            dropdown.style.display = isVisible ? 'none' : 'block';
+        }
+
+        function toggleCategoryDropdown() {
+            const dropdown = document.getElementById('categoryDropdown');
+            const isVisible = dropdown.style.display === 'block';
+            closeAllDropdowns();
+            dropdown.style.display = isVisible ? 'none' : 'block';
+        }
+
+        function toggleGroupDropdown() {
+            const dropdown = document.getElementById('groupDropdown');
+            const isVisible = dropdown.style.display === 'block';
+            closeAllDropdowns();
+            dropdown.style.display = isVisible ? 'none' : 'block';
+        }
+
+        function closeAllDropdowns() {
+            document.getElementById('entityDropdown').style.display = 'none';
+            document.getElementById('categoryDropdown').style.display = 'none';
+            document.getElementById('groupDropdown').style.display = 'none';
+        }
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.filter-select')) {
+                closeAllDropdowns();
+            }
+        });
+
+        function populateEntityFilter() {
+            allEntities = [...new Set(tickets.map(t => t.entity))].sort();
+            const container = document.getElementById('entityOptions');
+            container.innerHTML = '';
+            
+            allEntities.forEach(entity => {
+                const label = document.createElement('label');
+                label.className = 'multi-select-option';
+                label.style.display = 'flex';
+                label.style.alignItems = 'center';
+                label.style.gap = '8px';
+                label.style.padding = '8px 12px';
+                label.style.cursor = 'pointer';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = entity;
+                checkbox.checked = selectedEntities.length === 0 || selectedEntities.includes(entity);
+                checkbox.style.cursor = 'pointer';
+                checkbox.onchange = () => updateEntitySelection();
+                
+                label.appendChild(checkbox);
+                label.appendChild(document.createTextNode(entity));
+                container.appendChild(label);
+            });
+
+            if (selectedEntities.length === 0) {
+                document.getElementById('entityAll').checked = true;
+            }
+            updateEntityLabel();
+        }
+
+        function populateCategoryFilter() {
+            allCategories = [...new Set(tickets.map(t => t.category))].sort();
+            const container = document.getElementById('categoryOptions');
+            container.innerHTML = '';
+            
+            allCategories.forEach(category => {
+                const label = document.createElement('label');
+                label.className = 'multi-select-option';
+                label.style.display = 'flex';
+                label.style.alignItems = 'center';
+                label.style.gap = '8px';
+                label.style.padding = '8px 12px';
+                label.style.cursor = 'pointer';
+                label.style.fontSize = '0.8rem';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = category;
+                checkbox.checked = selectedCategories.length === 0 || selectedCategories.includes(category);
+                checkbox.style.cursor = 'pointer';
+                checkbox.onchange = () => updateCategorySelection();
+                
+                label.appendChild(checkbox);
+                label.appendChild(document.createTextNode(category.length > 40 ? category.substring(0, 40) + '...' : category));
+                label.title = category;
+                container.appendChild(label);
+            });
+
+            if (selectedCategories.length === 0) {
+                document.getElementById('categoryAll').checked = true;
+            }
+            updateCategoryLabel();
+        }
+
+        function populateGroupFilter() {
+            allGroups = [...new Set(tickets.map(t => t.group))].sort();
+            const container = document.getElementById('groupOptions');
+            container.innerHTML = '';
+            
+            allGroups.forEach(group => {
+                const label = document.createElement('label');
+                label.className = 'multi-select-option';
+                label.style.display = 'flex';
+                label.style.alignItems = 'center';
+                label.style.gap = '8px';
+                label.style.padding = '8px 12px';
+                label.style.cursor = 'pointer';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = group;
+                checkbox.checked = selectedGroups.length === 0 || selectedGroups.includes(group);
+                checkbox.style.cursor = 'pointer';
+                checkbox.onchange = () => updateGroupSelection();
+                
+                label.appendChild(checkbox);
+                label.appendChild(document.createTextNode(group));
+                container.appendChild(label);
+            });
+
+            if (selectedGroups.length === 0) {
+                document.getElementById('groupAll').checked = true;
+            }
+            updateGroupLabel();
+        }
+
+        function toggleAllEntities(checkbox) {
+            const options = document.querySelectorAll('#entityOptions input[type="checkbox"]');
+            options.forEach(opt => {
+                opt.checked = checkbox.checked;
+            });
+            
+            if (checkbox.checked) {
+                selectedEntities = [];
+            } else {
+                selectedEntities = [...allEntities];
+                options.forEach(opt => opt.checked = true);
+            }
+            
+            updateEntityLabel();
+            applyFilters();
+        }
+
+        function updateEntitySelection() {
+            const allCheckbox = document.getElementById('entityAll');
+            const options = document.querySelectorAll('#entityOptions input[type="checkbox"]');
+            
+            selectedEntities = [];
+            let allSelected = true;
+            
+            options.forEach(opt => {
+                if (opt.checked) {
+                    selectedEntities.push(opt.value);
+                } else {
+                    allSelected = false;
+                }
+            });
+
+            allCheckbox.checked = allSelected;
+            updateEntityLabel();
+            applyFilters();
+        }
+
+        function updateEntityLabel() {
+            const label = document.getElementById('entitySelectLabel');
+            
+            if (selectedEntities.length === 0 || selectedEntities.length === allEntities.length) {
+                label.textContent = 'Todas entidades';
+            } else if (selectedEntities.length === 1) {
+                label.textContent = selectedEntities[0].length > 15 
+                    ? selectedEntities[0].substring(0, 15) + '...' 
+                    : selectedEntities[0];
+            } else {
+                label.textContent = `${selectedEntities.length} entidades`;
+            }
+        }
+
+        function toggleAllCategories(checkbox) {
+            const options = document.querySelectorAll('#categoryOptions input[type="checkbox"]');
+            options.forEach(opt => {
+                opt.checked = checkbox.checked;
+            });
+            
+            if (checkbox.checked) {
+                selectedCategories = [];
+            } else {
+                selectedCategories = [...allCategories];
+                options.forEach(opt => opt.checked = true);
+            }
+            
+            updateCategoryLabel();
+            applyFilters();
+        }
+
+        function updateCategorySelection() {
+            const allCheckbox = document.getElementById('categoryAll');
+            const options = document.querySelectorAll('#categoryOptions input[type="checkbox"]');
+            
+            selectedCategories = [];
+            let allSelected = true;
+            
+            options.forEach(opt => {
+                if (opt.checked) {
+                    selectedCategories.push(opt.value);
+                } else {
+                    allSelected = false;
+                }
+            });
+
+            allCheckbox.checked = allSelected;
+            updateCategoryLabel();
+            applyFilters();
+        }
+
+        function updateCategoryLabel() {
+            const label = document.getElementById('categorySelectLabel');
+            
+            if (selectedCategories.length === 0 || selectedCategories.length === allCategories.length) {
+                label.textContent = 'Categorias';
+            } else if (selectedCategories.length === 1) {
+                const cat = selectedCategories[0];
+                label.textContent = cat.length > 12 ? cat.substring(0, 12) + '...' : cat;
+            } else {
+                label.textContent = `${selectedCategories.length} categorias`;
+            }
+        }
+
+        function toggleAllGroups(checkbox) {
+            const options = document.querySelectorAll('#groupOptions input[type="checkbox"]');
+            options.forEach(opt => {
+                opt.checked = checkbox.checked;
+            });
+            
+            if (checkbox.checked) {
+                selectedGroups = [];
+            } else {
+                selectedGroups = [...allGroups];
+                options.forEach(opt => opt.checked = true);
+            }
+            
+            updateGroupLabel();
+            applyFilters();
+        }
+
+        function updateGroupSelection() {
+            const allCheckbox = document.getElementById('groupAll');
+            const options = document.querySelectorAll('#groupOptions input[type="checkbox"]');
+            
+            selectedGroups = [];
+            let allSelected = true;
+            
+            options.forEach(opt => {
+                if (opt.checked) {
+                    selectedGroups.push(opt.value);
+                } else {
+                    allSelected = false;
+                }
+            });
+
+            allCheckbox.checked = allSelected;
+            updateGroupLabel();
+            applyFilters();
+        }
+
+        function updateGroupLabel() {
+            const label = document.getElementById('groupSelectLabel');
+            
+            if (selectedGroups.length === 0 || selectedGroups.length === allGroups.length) {
+                label.textContent = 'Responsáveis';
+            } else if (selectedGroups.length === 1) {
+                const grp = selectedGroups[0];
+                label.textContent = grp.length > 12 ? grp.substring(0, 12) + '...' : grp;
+            } else {
+                label.textContent = `${selectedGroups.length} responsáveis`;
+            }
+        }
+
+        function toggleQuickFilter(filter) {
+            quickFilters[filter] = !quickFilters[filter];
+            
+            const btnSla = document.getElementById('btnSlaLate');
+            const btnPending = document.getElementById('btnPending');
+            
+            if (filter === 'slaLate') {
+                btnSla.classList.toggle('active', quickFilters.slaLate);
+            } else if (filter === 'pending') {
+                btnPending.classList.toggle('active', quickFilters.pending);
+                btnPending.classList.toggle('pending-btn', quickFilters.pending);
+            }
+            
+            applyFilters();
+        }
+
+        function clearAllFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('statusFilter').value = '';
+            document.getElementById('slaFilter').value = '';
+            
+            selectedEntities = [];
+            selectedCategories = [];
+            selectedGroups = [];
+            selectedInstances = ['Peta', 'GMX'];
+            quickFilters = { slaLate: false, pending: false };
+            
+            document.getElementById('btnPeta').classList.add('active');
+            document.getElementById('btnGmx').classList.add('active');
+            document.getElementById('btnSlaLate').classList.remove('active');
+            document.getElementById('btnPending').classList.remove('active', 'pending-btn');
+            
+            document.getElementById('entityAll').checked = true;
+            document.getElementById('categoryAll').checked = true;
+            document.getElementById('groupAll').checked = true;
+            
+            const entityOptions = document.querySelectorAll('#entityOptions input[type="checkbox"]');
+            entityOptions.forEach(opt => opt.checked = true);
+            
+            const categoryOptions = document.querySelectorAll('#categoryOptions input[type="checkbox"]');
+            categoryOptions.forEach(opt => opt.checked = true);
+            
+            const groupOptions = document.querySelectorAll('#groupOptions input[type="checkbox"]');
+            groupOptions.forEach(opt => opt.checked = true);
+            
+            updateEntityLabel();
+            updateCategoryLabel();
+            updateGroupLabel();
+            
+            applyFilters();
+        }
+
+        function applyFilters() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+            const statusFilter = document.getElementById('statusFilter').value;
+            const slaFilter = document.getElementById('slaFilter').value;
+
+            filteredTickets = tickets.filter(ticket => {
+                if (searchTerm) {
+                    const searchableText = `${ticket.id} ${ticket.title} ${ticket.entity} ${ticket.category} ${ticket.group}`.toLowerCase();
+                    if (!searchableText.includes(searchTerm)) return false;
+                }
+                
+                if (statusFilter && ticket.status !== statusFilter) return false;
+                if (slaFilter === 'ok' && ticket.isSlaLate) return false;
+                if (slaFilter === 'late' && !ticket.isSlaLate) return false;
+                if (selectedEntities.length > 0 && !selectedEntities.includes(ticket.entity)) return false;
+                if (selectedCategories.length > 0 && !selectedCategories.includes(ticket.category)) return false;
+                if (selectedGroups.length > 0 && !selectedGroups.includes(ticket.group)) return false;
+                if (!selectedInstances.includes(ticket.instance)) return false;
+                
+                if (quickFilters.slaLate && !ticket.isSlaLate) return false;
+                if (quickFilters.pending && ticket.status !== 'pending') return false;
+
+                return true;
+            });
+
+            renderTable(filteredTickets);
+        }
+
+        function sortTable(field) {
+            if (currentSort.field === field) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.field = field;
+                currentSort.direction = 'asc';
+            }
+            
+            filteredTickets.sort((a, b) => {
+                let valA, valB;
+                
+                switch(field) {
+                    case 'id':
+                        valA = a.id;
+                        valB = b.id;
+                        break;
+                    case 'entity':
+                        valA = a.entity.toLowerCase();
+                        valB = b.entity.toLowerCase();
+                        break;
+                    case 'category':
+                        valA = a.category.toLowerCase();
+                        valB = b.category.toLowerCase();
+                        break;
+                    case 'status':
+                        valA = a.status;
+                        valB = b.status;
+                        break;
+                    case 'group':
+                        valA = a.group.toLowerCase();
+                        valB = b.group.toLowerCase();
+                        break;
+                    case 'dateCreated':
+                        valA = new Date(a.dateCreated);
+                        valB = new Date(b.dateCreated);
+                        break;
+                    case 'dueDate':
+                        valA = new Date(a.dueDate);
+                        valB = new Date(b.dueDate);
+                        break;
+                    case 'sla':
+                        valA = a.isSlaLate ? 1 : 0;
+                        valB = b.isSlaLate ? 1 : 0;
+                        break;
+                    case 'instance':
+                        valA = a.instance.toLowerCase();
+                        valB = b.instance.toLowerCase();
+                        break;
+                    default:
+                        return 0;
+                }
+
+                if (valA < valB) return currentSort.direction === 'asc' ? -1 : 1;
+                if (valA > valB) return currentSort.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            renderTable(filteredTickets);
+        }
+
+        function getSortIcon(field) {
+            if (currentSort.field !== field) return '';
+            return currentSort.direction === 'asc' ? ' &#9650;' : ' &#9660;';
+        }
+
+        async function initSession(instanceName) {
+            const instance = INSTANCES[instanceName];
+            try {
+                const response = await fetch(`${instance.BASE_URL}/initSession/`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `user_token ${instance.USER_TOKEN}`,
+                        'App-Token': instance.APP_TOKEN,
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Erro ao iniciar sessão em ${instanceName}: ${response.status}`);
+                }
+
+                const data = await response.json();
+                sessionTokens[instanceName] = data.session_token;
+                return data.session_token;
+            } catch (error) {
+                console.error(`Erro na autenticação ${instanceName}:`, error);
+                throw error;
+            }
+        }
+
+        async function getTicketsFromInstance(instanceName) {
+            const instance = INSTANCES[instanceName];
+            
+            if (!sessionTokens[instanceName]) {
+                await initSession(instanceName);
+            }
+
+            try {
+                const searchParams = new URLSearchParams({
+                    'range': '0-500',
+                    'expand_dropdowns': 'true',
+                    'get_hateoas': 'false',
+                });
+
+                searchParams.append('criteria[0][link]', 'OR');
+                searchParams.append('criteria[0][field]', '12');
+                searchParams.append('criteria[0][searchtype]', 'equals');
+                searchParams.append('criteria[0][value]', '2');
+                
+                searchParams.append('criteria[1][link]', 'OR');
+                searchParams.append('criteria[1][field]', '12');
+                searchParams.append('criteria[1][searchtype]', 'equals');
+                searchParams.append('criteria[1][value]', '3');
+                
+                searchParams.append('criteria[2][link]', 'OR');
+                searchParams.append('criteria[2][field]', '12');
+                searchParams.append('criteria[2][searchtype]', 'equals');
+                searchParams.append('criteria[2][value]', '4');
+
+                const response = await fetch(
+                    `${instance.BASE_URL}/search/Ticket/?${searchParams.toString()}`,
+                    {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Session-Token': sessionTokens[instanceName],
+                            'App-Token': instance.APP_TOKEN,
+                        },
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error(`Erro ao buscar tickets de ${instanceName}: ${response.status}`);
+                }
+
+                const data = await response.json();
+                return processTickets(data.data || [], instanceName);
+            } catch (error) {
+                console.error(`Erro ao buscar tickets de ${instanceName}:`, error);
+                throw error;
+            }
+        }
+
+        async function getAllTickets() {
+            const allTickets = [];
+            
+            for (const instanceName of selectedInstances) {
+                try {
+                    const instanceTickets = await getTicketsFromInstance(instanceName);
+                    allTickets.push(...instanceTickets);
+                    console.log(`${instanceName}: ${instanceTickets.length} tickets carregados`);
+                } catch (error) {
+                    console.error(`Falha ao carregar tickets de ${instanceName}:`, error);
+                }
+            }
+            
+            return allTickets;
+        }
+
+        function processTickets(rawTickets, instanceName) {
+            return rawTickets.map(ticket => {
+                const statusId = parseInt(ticket[12]) || 2;
+                const statusInfo = STATUS_CONFIG[statusId] || STATUS_CONFIG[2];
+                
+                const entityFull = ticket[80] || '';
+                let entityShort = entityFull;
+                
+                if (instanceName === 'Peta') {
+                    entityShort = entityFull.replace(/^PETA GRUPO\s*>\s*/i, '').trim();
+                } else if (instanceName === 'GMX') {
+                    entityShort = entityFull.replace(/^GMX\s*TECNOLOGIA\s*>\s*/i, '').trim();
+                }
+                
+                entityShort = entityShort || entityFull;
+                
+                const dueDate = ticket[151];
+                const isSlaLate = isSlaExceeded(dueDate);
+
+                return {
+                    id: ticket[2],
+                    title: ticket[1],
+                    entity: entityShort,
+                    entityFull: entityFull,
+                    category: ticket[7] || 'Não categorizado',
+                    statusId: statusId,
+                    status: statusInfo.key,
+                    statusName: statusInfo.name,
+                    group: ticket[8] || 'Não atribuído',
+                    dateCreated: ticket[15],
+                    dueDate: dueDate,
+                    isSlaLate: isSlaLate,
+                    pendingReason: ticket[400] || '',
+                    timePending: statusInfo.key === 'pending' ? calculatePendingTime(ticket[15]) : null,
+                    instance: instanceName,
+                    instanceUrl: INSTANCES[instanceName].TICKET_URL,
+                };
+            });
+        }
+
+        function isSlaExceeded(dueDateStr) {
+            if (!dueDateStr) return false;
+            const dueDate = new Date(dueDateStr);
+            const now = new Date();
+            return dueDate < now;
+        }
+
+        function calculatePendingTime(dateCreatedStr) {
+            if (!dateCreatedStr) return null;
+            const date = new Date(dateCreatedStr);
+            const now = new Date();
+            const diffMs = now - date;
+            return formatDuration(diffMs);
+        }
+
+        function formatDuration(ms) {
+            const seconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            const days = Math.floor(hours / 24);
+
+            if (days > 0) {
+                const remainingHours = hours % 24;
+                if (remainingHours > 0) {
+                    return `${days}d ${remainingHours}h`;
+                }
+                return `${days}d`;
+            }
+            if (hours > 0) {
+                return `${hours}h ${minutes % 60}m`;
+            }
+            return `${minutes}m`;
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            try {
+                const date = new Date(dateStr);
+                return date.toLocaleDateString('pt-BR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                });
+            } catch {
+                return '-';
+            }
+        }
+
+        function showLoading() {
+            document.getElementById('mainContent').innerHTML = `
+                <div class="loading-container">
+                    <div class="spinner"></div>
+                    <p class="loading-text">Carregando tickets ativos...</p>
+                </div>
+            `;
+        }
+
+        function showError(message, details) {
+            document.getElementById('mainContent').innerHTML = `
+                <div class="error-container">
+                    <svg class="error-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <h2 class="error-title">${message}</h2>
+                    <p class="error-message">${details}</p>
+                    <button class="btn btn-primary" onclick="refreshTickets()">
+                        Tentar novamente
+                    </button>
+                </div>
+            `;
+        }
+
+        function renderTable(ticketsToRender) {
+            const totalProcessing = tickets.filter(t => t.status === 'processing').length;
+            const totalPending = tickets.filter(t => t.status === 'pending').length;
+            const totalSlaLate = tickets.filter(t => t.isSlaLate).length;
+
+            document.getElementById('countProcessing').textContent = totalProcessing;
+            document.getElementById('countPending').textContent = totalPending;
+            document.getElementById('countSlaLate').textContent = totalSlaLate;
+            document.getElementById('resultsCount').textContent = `${ticketsToRender.length} de ${tickets.length} tickets`;
+
+            const rowsHTML = ticketsToRender.map(ticket => {
+                const rowClass = ticket.isSlaLate ? 'row-sla-late' : '';
+                const slaClass = ticket.isSlaLate ? 'late' : 'ok';
+                const slaText = ticket.isSlaLate ? 'Fora do prazo' : 'No prazo';
+                const instanceClass = ticket.instance.toLowerCase();
+                
+                return `
+                    <tr class="${rowClass}">
+                        <td class="ticket-id">
+                            <a href="${ticket.instanceUrl}${ticket.id}" target="_blank" title="${ticket.title}">
+                                #${ticket.id}
+                            </a>
+                        </td>
+                        <td class="col-instance">
+                            <span class="instance-badge ${instanceClass}">${ticket.instance}</span>
+                        </td>
+                        <td class="entity col-entity" title="${ticket.entityFull}">${ticket.entity}</td>
+                        <td class="category col-category" title="${ticket.category}">${ticket.category}</td>
+                        <td class="col-status">
+                            <span class="status-badge ${ticket.status}">
+                                <span class="status-dot"></span>
+                                ${ticket.statusName}
+                            </span>
+                        </td>
+                        <td class="col-group">${ticket.group}</td>
+                        <td class="date col-date">${formatDate(ticket.dateCreated)}</td>
+                        <td class="date col-date">${formatDate(ticket.dueDate)}</td>
+                        <td class="hide-mobile col-pending">
+                            ${ticket.timePending ? `<div class="pending-time">${ticket.timePending}</div>` : ''}
+                        </td>
+                        <td class="col-sla">
+                            <span class="sla-badge ${slaClass}">
+                                ${slaText}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            document.getElementById('mainContent').innerHTML = `
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th onclick="sortTable('id')" class="col-id ${currentSort.field === 'id' ? 'sorted' : ''}">ID<span class="sort-icon">${getSortIcon('id')}</span></th>
+                                <th onclick="sortTable('instance')" class="col-instance ${currentSort.field === 'instance' ? 'sorted' : ''}">Instância<span class="sort-icon">${getSortIcon('instance')}</span></th>
+                                <th onclick="sortTable('entity')" class="col-entity ${currentSort.field === 'entity' ? 'sorted' : ''}">Entidade<span class="sort-icon">${getSortIcon('entity')}</span></th>
+                                <th onclick="sortTable('category')" class="col-category ${currentSort.field === 'category' ? 'sorted' : ''}">Categoria<span class="sort-icon">${getSortIcon('category')}</span></th>
+                                <th onclick="sortTable('status')" class="col-status ${currentSort.field === 'status' ? 'sorted' : ''}">Status<span class="sort-icon">${getSortIcon('status')}</span></th>
+                                <th onclick="sortTable('group')" class="col-group ${currentSort.field === 'group' ? 'sorted' : ''}">Responsável<span class="sort-icon">${getSortIcon('group')}</span></th>
+                                <th onclick="sortTable('dateCreated')" class="col-date ${currentSort.field === 'dateCreated' ? 'sorted' : ''}">Abertura<span class="sort-icon">${getSortIcon('dateCreated')}</span></th>
+                                <th onclick="sortTable('dueDate')" class="col-date ${currentSort.field === 'dueDate' ? 'sorted' : ''}">Previsto<span class="sort-icon">${getSortIcon('dueDate')}</span></th>
+                                <th class="hide-mobile col-pending">Tempo Pausa</th>
+                                <th onclick="sortTable('sla')" class="col-sla ${currentSort.field === 'sla' ? 'sorted' : ''}">SLA<span class="sort-icon">${getSortIcon('sla')}</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rowsHTML || '<tr><td colspan="10" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum ticket encontrado</td></tr>'}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function getCurrentTimeFormatted() {
+            return new Date().toLocaleTimeString('pt-BR', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+            });
+        }
+
+        async function refreshTickets() {
+            if (isLoading) return;
+            
+            isLoading = true;
+            const refreshBtn = document.getElementById('refreshBtn');
+            refreshBtn.disabled = true;
+            showLoading();
+
+            try {
+                tickets = await getAllTickets();
+                filteredTickets = [...tickets];
+                populateEntityFilter();
+                populateCategoryFilter();
+                populateGroupFilter();
+                populateInstanceStats();
+                applyFilters();
+                document.getElementById('lastUpdate').textContent = `Atualizado: ${getCurrentTimeFormatted()}`;
+            } catch (error) {
+                showError('Erro ao carregar tickets', 'Verifique sua conexão ou tente novamente.');
+            } finally {
+                isLoading = false;
+                refreshBtn.disabled = false;
+            }
+        }
+
+        function populateInstanceStats() {
+            const petaCount = tickets.filter(t => t.instance === 'Peta').length;
+            const gmxCount = tickets.filter(t => t.instance === 'GMX').length;
+            const petaLateCount = tickets.filter(t => t.instance === 'Peta' && t.isSlaLate).length;
+            const gmxLateCount = tickets.filter(t => t.instance === 'GMX' && t.isSlaLate).length;
+            
+            console.log(`Peta: ${petaCount} tickets (${petaLateCount} SLA fora)`);
+            console.log(`GMX: ${gmxCount} tickets (${gmxLateCount} SLA fora)`);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            initInstanceButtons();
+            refreshTickets();
+            refreshTimer = setInterval(refreshTickets, REFRESH_INTERVAL);
+        });
+
+        window.addEventListener('beforeunload', () => {
+            if (refreshTimer) clearInterval(refreshTimer);
+        });
+    </script>
+</body>
+</html>

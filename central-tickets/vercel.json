@@ -1,9 +1,22 @@
 {
   "version": 2,
+  "buildCommand": "node generate-config.js",
   "builds": [
     {
       "src": "**/*.html",
       "use": "@vercel/static"
+    },
+    {
+      "src": "config.js",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "favicon-peta.png",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "generate-config.js",
+      "use": "@vercel/node"
     }
   ],
   "routes": [
