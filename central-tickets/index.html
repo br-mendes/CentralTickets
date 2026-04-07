@@ -1478,6 +1478,168 @@
             font-size: 0.75rem;
             margin-top: 4px;
         }
+
+        .stat-card[title] {
+            cursor: help;
+        }
+
+        .stat-card-full {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            transition: all 0.2s;
+        }
+
+        .stat-card-full:hover {
+            border-color: var(--primary);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .stat-card-full .stat-name {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            word-break: break-word;
+        }
+
+        .stat-card-full .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .stat-card-full .stat-meta {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            background-color: var(--text-primary);
+            color: var(--background);
+            text-align: left;
+            border-radius: var(--radius-sm);
+            padding: 8px 12px;
+            position: absolute;
+            z-index: 1000;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+            font-size: 0.75rem;
+            max-width: 300px;
+            white-space: normal;
+            box-shadow: var(--shadow-lg);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .tooltip .tooltiptext::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: var(--text-primary) transparent transparent transparent;
+        }
+
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .sla-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .sla-ticket-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.2s;
+        }
+
+        .sla-ticket-item:last-child {
+            border-bottom: none;
+        }
+
+        .sla-ticket-item:hover {
+            background: var(--background);
+        }
+
+        .sla-ticket-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .sla-ticket-id {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .sla-ticket-title {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sla-ticket-meta {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .sla-ticket-status {
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .sla-ticket-status.processing {
+            background: rgba(245, 158, 11, 0.15);
+            color: #f59e0b;
+        }
+
+        .sla-ticket-status.pending {
+            background: rgba(139, 92, 246, 0.15);
+            color: #8b5cf6;
+        }
+
+        .sla-ticket-due {
+            font-size: 0.7rem;
+            color: var(--sla-late, #ef4444);
+            font-weight: 500;
+        }
+
+        .category-full-name {
+            display: block;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+            max-width: 200px;
+            word-break: break-all;
+        }
     </style>
 </head>
 <body>
@@ -2092,6 +2254,19 @@
         }
 
         // Função para processar tickets da API
+        function getRootCategory(category) {
+            if (!category) return 'Não categorizado';
+            const parts = category.split(' > ');
+            return parts[0].trim();
+        }
+
+        function isSlaExceeded(dueDateStr) {
+            if (!dueDateStr) return false;
+            const dueDate = new Date(dueDateStr);
+            const now = new Date();
+            return dueDate < now;
+        }
+
         function processTickets(rawTickets, instanceName) {
             return rawTickets.map(ticket => {
                 const statusId = parseInt(ticket[12]) || 1;
@@ -2108,17 +2283,22 @@
                     category = ticket[7];
                 }
 
+                const dueDate = ticket[151] || ticket.due_date;
+                const isSlaLate = isSlaExceeded(dueDate);
+
                 return {
                     id: ticket[2] || ticket.id,
                     title: ticket[1] || 'Sem título',
                     entity: ticket[80] || 'Entidade não definida',
                     category: category,
+                    rootCategory: getRootCategory(category),
                     statusId: statusId,
                     status: statusInfo.key,
                     statusName: statusInfo.name,
                     statusColor: statusInfo.color,
                     dateCreated: ticket[15] || ticket.date_creation,
-                    dueDate: ticket[151] || ticket.due_date,
+                    dueDate: dueDate,
+                    isSlaLate: isSlaLate,
                     timePending: statusInfo.key === 'pending' ? calculatePendingTime(ticket) : null,
                     instance: instanceName,
                     instanceUrl: INSTANCES[instanceName].TICKET_URL,
@@ -2384,7 +2564,7 @@ ${JSON.stringify(error, null, 2)}
             const gmxClosedMonth = getTicketsClosedInPeriod(gmxStats.tickets, 30);
 
             // Get SLA overdue tickets
-            const slaOverdue = tickets.filter(t => t.isSlaLate || t.slaClass === 'late');
+            const slaOverdue = tickets.filter(t => t.isSlaLate);
 
             // Get tickets by entity
             const ticketsByEntity = {};
@@ -2410,7 +2590,7 @@ ${JSON.stringify(error, null, 2)}
                 if (t.instance === 'GMX') ticketsByTechnician[tech].gmx++;
             });
 
-            // Get tickets by category
+            // Get tickets by category (full name)
             const ticketsByCategory = {};
             tickets.forEach(t => {
                 const cat = t.category || 'Sem Categoria';
@@ -2421,6 +2601,43 @@ ${JSON.stringify(error, null, 2)}
                 if (t.instance === 'Peta') ticketsByCategory[cat].peta++;
                 if (t.instance === 'GMX') ticketsByCategory[cat].gmx++;
             });
+
+            // Get tickets by solution/root category
+            const ticketsBySolution = {};
+            tickets.forEach(t => {
+                const rootCat = t.rootCategory || 'Sem Categoria';
+                if (!ticketsBySolution[rootCat]) {
+                    ticketsBySolution[rootCat] = { total: 0, peta: 0, gmx: 0 };
+                }
+                ticketsBySolution[rootCat].total++;
+                if (t.instance === 'Peta') ticketsBySolution[rootCat].peta++;
+                if (t.instance === 'GMX') ticketsBySolution[rootCat].gmx++;
+            });
+
+            // Sort SLA overdue by most overdue
+            const slaOverdueSorted = [...slaOverdue].sort((a, b) => {
+                if (!a.dueDate) return 1;
+                if (!b.dueDate) return -1;
+                return new Date(a.dueDate) - new Date(b.dueDate);
+            });
+
+            const renderSlaTicketItem = (ticket) => {
+                const overdueDays = ticket.dueDate ? Math.floor((new Date() - new Date(ticket.dueDate)) / (1000 * 60 * 60 * 24)) : 0;
+                const overdueText = overdueDays > 0 ? `${overdueDays}d atrasado` : 'Atrasado';
+                return `
+                    <div class="sla-ticket-item">
+                        <div class="sla-ticket-info">
+                            <a class="sla-ticket-id" href="${ticket.instanceUrl}${ticket.id}" target="_blank">#${ticket.id}</a>
+                            <span class="sla-ticket-title" title="${ticket.title}">${ticket.title}</span>
+                            <span class="category-full-name">${ticket.category}</span>
+                        </div>
+                        <div class="sla-ticket-meta">
+                            <span class="sla-ticket-status ${ticket.status}">${ticket.statusName}</span>
+                            <span class="sla-ticket-due">${overdueText}</span>
+                        </div>
+                    </div>
+                `;
+            };
 
             return `
                 <div class="dashboard-section">
@@ -2457,6 +2674,12 @@ ${JSON.stringify(error, null, 2)}
                             </div>
                         </div>
                     </div>
+                    ${slaOverdue.length > 0 ? `
+                    <div class="sla-list" style="margin-top: 16px;">
+                        ${slaOverdueSorted.slice(0, 20).map(renderSlaTicketItem).join('')}
+                        ${slaOverdue.length > 20 ? `<div style="text-align: center; padding: 12px; color: var(--text-muted); font-size: 0.8rem;">Mostrando 20 de ${slaOverdue.length} tickets</div>` : ''}
+                    </div>
+                    ` : ''}
                 </div>
 
                 <div class="dashboard-section">
@@ -2472,7 +2695,7 @@ ${JSON.stringify(error, null, 2)}
                             .sort((a, b) => b[1].total - a[1].total)
                             .slice(0, 10)
                             .map(([entity, stats]) => `
-                                <div class="stat-card">
+                                <div class="stat-card-full" title="${entity}">
                                     <div class="stat-name">${entity}</div>
                                     <div class="stat-value">${stats.total}</div>
                                     <div class="stat-meta">
@@ -2499,8 +2722,32 @@ ${JSON.stringify(error, null, 2)}
                             .sort((a, b) => b[1].total - a[1].total)
                             .slice(0, 10)
                             .map(([tech, stats]) => `
-                                <div class="stat-card">
+                                <div class="stat-card-full" title="${tech}">
                                     <div class="stat-name">${tech}</div>
+                                    <div class="stat-value">${stats.total}</div>
+                                    <div class="stat-meta">
+                                        <span style="color: #2563eb;">P: ${stats.peta}</span> · 
+                                        <span style="color: #ea580c;">G: ${stats.gmx}</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                    </div>
+                </div>
+
+                <div class="dashboard-section">
+                    <h2 class="dashboard-section-title">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline>
+                            <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></polyline>
+                        </svg>
+                        Tickets por Solução (Raiz da Categoria)
+                    </h2>
+                    <div class="stats-grid">
+                        ${Object.entries(ticketsBySolution)
+                            .sort((a, b) => b[1].total - a[1].total)
+                            .map(([rootCat, stats]) => `
+                                <div class="stat-card-full" title="${rootCat}">
+                                    <div class="stat-name">${rootCat}</div>
                                     <div class="stat-value">${stats.total}</div>
                                     <div class="stat-meta">
                                         <span style="color: #2563eb;">P: ${stats.peta}</span> · 
@@ -2521,15 +2768,15 @@ ${JSON.stringify(error, null, 2)}
                             <line x1="3" y1="12" x2="3.01" y2="12"></line>
                             <line x1="3" y1="18" x2="3.01" y2="18"></line>
                         </svg>
-                        Tickets por Categoria
+                        Tickets por Categoria (ITIL Completa)
                     </h2>
                     <div class="stats-grid">
                         ${Object.entries(ticketsByCategory)
                             .sort((a, b) => b[1].total - a[1].total)
-                            .slice(0, 10)
+                            .slice(0, 15)
                             .map(([cat, stats]) => `
-                                <div class="stat-card">
-                                    <div class="stat-name">${cat}</div>
+                                <div class="stat-card-full" title="${cat}">
+                                    <div class="stat-name">${cat.length > 40 ? cat.substring(0, 40) + '...' : cat}</div>
                                     <div class="stat-value">${stats.total}</div>
                                     <div class="stat-meta">
                                         <span style="color: #2563eb;">P: ${stats.peta}</span> · 
