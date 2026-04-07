@@ -538,24 +538,24 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- =====================================================
--- 5. CRON JOB PARA SINCRONIZAÇÃO AUTOMÁTICA
+-- 5. NOTA SOBRE SINCRONIZAÇÃO AUTOMÁTICA
 -- =====================================================
-
--- Habilitar extensão pg_cron (se não estiver habilitada)
--- CREATE EXTENSION IF NOT EXISTS pg_cron;
-
--- Agendar sincronização a cada 3 horas (para PETA)
--- SELECT cron.schedule('sync_peta_tickets', '0 */3 * * *', 
---     $$ SELECT sync_instance_tickets('Peta') $$
--- );
-
--- Agendar sincronização a cada 3 horas (para GMX) com offset de 30 min
--- SELECT cron.schedule('sync_gmx_tickets', '30 */3 * * *', 
---     $$ SELECT sync_instance_tickets('GMX') $$
--- );
-
+-- O Supabase usa Edge Functions ou webhooks para sincronização automática.
+-- NÃO usa pg_cron diretamente.
+--
+-- OPÇÃO 1: Usar Edge Functions do Supabase
+-- - Criar Edge Functions que chamam a API do GLPI
+-- - Configurar schedule via Supabase Dashboard > Edge Functions > Schedules
+--
+-- OPÇÃO 2: Usar Vercel Cron (já configurado no projeto)
+-- - O frontend já tem auto-reload configurado
+-- - Adicionar lógica de sync no frontend
+--
+-- OPÇÃO 3: Usar webhook externo (GitHub Actions, etc)
+-- - Configurar workflow que executa a sincronização
+--
 -- =====================================================
--- 6. FUNÇÃO AUXILIAR PARA CRON (a ser chamada externamente)
+-- 6. FUNÇÃO AUXILIAR PARA SINCRONIZAÇÃO (a ser chamada externamente)
 -- =====================================================
 
 CREATE OR REPLACE FUNCTION sync_instance_tickets(p_instance VARCHAR)
@@ -733,6 +733,40 @@ CREATE POLICY "Allow service role delete tickets_cache" ON tickets_cache
 INSERT INTO sync_control (instance, status) 
 VALUES ('Peta', 'pending'), ('GMX', 'pending')
 ON CONFLICT (instance) DO NOTHING;
+
+-- =====================================================
+-- INSTRUÇÕES DE CONFIGURAÇÃO
+-- =====================================================
+
+-- 1. Execute este script completo no Supabase SQL Editor
+
+-- 2. Para sincronização automática, você tem 3 opções:
+
+--    OPÇÃO A: Supabase Edge Functions (Recomendado)
+--    ------------------------------------------
+--    a) Criar Edge Function em supabase/functions/sync-tickets/index.ts
+--    b) Configurar schedule no Supabase Dashboard:
+--       Edge Functions > Schedules > New Schedule
+--       - Function: sync-tickets
+--       - Schedule: Every 3 hours
+--
+--    OPÇÃO B: Vercel Cron (já integrado ao projeto)
+--    ---------------------------------------------
+--    Adicionar arquivo vercel.json com:
+--    {
+--      "crons": [{
+--        "path": "/api/sync",
+--        "schedule": "0 */3 * * *"
+--      }]
+--    }
+--
+--    OPÇÃO C: GitHub Actions
+--    -----------------------
+--    Criar .github/workflows/sync.yml com schedule
+--
+-- 3. Para testar a sincronização manualmente:
+--    SELECT register_sync_result('Peta', '[{"2": 123}]'::jsonb, 'success');
+--    SELECT register_sync_result('GMX', '[{"2": 456}]'::jsonb, 'success');
 
 -- =====================================================
 -- FIM DO SCRIPT
