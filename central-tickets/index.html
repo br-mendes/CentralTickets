@@ -2699,16 +2699,16 @@ ${JSON.stringify(error, null, 2)}
                 if (t.instance === 'GMX') ticketsByCategory[cat].gmx++;
             });
 
-            // Get tickets by solution/last category ITIL
+            // Get tickets by solution/root category ITIL
             const ticketsBySolution = {};
             tickets.forEach(t => {
-                const lastCat = getLastCategory(t.category) || 'Sem Categoria';
-                if (!ticketsBySolution[lastCat]) {
-                    ticketsBySolution[lastCat] = { total: 0, peta: 0, gmx: 0, fullPath: t.category };
+                const rootCat = getRootCategory(t.category) || 'Sem Categoria';
+                if (!ticketsBySolution[rootCat]) {
+                    ticketsBySolution[rootCat] = { total: 0, peta: 0, gmx: 0, fullPath: t.category };
                 }
-                ticketsBySolution[lastCat].total++;
-                if (t.instance === 'Peta') ticketsBySolution[lastCat].peta++;
-                if (t.instance === 'GMX') ticketsBySolution[lastCat].gmx++;
+                ticketsBySolution[rootCat].total++;
+                if (t.instance === 'Peta') ticketsBySolution[rootCat].peta++;
+                if (t.instance === 'GMX') ticketsBySolution[rootCat].gmx++;
             });
 
             // Sort SLA overdue by most overdue
@@ -2837,7 +2837,7 @@ ${JSON.stringify(error, null, 2)}
                             <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline>
                             <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
                         </svg>
-                        Tickets por Solução (Última Categoria ITIL)
+                        Tickets por Solução (Raiz da Categoria ITIL)
                     </h2>
                     <div class="bar-legend">
                         <div class="bar-legend-item">
@@ -2852,16 +2852,15 @@ ${JSON.stringify(error, null, 2)}
                     <div class="bar-chart">
                         ${Object.entries(ticketsBySolution)
                             .sort((a, b) => b[1].total - a[1].total)
-                            .slice(0, 15)
-                            .map(([lastCat, stats]) => {
+                            .map(([rootCat, stats]) => {
                                 const maxTotal = Math.max(...Object.values(ticketsBySolution).map(s => s.total));
                                 const widthPct = maxTotal > 0 ? (stats.total / maxTotal * 100) : 0;
                                 const hasPeta = stats.peta > 0;
                                 const hasGmx = stats.gmx > 0;
                                 const barClass = hasPeta && hasGmx ? 'mixed' : (hasPeta ? 'peta' : 'gmx');
                                 return `
-                                    <div class="bar-item" title="${stats.fullPath || lastCat}">
-                                        <span class="bar-label">${lastCat}</span>
+                                    <div class="bar-item" title="Raiz: ${rootCat} | Total: ${stats.total} (P: ${stats.peta}, G: ${stats.gmx})">
+                                        <span class="bar-label">${rootCat}</span>
                                         <div class="bar-container">
                                             <div class="bar-fill ${barClass}" style="width: ${widthPct}%">
                                                 <span class="bar-value">${stats.total}</span>
