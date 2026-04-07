@@ -1213,6 +1213,8 @@
             let filtered = allTickets.filter(t => {
                 if (!selectedInstances.includes(t.instance)) return false;
                 
+                if (t.status === 'solved' || t.status === 'closed') return false;
+                
                 if (searchText) {
                     const searchableText = `${t.id} ${t.title} ${t.entity} ${t.category} ${t.group}`.toLowerCase();
                     if (!searchableText.includes(searchText)) return false;
