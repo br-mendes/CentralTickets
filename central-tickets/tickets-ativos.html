@@ -630,6 +630,22 @@
             color: var(--sla-late);
         }
 
+        .sla-countdown {
+            display: block;
+            font-size: 0.7rem;
+            margin-top: 4px;
+            opacity: 0.8;
+        }
+
+        .sla-countdown.warning {
+            color: var(--status-processing);
+        }
+
+        .sla-countdown.critical {
+            color: var(--sla-late);
+            font-weight: 600;
+        }
+
         @keyframes blink-red {
             0%, 50% { background-color: rgba(239, 68, 68, 0.15); }
             51%, 100% { background-color: transparent; }
@@ -1777,6 +1793,7 @@
                             <span class="sla-badge ${slaClass}">
                                 ${slaText}
                             </span>
+                            ${ticket.dueDate ? `<span class="sla-countdown" data-due="${ticket.dueDate}">--:--:--</span>` : ''}
                         </td>
                     </tr>
                 `;
@@ -1850,15 +1867,60 @@
             console.log(`GMX: ${gmxCount} tickets (${gmxLateCount} SLA fora)`);
         }
 
+        function formatCountdown(dueDateStr) {
+            if (!dueDateStr) return null;
+            
+            const dueDate = new Date(dueDateStr);
+            const now = new Date();
+            const diff = dueDate - now;
+            
+            if (diff <= 0) {
+                return { text: 'SLA Expirado', class: 'critical' };
+            }
+            
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+            
+            if (days > 0) {
+                return { text: `${days}d ${hours}h`, class: diff < 24 * 60 * 60 * 1000 ? 'warning' : '' };
+            }
+            
+            if (hours > 0) {
+                return { text: `${hours}h ${minutes}m`, class: diff < 60 * 60 * 1000 ? 'warning' : '' };
+            }
+            
+            return { text: `${minutes}m ${seconds}s`, class: 'critical' };
+        }
+
+        function updateSlaCountdowns() {
+            const countdowns = document.querySelectorAll('.sla-countdown');
+            countdowns.forEach(el => {
+                const dueDate = el.getAttribute('data-due');
+                if (dueDate) {
+                    const result = formatCountdown(dueDate);
+                    if (result) {
+                        el.textContent = result.text;
+                        el.className = 'sla-countdown' + (result.class ? ' ' + result.class : '');
+                    }
+                }
+            });
+        }
+
+        let countdownTimer = null;
+
         document.addEventListener('DOMContentLoaded', () => {
             initTheme();
             initInstanceButtons();
             refreshTickets();
             refreshTimer = setInterval(refreshTickets, REFRESH_INTERVAL);
+            countdownTimer = setInterval(updateSlaCountdowns, 1000);
         });
 
         window.addEventListener('beforeunload', () => {
             if (refreshTimer) clearInterval(refreshTimer);
+            if (countdownTimer) clearInterval(countdownTimer);
         });
     </script>
 </body>

@@ -397,6 +397,85 @@
             }
         }
 
+        .instance-dropdown {
+            position: relative;
+        }
+
+        .instance-dropdown-header {
+            padding: 8px 12px;
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.875rem;
+            user-select: none;
+            transition: border-color 0.2s, background-color 0.2s;
+        }
+
+        .instance-dropdown-header:hover {
+            border-color: var(--primary);
+            background: var(--surface);
+        }
+
+        .instance-dropdown-header svg {
+            width: 16px;
+            height: 16px;
+            transition: transform 0.2s;
+        }
+
+        .instance-dropdown.open .instance-dropdown-header svg {
+            transform: rotate(180deg);
+        }
+
+        .instance-dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 4px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            z-index: 100;
+            overflow: hidden;
+        }
+
+        .instance-dropdown.open .instance-dropdown-menu {
+            display: block;
+        }
+
+        .instance-dropdown-option {
+            padding: 10px 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.2s;
+        }
+
+        .instance-dropdown-option:hover {
+            background: var(--background);
+        }
+
+        .instance-dropdown-option input {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        .instance-dropdown-option.peta {
+            color: #2563eb;
+        }
+
+        .instance-dropdown-option.gmx {
+            color: #7c3aed;
+        }
+
         .kanban-column {
             background: var(--surface);
             border-radius: var(--radius-lg);
@@ -1411,6 +1490,22 @@
                             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
                         </svg>
                     </button>
+                    <div class="instance-dropdown" id="instanceDropdownContainer">
+                        <div class="instance-dropdown-header" onclick="toggleInstanceDropdown()">
+                            <span id="instanceDropdownLabel">Todas as instâncias</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </div>
+                        <div class="instance-dropdown-menu" id="instanceDropdownMenu">
+                            <label class="instance-dropdown-option peta">
+                                <input type="checkbox" id="checkPeta" checked onchange="updateInstanceSelection()"> Peta
+                            </label>
+                            <label class="instance-dropdown-option gmx">
+                                <input type="checkbox" id="checkGmx" checked onchange="updateInstanceSelection()"> GMX
+                            </label>
+                        </div>
+                    </div>
                     <span class="last-update" id="lastUpdate"></span>
                     <button class="btn btn-primary" id="refreshBtn" onclick="refreshTickets()">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1508,6 +1603,66 @@
                 document.getElementById('sunIcon').style.display = 'none';
                 document.getElementById('moonIcon').style.display = 'block';
             }
+        }
+
+        function toggleInstanceDropdown() {
+            const container = document.getElementById('instanceDropdownContainer');
+            const isOpen = container.classList.contains('open');
+            
+            if (isOpen) {
+                container.classList.remove('open');
+            } else {
+                container.classList.add('open');
+            }
+            
+            document.addEventListener('click', closeInstanceDropdownOnClickOutside);
+        }
+
+        function closeInstanceDropdownOnClickOutside(e) {
+            const container = document.getElementById('instanceDropdownContainer');
+            if (!container.contains(e.target)) {
+                container.classList.remove('open');
+                document.removeEventListener('click', closeInstanceDropdownOnClickOutside);
+            }
+        }
+
+        function updateInstanceSelection() {
+            const checkPeta = document.getElementById('checkPeta');
+            const checkGmx = document.getElementById('checkGmx');
+            const label = document.getElementById('instanceDropdownLabel');
+            
+            const petaSelected = checkPeta.checked;
+            const gmxSelected = checkGmx.checked;
+            
+            selectedInstances = [];
+            if (petaSelected) selectedInstances.push('Peta');
+            if (gmxSelected) selectedInstances.push('GMX');
+            
+            if (petaSelected && gmxSelected) {
+                label.textContent = 'Todas as instâncias';
+            } else if (petaSelected) {
+                label.textContent = 'Peta';
+            } else if (gmxSelected) {
+                label.textContent = 'GMX';
+            } else {
+                label.textContent = 'Nenhuma selecionada';
+                selectedInstances = ['Peta', 'GMX'];
+                checkPeta.checked = true;
+                checkGmx.checked = true;
+            }
+            
+            if (tickets.length > 0) {
+                renderDashboard(tickets);
+            }
+        }
+
+        function initInstanceDropdown() {
+            const checkPeta = document.getElementById('checkPeta');
+            const checkGmx = document.getElementById('checkGmx');
+            
+            checkPeta.checked = selectedInstances.includes('Peta');
+            checkGmx.checked = selectedInstances.includes('GMX');
+            updateInstanceSelection();
         }
 
         // Estado da aplicação
@@ -2370,6 +2525,7 @@ ${JSON.stringify(error, null, 2)}
         // Inicialização
         document.addEventListener('DOMContentLoaded', () => {
             initTheme();
+            initInstanceDropdown();
             
             // Tentar carregar do cache primeiro para carregamento rápido
             const cachedTickets = loadCache();

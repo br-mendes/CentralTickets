@@ -726,6 +726,49 @@
             color: #ea580c;
         }
 
+        .sla-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            font-weight: 600;
+        }
+
+        .sla-badge.ok {
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+        }
+
+        .sla-badge.late {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+        }
+
+        .sla-countdown {
+            display: block;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .sla-countdown.warning {
+            color: var(--status-processing);
+        }
+
+        .sla-countdown.critical {
+            color: var(--sla-late);
+            font-weight: 600;
+        }
+
+        .sla-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 0.65rem;
+        }
+
         .ticket-entity-mini {
             font-size: 0.7rem;
             color: var(--text-muted);
@@ -742,6 +785,85 @@
 
         .ticket-card .ticket-id a:hover {
             text-decoration: underline;
+        }
+
+        .instance-dropdown {
+            position: relative;
+        }
+
+        .instance-dropdown-header {
+            padding: 8px 12px;
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.875rem;
+            user-select: none;
+            transition: border-color 0.2s, background-color 0.2s;
+        }
+
+        .instance-dropdown-header:hover {
+            border-color: var(--primary);
+            background: var(--surface);
+        }
+
+        .instance-dropdown-header svg {
+            width: 16px;
+            height: 16px;
+            transition: transform 0.2s;
+        }
+
+        .instance-dropdown.open .instance-dropdown-header svg {
+            transform: rotate(180deg);
+        }
+
+        .instance-dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 4px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            z-index: 100;
+            overflow: hidden;
+        }
+
+        .instance-dropdown.open .instance-dropdown-menu {
+            display: block;
+        }
+
+        .instance-dropdown-option {
+            padding: 10px 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.2s;
+        }
+
+        .instance-dropdown-option:hover {
+            background: var(--background);
+        }
+
+        .instance-dropdown-option input {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        .instance-dropdown-option.peta {
+            color: #2563eb;
+        }
+
+        .instance-dropdown-option.gmx {
+            color: #7c3aed;
         }
     </style>
 </head>
@@ -839,6 +961,22 @@
                             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
                         </svg>
                     </button>
+                    <div class="instance-dropdown" id="instanceDropdownContainer">
+                        <div class="instance-dropdown-header" onclick="toggleInstanceDropdown()">
+                            <span id="instanceDropdownLabel">Todas as instâncias</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </div>
+                        <div class="instance-dropdown-menu" id="instanceDropdownMenu">
+                            <label class="instance-dropdown-option peta">
+                                <input type="checkbox" id="checkPeta" checked onchange="updateInstanceSelection()"> Peta
+                            </label>
+                            <label class="instance-dropdown-option gmx">
+                                <input type="checkbox" id="checkGmx" checked onchange="updateInstanceSelection()"> GMX
+                            </label>
+                        </div>
+                    </div>
                     <span class="last-update" id="lastUpdate"></span>
                     <button class="btn btn-primary" id="refreshBtn" onclick="refreshTickets()">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -936,6 +1074,66 @@
                 document.getElementById('sunIcon').style.display = 'none';
                 document.getElementById('moonIcon').style.display = 'block';
             }
+        }
+
+        function toggleInstanceDropdown() {
+            const container = document.getElementById('instanceDropdownContainer');
+            const isOpen = container.classList.contains('open');
+            
+            if (isOpen) {
+                container.classList.remove('open');
+            } else {
+                container.classList.add('open');
+            }
+            
+            document.addEventListener('click', closeInstanceDropdownOnClickOutside);
+        }
+
+        function closeInstanceDropdownOnClickOutside(e) {
+            const container = document.getElementById('instanceDropdownContainer');
+            if (!container.contains(e.target)) {
+                container.classList.remove('open');
+                document.removeEventListener('click', closeInstanceDropdownOnClickOutside);
+            }
+        }
+
+        function updateInstanceSelection() {
+            const checkPeta = document.getElementById('checkPeta');
+            const checkGmx = document.getElementById('checkGmx');
+            const label = document.getElementById('instanceDropdownLabel');
+            
+            const petaSelected = checkPeta.checked;
+            const gmxSelected = checkGmx.checked;
+            
+            selectedInstances = [];
+            if (petaSelected) selectedInstances.push('Peta');
+            if (gmxSelected) selectedInstances.push('GMX');
+            
+            if (petaSelected && gmxSelected) {
+                label.textContent = 'Todas as instâncias';
+            } else if (petaSelected) {
+                label.textContent = 'Peta';
+            } else if (gmxSelected) {
+                label.textContent = 'GMX';
+            } else {
+                label.textContent = 'Nenhuma selecionada';
+                selectedInstances = ['Peta', 'GMX'];
+                checkPeta.checked = true;
+                checkGmx.checked = true;
+            }
+            
+            if (tickets.length > 0) {
+                renderKanban(tickets);
+            }
+        }
+
+        function initInstanceDropdown() {
+            const checkPeta = document.getElementById('checkPeta');
+            const checkGmx = document.getElementById('checkGmx');
+            
+            checkPeta.checked = selectedInstances.includes('Peta');
+            checkGmx.checked = selectedInstances.includes('GMX');
+            updateInstanceSelection();
         }
 
         // Estado da aplicação
@@ -1175,10 +1373,18 @@
                     dateCreated: ticket[15] || ticket.date_creation,
                     dueDate: ticket[151] || ticket.due_date,
                     timePending: statusInfo.key === 'pending' ? calculatePendingTime(ticket) : null,
+                    isSlaLate: isSlaExceeded(ticket[151] || ticket.due_date),
                     instance: instanceName,
                     instanceUrl: INSTANCES[instanceName].TICKET_URL,
                 };
             });
+        }
+
+        function isSlaExceeded(dueDateStr) {
+            if (!dueDateStr) return false;
+            const dueDate = new Date(dueDateStr);
+            const now = new Date();
+            return dueDate < now;
         }
 
         // Função para calcular tempo em pendência
@@ -1455,6 +1661,12 @@ ${JSON.stringify(error, null, 2)}
                         </span>
                         <span class="instance-badge ${instanceClass}">${ticket.instance}</span>
                     </div>
+                    ${ticket.dueDate ? `
+                    <div class="sla-row">
+                        <span class="sla-badge ${ticket.isSlaLate ? 'late' : 'ok'}">${ticket.isSlaLate ? 'SLA Excedido' : 'No Prazo'}</span>
+                        <span class="sla-countdown ${ticket.isSlaLate ? 'critical' : ''}" data-due="${ticket.dueDate}">--:--:--</span>
+                    </div>
+                    ` : ''}
                     
                     <div class="ticket-entity-mini" title="${ticket.entity}">${ticket.entity}</div>
                     
@@ -1632,9 +1844,53 @@ ${JSON.stringify(error, null, 2)}
             }
         }
 
+        function formatCountdown(dueDateStr) {
+            if (!dueDateStr) return null;
+            
+            const dueDate = new Date(dueDateStr);
+            const now = new Date();
+            const diff = dueDate - now;
+            
+            if (diff <= 0) {
+                return { text: 'Expirado', class: 'critical' };
+            }
+            
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+            
+            if (days > 0) {
+                return { text: `${days}d ${hours}h`, class: diff < 24 * 60 * 60 * 1000 ? 'warning' : '' };
+            }
+            
+            if (hours > 0) {
+                return { text: `${hours}h ${minutes}m`, class: diff < 60 * 60 * 1000 ? 'warning' : '' };
+            }
+            
+            return { text: `${minutes}m ${seconds}s`, class: 'critical' };
+        }
+
+        function updateSlaCountdowns() {
+            const countdowns = document.querySelectorAll('.sla-countdown');
+            countdowns.forEach(el => {
+                const dueDate = el.getAttribute('data-due');
+                if (dueDate) {
+                    const result = formatCountdown(dueDate);
+                    if (result) {
+                        el.textContent = result.text;
+                        el.className = 'sla-countdown' + (result.class ? ' ' + result.class : '');
+                    }
+                }
+            });
+        }
+
+        let countdownTimer = null;
+
         // Inicialização
         document.addEventListener('DOMContentLoaded', () => {
             initTheme();
+            initInstanceDropdown();
             
             // Tentar carregar do cache primeiro para carregamento rápido
             const cachedTickets = loadCache();
@@ -1658,12 +1914,16 @@ ${JSON.stringify(error, null, 2)}
 
             // Configurar atualização automática
             refreshTimer = setInterval(refreshTickets, REFRESH_INTERVAL);
+            countdownTimer = setInterval(updateSlaCountdowns, 1000);
         });
 
         // Cleanup ao sair da página
         window.addEventListener('beforeunload', () => {
             if (refreshTimer) {
                 clearInterval(refreshTimer);
+            }
+            if (countdownTimer) {
+                clearInterval(countdownTimer);
             }
             killSession();
         });
