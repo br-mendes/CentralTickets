@@ -1048,10 +1048,7 @@
         const SUPABASE_URL = window.APP_CONFIG?.SUPABASE_URL || '';
         const SUPABASE_ANON_KEY = window.APP_CONFIG?.SUPABASE_ANON_KEY || '';
         
-        if (!window.supabaseClient) {
-            window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        }
-        const supabase = window.supabaseClient;
+        const sbClient = window._sb || (window._sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
 
         const INSTANCES = {
             'Peta': {
@@ -1100,7 +1097,7 @@
                     updated_at: new Date().toISOString()
                 }));
 
-                const { data, error } = await supabase
+                const { data, error } = await sbClient
                     .from('tickets')
                     .upsert(ticketsToUpsert, { 
                         onConflict: 'glpi_id,instance',
@@ -1147,7 +1144,7 @@
 
         async function getLastSyncTime() {
             try {
-                const { data, error } = await supabase
+                const { data, error } = await sbClient
                     .from('tickets')
                     .select('updated_at')
                     .order('updated_at', { ascending: false })

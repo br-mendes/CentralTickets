@@ -46,8 +46,8 @@ function requireAuth() {
 }
 
 function logout() {
-    if (window.supabase) {
-        window.supabase.auth.signOut();
+    if (window._sb) {
+        window._sb.auth.signOut();
     }
     
     localStorage.removeItem('userEmail');

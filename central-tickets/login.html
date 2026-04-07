@@ -385,9 +385,9 @@
     <script src="config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        const SUPABASE_URL = window.APP_CONFIG.SUPABASE_URL;
-        const SUPABASE_ANON_KEY = window.APP_CONFIG.SUPABASE_ANON_KEY;
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const SUPABASE_URL = window.APP_CONFIG?.SUPABASE_URL || '';
+        const SUPABASE_ANON_KEY = window.APP_CONFIG?.SUPABASE_ANON_KEY || '';
+        const loginSb = window._sb || (window._sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
 
         function toggleTheme() {
             const html = document.documentElement;
@@ -448,7 +448,7 @@
             const password = document.getElementById('password').value;
 
             try {
-                const { data, error } = await supabase.auth.signInWithPassword({
+                const { data, error } = await loginSb.auth.signInWithPassword({
                     email: email,
                     password: password
                 });
@@ -486,7 +486,7 @@
         }
 
         async function handleLogout() {
-            const { error } = await supabase.auth.signOut();
+            const { error } = await loginSb.auth.signOut();
             
             localStorage.removeItem('userEmail');
             localStorage.removeItem('userId');
