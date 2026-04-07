@@ -1094,16 +1094,7 @@
                 
                 entityShort = entityShort || entityFull;
 
-                let category = 'Não categorizado';
-                if (ticket[4]) {
-                    if (Array.isArray(ticket[4])) {
-                        category = ticket[4].join(', ');
-                    } else {
-                        category = ticket[4];
-                    }
-                } else if (ticket[7]) {
-                    category = ticket[7];
-                }
+                let category = ticket[7] || 'Não categorizado';
 
                 return {
                     id: ticket[2] || ticket.id,
