@@ -525,8 +525,47 @@
             text-decoration: underline;
         }
 
+        .col-status {
+            width: 110px;
+        }
+
+        .col-title {
+            max-width: 300px;
+        }
+
+        .ticket-title {
+            display: block;
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-weight: 500;
+        }
+
+        .ticket-title-full {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            display: block;
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .col-group {
+            width: 150px;
+        }
+
+        .group-name {
+            display: block;
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
         .col-instance {
-            width: 90px;
+            width: 80px;
         }
 
         .instance-badge {
@@ -548,14 +587,14 @@
         }
 
         .col-entity {
-            max-width: 200px;
+            max-width: 150px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
 
         .col-category {
-            max-width: 200px;
+            max-width: 180px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -563,14 +602,10 @@
 
         .category {
             display: block;
-            max-width: 200px;
+            max-width: 180px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-        }
-
-        .col-status {
-            width: 120px;
         }
 
         .status-badge {
@@ -619,41 +654,37 @@
         }
 
         .col-last-update {
-            width: 160px;
+            width: 180px;
             white-space: nowrap;
         }
 
         .last-update-cell {
             display: flex;
             flex-direction: column;
-            gap: 2px;
+            gap: 4px;
         }
 
-        .last-update-date {
-            font-weight: 500;
+        .waiting-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
-        .last-update-time {
-            font-size: 0.75rem;
-            color: var(--text-muted);
+        .waiting-time {
+            font-weight: 600;
+            font-size: 0.875rem;
         }
 
-        .blink-warning {
-            animation: blink-yellow 1s ease-in-out infinite;
+        .waiting-time.ok {
+            color: var(--sla-ok);
         }
 
-        .blink-danger {
-            animation: blink-red 0.8s ease-in-out infinite;
+        .waiting-time.warning {
+            color: #f59e0b;
         }
 
-        @keyframes blink-yellow {
-            0%, 100% { background-color: transparent; }
-            50% { background-color: rgba(245, 158, 11, 0.3); }
-        }
-
-        @keyframes blink-red {
-            0%, 100% { background-color: transparent; }
-            50% { background-color: rgba(239, 68, 68, 0.3); }
+        .waiting-time.danger {
+            color: var(--sla-late);
         }
 
         .waiting-badge {
@@ -671,7 +702,31 @@
 
         .waiting-badge.danger {
             background: rgba(239, 68, 68, 0.15);
-            color: #ef4444;
+            color: var(--sla-late);
+        }
+
+        .last-update-date {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .last-update-time {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .blink-warning {
+            animation: blink-yellow 1.5s ease-in-out infinite;
+        }
+
+        @keyframes blink-yellow {
+            0%, 100% { background-color: rgba(245, 158, 11, 0); }
+            50% { background-color: rgba(245, 158, 11, 0.15); }
+        }
+
+        @keyframes blink-red {
+            0%, 100% { background-color: rgba(239, 68, 68, 0); }
+            50% { background-color: rgba(239, 68, 68, 0.15); }
         }
 
         .hide-mobile {
@@ -1079,24 +1134,6 @@
         }
 
         function processTickets(rawTickets, instanceName) {
-            if (rawTickets.length > 0 && console.group) {
-                console.group(`🔍 Análise dos campos do GLPI (${instanceName})`);
-                console.log('Campos disponíveis no primeiro ticket:');
-                const firstTicket = rawTickets[0];
-                for (let key in firstTicket) {
-                    if (key !== 'links' && key !== 'relationships') {
-                        console.log(`  ticket[${key}] = ${JSON.stringify(firstTicket[key])}`);
-                    }
-                }
-                console.log('\nCampos específicos para data:');
-                console.log(`  ticket[15] (date) = ${firstTicket[15]}`);
-                console.log(`  ticket[19] (date_mod) = ${firstTicket[19]}`);
-                console.log(`  ticket[91] = ${firstTicket[91]}`);
-                console.log(`  ticket.date_creation = ${firstTicket.date_creation}`);
-                console.log(`  ticket.date_mod = ${firstTicket.date_mod}`);
-                console.groupEnd();
-            }
-
             return rawTickets.map(ticket => {
                 const statusId = parseInt(ticket[12]) || 1;
                 const statusInfo = STATUS_CONFIG[statusId] || STATUS_CONFIG[1];
@@ -1272,6 +1309,10 @@
                 const blinkClass = getWaitingClass(hours);
                 const waitingBadge = getWaitingBadge(hours);
                 const dateTime = formatDateTime(ticket.lastUpdate);
+                const hoursClass = hours >= 72 ? 'danger' : (hours >= 24 ? 'warning' : 'ok');
+                const hoursText = hours >= 24 
+                    ? (hours >= 72 ? `${Math.floor(hours/24)}d ${Math.floor(hours%24)}h` : `${Math.floor(hours)}h`)
+                    : `${Math.floor(hours * 60)}min`;
                 
                 if (hours >= 72) dangerCount++;
                 else if (hours >= 24) warningCount++;
@@ -1281,6 +1322,15 @@
                         <td class="col-id">
                             <a href="${ticket.instanceUrl}${ticket.id}" target="_blank">#${ticket.id}</a>
                         </td>
+                        <td class="col-status">
+                            <span class="status-badge ${ticket.status}">${ticket.statusName}</span>
+                        </td>
+                        <td class="col-title" title="${ticket.title}">
+                            <span class="ticket-title">${ticket.title}</span>
+                        </td>
+                        <td class="col-group" title="${ticket.group}">
+                            <span class="group-name">${ticket.group}</span>
+                        </td>
                         <td class="col-instance">
                             <span class="instance-badge ${ticket.instance.toLowerCase()}">${ticket.instance}</span>
                         </td>
@@ -1288,15 +1338,14 @@
                         <td class="col-category" title="${ticket.category}">
                             <span class="category">${ticket.category}</span>
                         </td>
-                        <td class="col-status">
-                            <span class="status-badge ${ticket.status}">${ticket.statusName}</span>
-                        </td>
-                        <td class="col-group" title="${ticket.group}">${ticket.group}</td>
                         <td class="col-date">${formatDate(ticket.dateCreated)}</td>
                         <td class="col-last-update">
                             <div class="last-update-cell">
-                                <span class="last-update-date">${dateTime.date} ${waitingBadge}</span>
-                                <span class="last-update-time">${dateTime.time}</span>
+                                <div class="waiting-indicator">
+                                    <span class="waiting-time ${hoursClass}">${hoursText}</span>
+                                    ${waitingBadge}
+                                </div>
+                                <span class="last-update-date">${dateTime.date} ${dateTime.time}</span>
                             </div>
                         </td>
                     </tr>
@@ -1313,17 +1362,18 @@
                         <thead>
                             <tr>
                                 <th onclick="sortTable('id')" class="col-id ${currentSort.field === 'id' ? 'sorted' : ''}">ID<span class="sort-icon">${getSortIcon('id')}</span></th>
+                                <th onclick="sortTable('status')" class="col-status ${currentSort.field === 'status' ? 'sorted' : ''}">Status<span class="sort-icon">${getSortIcon('status')}</span></th>
+                                <th class="col-title">Título</th>
+                                <th onclick="sortTable('group')" class="col-group ${currentSort.field === 'group' ? 'sorted' : ''}">Responsável<span class="sort-icon">${getSortIcon('group')}</span></th>
                                 <th class="col-instance">Instância</th>
                                 <th onclick="sortTable('entity')" class="col-entity ${currentSort.field === 'entity' ? 'sorted' : ''}">Entidade<span class="sort-icon">${getSortIcon('entity')}</span></th>
                                 <th onclick="sortTable('category')" class="col-category ${currentSort.field === 'category' ? 'sorted' : ''}">Categoria<span class="sort-icon">${getSortIcon('category')}</span></th>
-                                <th onclick="sortTable('status')" class="col-status ${currentSort.field === 'status' ? 'sorted' : ''}">Status<span class="sort-icon">${getSortIcon('status')}</span></th>
-                                <th onclick="sortTable('group')" class="col-group ${currentSort.field === 'group' ? 'sorted' : ''}">Responsável<span class="sort-icon">${getSortIcon('group')}</span></th>
                                 <th onclick="sortTable('dateCreated')" class="col-date ${currentSort.field === 'dateCreated' ? 'sorted' : ''}">Abertura<span class="sort-icon">${getSortIcon('dateCreated')}</span></th>
-                                <th onclick="sortTable('lastUpdate')" class="col-last-update ${currentSort.field === 'lastUpdate' ? 'sorted' : ''}">Última Atualização<span class="sort-icon">${getSortIcon('lastUpdate')}</span></th>
+                                <th onclick="sortTable('lastUpdate')" class="col-last-update ${currentSort.field === 'lastUpdate' ? 'sorted' : ''}">Espera<span class="sort-icon">${getSortIcon('lastUpdate')}</span></th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${rowsHTML || '<tr><td colspan="8" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum ticket encontrado</td></tr>'}
+                            ${rowsHTML || '<tr><td colspan="9" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum ticket encontrado</td></tr>'}
                         </tbody>
                     </table>
                 </div>
