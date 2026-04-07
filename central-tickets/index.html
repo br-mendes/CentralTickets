@@ -1640,6 +1640,97 @@
             max-width: 200px;
             word-break: break-all;
         }
+
+        .bar-chart {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .bar-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .bar-label {
+            min-width: 180px;
+            max-width: 180px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .bar-container {
+            flex: 1;
+            height: 28px;
+            background: var(--border);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            display: flex;
+            position: relative;
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: var(--radius-sm);
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 8px;
+            min-width: 40px;
+        }
+
+        .bar-fill.peta {
+            background: linear-gradient(90deg, #2563eb, #3b82f6);
+        }
+
+        .bar-fill.gmx {
+            background: linear-gradient(90deg, #ea580c, #f97316);
+        }
+
+        .bar-fill.mixed {
+            background: linear-gradient(90deg, #2563eb 50%, #ea580c 50%);
+        }
+
+        .bar-value {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: white;
+        }
+
+        .bar-total {
+            min-width: 50px;
+            text-align: right;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .bar-legend {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 12px;
+            font-size: 0.75rem;
+        }
+
+        .bar-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .bar-legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+
+        .bar-legend-dot.peta { background: #2563eb; }
+        .bar-legend-dot.gmx { background: #ea580c; }
     </style>
 </head>
 <body>
@@ -2260,6 +2351,12 @@
             return parts[0].trim();
         }
 
+        function getLastCategory(category) {
+            if (!category) return 'Não categorizado';
+            const parts = category.split(' > ');
+            return parts[parts.length - 1].trim();
+        }
+
         function isSlaExceeded(dueDateStr) {
             if (!dueDateStr) return false;
             const dueDate = new Date(dueDateStr);
@@ -2602,16 +2699,16 @@ ${JSON.stringify(error, null, 2)}
                 if (t.instance === 'GMX') ticketsByCategory[cat].gmx++;
             });
 
-            // Get tickets by solution/root category
+            // Get tickets by solution/last category ITIL
             const ticketsBySolution = {};
             tickets.forEach(t => {
-                const rootCat = t.rootCategory || 'Sem Categoria';
-                if (!ticketsBySolution[rootCat]) {
-                    ticketsBySolution[rootCat] = { total: 0, peta: 0, gmx: 0 };
+                const lastCat = getLastCategory(t.category) || 'Sem Categoria';
+                if (!ticketsBySolution[lastCat]) {
+                    ticketsBySolution[lastCat] = { total: 0, peta: 0, gmx: 0, fullPath: t.category };
                 }
-                ticketsBySolution[rootCat].total++;
-                if (t.instance === 'Peta') ticketsBySolution[rootCat].peta++;
-                if (t.instance === 'GMX') ticketsBySolution[rootCat].gmx++;
+                ticketsBySolution[lastCat].total++;
+                if (t.instance === 'Peta') ticketsBySolution[lastCat].peta++;
+                if (t.instance === 'GMX') ticketsBySolution[lastCat].gmx++;
             });
 
             // Sort SLA overdue by most overdue
@@ -2738,23 +2835,42 @@ ${JSON.stringify(error, null, 2)}
                     <h2 class="dashboard-section-title">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline>
-                            <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></polyline>
+                            <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
                         </svg>
-                        Tickets por Solução (Raiz da Categoria)
+                        Tickets por Solução (Última Categoria ITIL)
                     </h2>
-                    <div class="stats-grid">
+                    <div class="bar-legend">
+                        <div class="bar-legend-item">
+                            <span class="bar-legend-dot peta"></span>
+                            <span>Peta</span>
+                        </div>
+                        <div class="bar-legend-item">
+                            <span class="bar-legend-dot gmx"></span>
+                            <span>GMX</span>
+                        </div>
+                    </div>
+                    <div class="bar-chart">
                         ${Object.entries(ticketsBySolution)
                             .sort((a, b) => b[1].total - a[1].total)
-                            .map(([rootCat, stats]) => `
-                                <div class="stat-card-full" title="${rootCat}">
-                                    <div class="stat-name">${rootCat}</div>
-                                    <div class="stat-value">${stats.total}</div>
-                                    <div class="stat-meta">
-                                        <span style="color: #2563eb;">P: ${stats.peta}</span> · 
-                                        <span style="color: #ea580c;">G: ${stats.gmx}</span>
+                            .slice(0, 15)
+                            .map(([lastCat, stats]) => {
+                                const maxTotal = Math.max(...Object.values(ticketsBySolution).map(s => s.total));
+                                const widthPct = maxTotal > 0 ? (stats.total / maxTotal * 100) : 0;
+                                const hasPeta = stats.peta > 0;
+                                const hasGmx = stats.gmx > 0;
+                                const barClass = hasPeta && hasGmx ? 'mixed' : (hasPeta ? 'peta' : 'gmx');
+                                return `
+                                    <div class="bar-item" title="${stats.fullPath || lastCat}">
+                                        <span class="bar-label">${lastCat}</span>
+                                        <div class="bar-container">
+                                            <div class="bar-fill ${barClass}" style="width: ${widthPct}%">
+                                                <span class="bar-value">${stats.total}</span>
+                                            </div>
+                                        </div>
+                                        <span class="bar-total">${stats.total}</span>
                                     </div>
-                                </div>
-                            `).join('')}
+                                `;
+                            }).join('')}
                     </div>
                 </div>
 
