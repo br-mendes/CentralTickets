@@ -1474,9 +1474,6 @@
                             </svg>
                     </button>
                     <span class="last-update" id="lastUpdate"></span>
-                    <span class="user-badge" id="userBadge" style="padding: 8px 12px; background: var(--background); border-radius: 8px; font-size: 0.75rem; color: var(--text-secondary);">
-                        <span id="userEmailDisplay"></span>
-                    </span>
                     <button class="btn btn-primary" id="refreshBtn" onclick="refreshTickets()">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M21 2v6h-6"></path>
@@ -1485,9 +1482,6 @@
                             <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
                         </svg>
                         Atualizar
-                    </button>
-                    <button class="btn btn-secondary" onclick="logout()" style="padding: 8px 16px;">
-                        Sair
                     </button>
                 </div>
                         <div class="instance-dropdown-menu" id="instanceDropdownMenu">
@@ -1522,15 +1516,9 @@
     </div>
 
     <script src="config.js"></script>
-    <script src="auth.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // Auth check - Dashboard is only for gestores
-        if (!requireAuth() || !isGestor()) {
-            // Don't proceed if not authorized
-        } else {
-            const userEmail = getUserEmail();
-        }
+        // Auth temporarily disabled
 
         // Configuração do Supabase via Environment Variables
         const SUPABASE_URL = window.APP_CONFIG?.SUPABASE_URL || '';
@@ -2683,8 +2671,6 @@ ${JSON.stringify(error, null, 2)}
         document.addEventListener('DOMContentLoaded', () => {
             initTheme();
             initInstanceDropdown();
-            updateUserInfo();
-            hideGestorOnlyElements();
             
             // Tentar carregar do cache primeiro para carregamento rápido
             const cachedTickets = loadCache();
