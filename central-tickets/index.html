@@ -1731,6 +1731,40 @@
 
         .bar-legend-dot.peta { background: #2563eb; }
         .bar-legend-dot.gmx { background: #ea580c; }
+
+        .expand-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            width: 100%;
+            padding: 10px;
+            margin-top: 12px;
+            background: var(--background);
+            border: 1px dashed var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .expand-btn:hover {
+            background: var(--surface);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .expand-btn svg {
+            width: 16px;
+            height: 16px;
+            transition: transform 0.2s;
+        }
+
+        .expand-btn.expanded svg {
+            transform: rotate(180deg);
+        }
     </style>
 </head>
 <body>
@@ -2643,6 +2677,7 @@ ${JSON.stringify(error, null, 2)}
         }
 
         function renderFullDashboard(tickets) {
+            window.ticketsBySolution = null;
             const petaStats = getInstanceStats(tickets, 'Peta');
             const gmxStats = getInstanceStats(tickets, 'GMX');
             const petaAvgPending = getAvgPendingTime(petaStats.tickets);
@@ -2700,16 +2735,17 @@ ${JSON.stringify(error, null, 2)}
             });
 
             // Get tickets by solution/root category ITIL
-            const ticketsBySolution = {};
+            window.ticketsBySolution = {};
             tickets.forEach(t => {
                 const rootCat = getRootCategory(t.category) || 'Sem Categoria';
-                if (!ticketsBySolution[rootCat]) {
-                    ticketsBySolution[rootCat] = { total: 0, peta: 0, gmx: 0, fullPath: t.category };
+                if (!window.ticketsBySolution[rootCat]) {
+                    window.ticketsBySolution[rootCat] = { total: 0, peta: 0, gmx: 0, fullPath: t.category };
                 }
-                ticketsBySolution[rootCat].total++;
-                if (t.instance === 'Peta') ticketsBySolution[rootCat].peta++;
-                if (t.instance === 'GMX') ticketsBySolution[rootCat].gmx++;
+                window.ticketsBySolution[rootCat].total++;
+                if (t.instance === 'Peta') window.ticketsBySolution[rootCat].peta++;
+                if (t.instance === 'GMX') window.ticketsBySolution[rootCat].gmx++;
             });
+            const ticketsBySolution = window.ticketsBySolution;
 
             // Sort SLA overdue by most overdue
             const slaOverdueSorted = [...slaOverdue].sort((a, b) => {
@@ -2849,27 +2885,58 @@ ${JSON.stringify(error, null, 2)}
                             <span>GMX</span>
                         </div>
                     </div>
-                    <div class="bar-chart">
-                        ${Object.entries(ticketsBySolution)
-                            .sort((a, b) => b[1].total - a[1].total)
-                            .map(([rootCat, stats]) => {
-                                const maxTotal = Math.max(...Object.values(ticketsBySolution).map(s => s.total));
-                                const widthPct = maxTotal > 0 ? (stats.total / maxTotal * 100) : 0;
-                                const hasPeta = stats.peta > 0;
-                                const hasGmx = stats.gmx > 0;
-                                const barClass = hasPeta && hasGmx ? 'mixed' : (hasPeta ? 'peta' : 'gmx');
-                                return `
-                                    <div class="bar-item" title="Raiz: ${rootCat} | Total: ${stats.total} (P: ${stats.peta}, G: ${stats.gmx})">
-                                        <span class="bar-label">${rootCat}</span>
-                                        <div class="bar-container">
-                                            <div class="bar-fill ${barClass}" style="width: ${widthPct}%">
-                                                <span class="bar-value">${stats.total}</span>
+                    <div class="bar-chart" id="solutionChart">
+                        ${(() => {
+                            const sorted = Object.entries(ticketsBySolution).sort((a, b) => b[1].total - a[1].total);
+                            const maxTotal = Math.max(...sorted.map(([, s]) => s.total));
+                            const top20 = sorted.slice(0, 20);
+                            return `
+                                ${top20.map(([rootCat, stats]) => {
+                                    const widthPct = maxTotal > 0 ? (stats.total / maxTotal * 100) : 0;
+                                    const hasPeta = stats.peta > 0;
+                                    const hasGmx = stats.gmx > 0;
+                                    const barClass = hasPeta && hasGmx ? 'mixed' : (hasPeta ? 'peta' : 'gmx');
+                                    return `
+                                        <div class="bar-item" title="Raiz: ${rootCat} | Total: ${stats.total} (P: ${stats.peta}, G: ${stats.gmx})">
+                                            <span class="bar-label">${rootCat}</span>
+                                            <div class="bar-container">
+                                                <div class="bar-fill ${barClass}" style="width: ${widthPct}%">
+                                                    <span class="bar-value">${stats.total}</span>
+                                                </div>
                                             </div>
+                                            <span class="bar-total">${stats.total}</span>
                                         </div>
-                                        <span class="bar-total">${stats.total}</span>
+                                    `;
+                                }).join('')}
+                                ${sorted.length > 20 ? `
+                                    <div id="solutionExpandBtn" class="expand-btn" onclick="toggleSolutionChart(this)">
+                                        <span>Ver todas as ${sorted.length} categorias</span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polyline points="6 9 12 15 18 9"></polyline>
+                                        </svg>
                                     </div>
-                                `;
-                            }).join('')}
+                                    <div id="solutionExtraItems" style="display: none;">
+                                        ${sorted.slice(20).map(([rootCat, stats]) => {
+                                            const widthPct = maxTotal > 0 ? (stats.total / maxTotal * 100) : 0;
+                                            const hasPeta = stats.peta > 0;
+                                            const hasGmx = stats.gmx > 0;
+                                            const barClass = hasPeta && hasGmx ? 'mixed' : (hasPeta ? 'peta' : 'gmx');
+                                            return `
+                                                <div class="bar-item" title="Raiz: ${rootCat} | Total: ${stats.total} (P: ${stats.peta}, G: ${stats.gmx})">
+                                                    <span class="bar-label">${rootCat}</span>
+                                                    <div class="bar-container">
+                                                        <div class="bar-fill ${barClass}" style="width: ${widthPct}%">
+                                                            <span class="bar-value">${stats.total}</span>
+                                                        </div>
+                                                    </div>
+                                                    <span class="bar-total">${stats.total}</span>
+                                                </div>
+                                            `;
+                                        }).join('')}
+                                    </div>
+                                ` : ''}
+                            `;
+                        })()}
                     </div>
                 </div>
 
@@ -3011,6 +3078,13 @@ ${JSON.stringify(error, null, 2)}
             btn.classList.add('active');
             const days = parseInt(btn.dataset.period);
             document.getElementById('periodContent').innerHTML = renderPeriodContent(tickets, days);
+        }
+
+        function toggleSolutionChart(btn) {
+            const extraItems = document.getElementById('solutionExtraItems');
+            const isExpanded = btn.classList.toggle('expanded');
+            extraItems.style.display = isExpanded ? 'block' : 'none';
+            btn.querySelector('span').textContent = isExpanded ? 'Ver menos' : `Ver todas as ${Object.keys(window.ticketsBySolution || {}).length} categorias`;
         }
 
         function renderKanban(tickets) {
