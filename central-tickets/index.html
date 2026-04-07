@@ -2423,6 +2423,7 @@
                     entity: ticket[80] || 'Entidade não definida',
                     category: category,
                     rootCategory: getRootCategory(category),
+                    group: ticket[8] || 'Não atribuído',
                     statusId: statusId,
                     status: statusInfo.key,
                     statusName: statusInfo.name,
@@ -2710,17 +2711,18 @@ ${JSON.stringify(error, null, 2)}
                 if (t.instance === 'GMX') ticketsByEntity[entity].gmx++;
             });
 
-            // Get tickets by technician
-            const ticketsByTechnician = {};
+            // Get tickets by group
+            window.ticketsByGroup = {};
             tickets.forEach(t => {
-                const tech = t.technician || 'Não atribuído';
-                if (!ticketsByTechnician[tech]) {
-                    ticketsByTechnician[tech] = { total: 0, peta: 0, gmx: 0 };
+                const group = t.group || 'Não atribuído';
+                if (!window.ticketsByGroup[group]) {
+                    window.ticketsByGroup[group] = { total: 0, peta: 0, gmx: 0 };
                 }
-                ticketsByTechnician[tech].total++;
-                if (t.instance === 'Peta') ticketsByTechnician[tech].peta++;
-                if (t.instance === 'GMX') ticketsByTechnician[tech].gmx++;
+                window.ticketsByGroup[group].total++;
+                if (t.instance === 'Peta') window.ticketsByGroup[group].peta++;
+                if (t.instance === 'GMX') window.ticketsByGroup[group].gmx++;
             });
+            const ticketsByGroup = window.ticketsByGroup;
 
             // Get tickets by category (full name)
             const ticketsByCategory = {};
@@ -2848,22 +2850,70 @@ ${JSON.stringify(error, null, 2)}
                             <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
                             <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                         </svg>
-                        Tickets por Responsável
+                        Tickets por Grupo Responsável
                     </h2>
-                    <div class="stats-grid">
-                        ${Object.entries(ticketsByTechnician)
-                            .sort((a, b) => b[1].total - a[1].total)
-                            .slice(0, 10)
-                            .map(([tech, stats]) => `
-                                <div class="stat-card-full" title="${tech}">
-                                    <div class="stat-name">${tech}</div>
-                                    <div class="stat-value">${stats.total}</div>
-                                    <div class="stat-meta">
-                                        <span style="color: #2563eb;">P: ${stats.peta}</span> · 
-                                        <span style="color: #ea580c;">G: ${stats.gmx}</span>
+                    <div class="bar-legend">
+                        <div class="bar-legend-item">
+                            <span class="bar-legend-dot peta"></span>
+                            <span>Peta</span>
+                        </div>
+                        <div class="bar-legend-item">
+                            <span class="bar-legend-dot gmx"></span>
+                            <span>GMX</span>
+                        </div>
+                    </div>
+                    <div class="bar-chart">
+                        ${(() => {
+                            const sorted = Object.entries(ticketsByGroup).sort((a, b) => b[1].total - a[1].total);
+                            const maxTotal = Math.max(...sorted.map(([, s]) => s.total), 1);
+                            const top20 = sorted.slice(0, 20);
+                            return `
+                                ${top20.map(([group, stats]) => {
+                                    const widthPct = maxTotal > 0 ? (stats.total / maxTotal * 100) : 0;
+                                    const hasPeta = stats.peta > 0;
+                                    const hasGmx = stats.gmx > 0;
+                                    const barClass = hasPeta && hasGmx ? 'mixed' : (hasPeta ? 'peta' : 'gmx');
+                                    return `
+                                        <div class="bar-item" title="Grupo: ${group} | Total: ${stats.total} (P: ${stats.peta}, G: ${stats.gmx})">
+                                            <span class="bar-label">${group}</span>
+                                            <div class="bar-container">
+                                                <div class="bar-fill ${barClass}" style="width: ${widthPct}%">
+                                                    <span class="bar-value">${stats.total}</span>
+                                                </div>
+                                            </div>
+                                            <span class="bar-total">${stats.total}</span>
+                                        </div>
+                                    `;
+                                }).join('')}
+                                ${sorted.length > 20 ? `
+                                    <div id="groupExpandBtn" class="expand-btn" onclick="toggleGroupChart(this)">
+                                        <span>Ver todos os ${sorted.length} grupos</span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polyline points="6 9 12 15 18 9"></polyline>
+                                        </svg>
                                     </div>
-                                </div>
-                            `).join('')}
+                                    <div id="groupExtraItems" style="display: none;">
+                                        ${sorted.slice(20).map(([group, stats]) => {
+                                            const widthPct = maxTotal > 0 ? (stats.total / maxTotal * 100) : 0;
+                                            const hasPeta = stats.peta > 0;
+                                            const hasGmx = stats.gmx > 0;
+                                            const barClass = hasPeta && hasGmx ? 'mixed' : (hasPeta ? 'peta' : 'gmx');
+                                            return `
+                                                <div class="bar-item" title="Grupo: ${group} | Total: ${stats.total} (P: ${stats.peta}, G: ${stats.gmx})">
+                                                    <span class="bar-label">${group}</span>
+                                                    <div class="bar-container">
+                                                        <div class="bar-fill ${barClass}" style="width: ${widthPct}%">
+                                                            <span class="bar-value">${stats.total}</span>
+                                                        </div>
+                                                    </div>
+                                                    <span class="bar-total">${stats.total}</span>
+                                                </div>
+                                            `;
+                                        }).join('')}
+                                    </div>
+                                ` : ''}
+                            `;
+                        })()}
                     </div>
                 </div>
 
@@ -3085,6 +3135,13 @@ ${JSON.stringify(error, null, 2)}
             const isExpanded = btn.classList.toggle('expanded');
             extraItems.style.display = isExpanded ? 'block' : 'none';
             btn.querySelector('span').textContent = isExpanded ? 'Ver menos' : `Ver todas as ${Object.keys(window.ticketsBySolution || {}).length} categorias`;
+        }
+
+        function toggleGroupChart(btn) {
+            const extraItems = document.getElementById('groupExtraItems');
+            const isExpanded = btn.classList.toggle('expanded');
+            extraItems.style.display = isExpanded ? 'block' : 'none';
+            btn.querySelector('span').textContent = isExpanded ? 'Ver menos' : `Ver todos os ${Object.keys(window.ticketsByGroup || {}).length} grupos`;
         }
 
         function renderKanban(tickets) {
