@@ -2119,8 +2119,8 @@
         const INITIAL_LOAD = 100;
         const LOAD_MORE = 50;
 
-        // Intervalo de atualização automática (1 minuto)
-        const REFRESH_INTERVAL = 180000;
+        // Intervalo de atualização automática (5 minutos)
+        const REFRESH_INTERVAL = 300000;
         let refreshTimer = null;
 
         // Função para alternar entre visualizações
@@ -3293,8 +3293,11 @@ ${JSON.stringify(error, null, 2)}
                 refreshTickets();
             }
 
-            // Configurar atualização automática
-            refreshTimer = setInterval(refreshTickets, REFRESH_INTERVAL);
+            // Configurar atualização automática (recarrega a página)
+            refreshTimer = setInterval(() => {
+                console.log('🔄 Recarregando página automaticamente...');
+                location.reload();
+            }, REFRESH_INTERVAL);
         });
 
         // Cleanup ao sair da página
