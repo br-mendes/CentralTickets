@@ -1023,39 +1023,44 @@
         }
 
         // Configuração do Supabase via Environment Variables
-        const SUPABASE_URL = window.APP_CONFIG.SUPABASE_URL;
-        const SUPABASE_ANON_KEY = window.APP_CONFIG.SUPABASE_ANON_KEY;
+        const SUPABASE_URL = window.APP_CONFIG?.SUPABASE_URL || '';
+        const SUPABASE_ANON_KEY = window.APP_CONFIG?.SUPABASE_ANON_KEY || '';
         
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // Configuração da API GLPI via Environment Variables
         const API_CONFIG = {
-            BASE_URL: window.APP_CONFIG.GLPI_PETA_URL,
-            USER_TOKEN: window.APP_CONFIG.GLPI_PETA_USER_TOKEN,
-            APP_TOKEN: window.APP_CONFIG.GLPI_PETA_APP_TOKEN,
+            BASE_URL: window.APP_CONFIG?.GLPI_PETA_URL || '',
+            USER_TOKEN: window.APP_CONFIG?.GLPI_PETA_USER_TOKEN || '',
+            APP_TOKEN: window.APP_CONFIG?.GLPI_PETA_APP_TOKEN || '',
         };
         
         // Alternativas de endpoints GLPI (fallback)
         const API_ENDPOINTS = [
-            window.APP_CONFIG.GLPI_PETA_URL,
-            window.APP_CONFIG.GLPI_PETA_URL + '/api.php/v1',
+            window.APP_CONFIG?.GLPI_PETA_URL || '',
+            (window.APP_CONFIG?.GLPI_PETA_URL || '') + '/api.php/v1',
         ];
 
         // Instâncias GLPI via Environment Variables
         const INSTANCES = {
             'Peta': {
-                BASE_URL: window.APP_CONFIG.GLPI_PETA_URL,
-                USER_TOKEN: window.APP_CONFIG.GLPI_PETA_USER_TOKEN,
-                APP_TOKEN: window.APP_CONFIG.GLPI_PETA_APP_TOKEN,
-                TICKET_URL: window.APP_CONFIG.GLPI_PETA_TICKET_URL
+                BASE_URL: window.APP_CONFIG?.GLPI_PETA_URL || '',
+                USER_TOKEN: window.APP_CONFIG?.GLPI_PETA_USER_TOKEN || '',
+                APP_TOKEN: window.APP_CONFIG?.GLPI_PETA_APP_TOKEN || '',
+                TICKET_URL: window.APP_CONFIG?.GLPI_PETA_TICKET_URL || ''
             },
             'GMX': {
-                BASE_URL: window.APP_CONFIG.GLPI_GMX_URL,
-                USER_TOKEN: window.APP_CONFIG.GLPI_GMX_USER_TOKEN,
-                APP_TOKEN: window.APP_CONFIG.GLPI_GMX_APP_TOKEN,
-                TICKET_URL: window.APP_CONFIG.GLPI_GMX_TICKET_URL
+                BASE_URL: window.APP_CONFIG?.GLPI_GMX_URL || '',
+                USER_TOKEN: window.APP_CONFIG?.GLPI_GMX_USER_TOKEN || '',
+                APP_TOKEN: window.APP_CONFIG?.GLPI_GMX_APP_TOKEN || '',
+                TICKET_URL: window.APP_CONFIG?.GLPI_GMX_TICKET_URL || ''
             }
         };
+
+        // Debug: Verificar se config está carregado
+        console.log('[CONFIG] Configurações carregadas:');
+        console.log('[CONFIG] GLPI_PETA_URL:', INSTANCES['Peta'].BASE_URL);
+        console.log('[CONFIG] GLPI_PETA_USER_TOKEN:', INSTANCES['Peta'].USER_TOKEN ? 'DEFINIDO' : 'NÃO DEFINIDO');
 
         // ========== SUPABASE SYNC ==========
         async function syncTicketsToSupabase(glpiTickets, instanceName) {
