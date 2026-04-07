@@ -433,11 +433,6 @@
                 gap: 12px;
             }
 
-            .filter-buttons {
-                width: 100%;
-                justify-content: center;
-            }
-
             .main {
                 padding: 16px;
             }
@@ -670,29 +665,6 @@
             border-color: var(--primary);
         }
 
-        .filter-buttons {
-            display: flex;
-            gap: 8px;
-        }
-
-        .view-indicator {
-            background: var(--primary);
-            color: white;
-            padding: 4px 12px;
-            border-radius: var(--radius-md);
-            font-size: 0.75rem;
-            font-weight: 600;
-            margin-left: 8px;
-        }
-
-        .view-indicator.processing {
-            background: var(--status-processing);
-        }
-
-        .view-indicator.pending {
-            background: var(--status-pending);
-        }
-
         .ticket-card.urgent {
             border-color: #f59e0b;
             background: linear-gradient(135deg, rgba(245, 158, 11, 0.05), transparent);
@@ -915,14 +887,6 @@
                     </a>
                 </nav>
                 <div class="header-right">
-                    <div class="filter-buttons">
-                        <button class="btn btn-secondary active" id="btnAll" onclick="setView('all')">
-                            Todos
-                        </button>
-                        <button class="btn btn-secondary" id="btnActive" onclick="setView('active')">
-                            Ativos
-                        </button>
-                    </div>
                     <div class="cache-actions">
                         <button class="cache-btn" onclick="exportToJSON()" title="Exportar dados para JSON">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1282,7 +1246,6 @@
         let tickets = [];
         let ticketsByStatus = {};
         let isLoading = false;
-        let currentView = 'all';
         let selectedInstances = ['Peta', 'GMX'];
         let loadedCounts = { processing: 100, pending: 100, solved: 100, closed: 100 };
         const INITIAL_LOAD = 100;
@@ -1291,28 +1254,6 @@
         // Intervalo de atualização automática (1 minuto)
         const REFRESH_INTERVAL = 180000;
         let refreshTimer = null;
-
-        // Função para alternar entre visualizações
-        function setView(view) {
-            currentView = view;
-            
-            // Atualizar botões
-            document.getElementById('btnAll').classList.toggle('active', view === 'all');
-            document.getElementById('btnActive').classList.toggle('active', view === 'active');
-            
-            // Atualizar indicador
-            const indicator = document.getElementById('viewIndicator');
-            if (view === 'active') {
-                indicator.style.display = 'inline-block';
-                indicator.textContent = 'Em atendimento + Pendente';
-                indicator.className = 'view-indicator';
-            } else {
-                indicator.style.display = 'none';
-            }
-            
-            // Re-renderizar
-            renderKanban(tickets);
-        }
 
         // Função para iniciar sessão na API - tenta diferentes endpoints
         async function initSession() {
@@ -1645,107 +1586,54 @@ ${JSON.stringify(error, null, 2)}
         function renderKanban(tickets) {
             const mainContent = document.getElementById('mainContent');
             
-            // Se for visualização ativa, filtrar apenas processing e pending
-            if (currentView === 'active') {
-                const filteredTickets = tickets.filter(t => 
-                    t.status === 'processing' || t.status === 'pending'
-                );
+            ticketsByStatus = STATUS_ORDER.reduce((acc, status) => {
+                acc[status] = tickets.filter(t => t.status === status);
+                return acc;
+            }, {});
+            
+            STATUS_ORDER.forEach(status => {
+                if (loadedCounts[status] === undefined) {
+                    loadedCounts[status] = Math.min(INITIAL_LOAD, ticketsByStatus[status]?.length || 0);
+                }
+            });
+            
+            let columnsHTML = STATUS_ORDER.map(status => {
+                const allStatusTickets = ticketsByStatus[status] || [];
+                const label = STATUS_LABELS[status];
+                const loadedTickets = allStatusTickets.slice(0, loadedCounts[status]);
+                const hasMore = allStatusTickets.length > loadedCounts[status];
                 
-                ticketsByStatus = {
-                    'processing': filteredTickets.filter(t => t.status === 'processing'),
-                    'pending': filteredTickets.filter(t => t.status === 'pending')
-                };
+                let ticketsHTML = loadedTickets.length === 0 
+                    ? '<div class="empty-column">Nenhum ticket</div>'
+                    : loadedTickets.map(ticket => renderTicketCard(ticket)).join('');
                 
-                loadedCounts.processing = Math.min(INITIAL_LOAD, ticketsByStatus.processing.length);
-                loadedCounts.pending = Math.min(INITIAL_LOAD, ticketsByStatus.pending.length);
-                
-                let columnsHTML = ['processing', 'pending'].map(status => {
-                    const allStatusTickets = ticketsByStatus[status] || [];
-                    const label = STATUS_LABELS[status];
-                    const loadedTickets = allStatusTickets.slice(0, loadedCounts[status]);
-                    const hasMore = allStatusTickets.length > loadedCounts[status];
-                    
-                    let ticketsHTML = loadedTickets.length === 0 
-                        ? '<div class="empty-column">Nenhum ticket</div>'
-                        : loadedTickets.map(ticket => renderTicketCard(ticket, true)).join('');
-                    
-                    let loadMoreBtn = '';
-                    if (hasMore) {
-                        loadMoreBtn = `
-                            <button class="load-more-btn" onclick="loadMore('${status}')">
-                                Carregar mais (${allStatusTickets.length - loadedCounts[status]} restantes)
-                            </button>
-                        `;
-                    }
-
-                    return `
-                        <div class="kanban-column">
-                            <div class="column-header">
-                                <div class="column-title">
-                                    <span class="status-dot ${status}"></span>
-                                    ${label}
-                                </div>
-                                <span class="column-count">${allStatusTickets.length}</span>
-                            </div>
-                            <div class="column-content" id="column-${status}">
-                                ${ticketsHTML}
-                                ${loadMoreBtn}
-                            </div>
-                        </div>
+                let loadMoreBtn = '';
+                if (hasMore) {
+                    loadMoreBtn = `
+                        <button class="load-more-btn" onclick="loadMore('${status}')">
+                            Carregar mais (${allStatusTickets.length - loadedCounts[status]} restantes)
+                        </button>
                     `;
-                }).join('');
+                }
 
-                mainContent.innerHTML = `<div class="filtered-board">${columnsHTML}</div>`;
-            } else {
-                ticketsByStatus = STATUS_ORDER.reduce((acc, status) => {
-                    acc[status] = tickets.filter(t => t.status === status);
-                    return acc;
-                }, {});
-                
-                STATUS_ORDER.forEach(status => {
-                    if (loadedCounts[status] === undefined) {
-                        loadedCounts[status] = Math.min(INITIAL_LOAD, ticketsByStatus[status]?.length || 0);
-                    }
-                });
-                
-                let columnsHTML = STATUS_ORDER.map(status => {
-                    const allStatusTickets = ticketsByStatus[status] || [];
-                    const label = STATUS_LABELS[status];
-                    const loadedTickets = allStatusTickets.slice(0, loadedCounts[status]);
-                    const hasMore = allStatusTickets.length > loadedCounts[status];
-                    
-                    let ticketsHTML = loadedTickets.length === 0 
-                        ? '<div class="empty-column">Nenhum ticket</div>'
-                        : loadedTickets.map(ticket => renderTicketCard(ticket, false)).join('');
-                    
-                    let loadMoreBtn = '';
-                    if (hasMore) {
-                        loadMoreBtn = `
-                            <button class="load-more-btn" onclick="loadMore('${status}')">
-                                Carregar mais (${allStatusTickets.length - loadedCounts[status]} restantes)
-                            </button>
-                        `;
-                    }
-
-                    return `
-                        <div class="kanban-column">
-                            <div class="column-header">
-                                <div class="column-title">
-                                    <span class="status-dot ${status}"></span>
-                                    ${label}
-                                </div>
-                                <span class="column-count">${allStatusTickets.length}</span>
+                return `
+                    <div class="kanban-column">
+                        <div class="column-header">
+                            <div class="column-title">
+                                <span class="status-dot ${status}"></span>
+                                ${label}
                             </div>
-                            <div class="column-content" id="column-${status}">
-                                ${ticketsHTML}
-                                ${loadMoreBtn}
-                            </div>
+                            <span class="column-count">${allStatusTickets.length}</span>
                         </div>
-                    `;
-                }).join('');
+                        <div class="column-content" id="column-${status}">
+                            ${ticketsHTML}
+                            ${loadMoreBtn}
+                        </div>
+                    </div>
+                `;
+            }).join('');
 
-                mainContent.innerHTML = `<div class="kanban-board">${columnsHTML}</div>`;
-            }
+            mainContent.innerHTML = `<div class="kanban-board">${columnsHTML}</div>`;
         }
 
         function loadMore(status) {
@@ -1757,7 +1645,7 @@ ${JSON.stringify(error, null, 2)}
             const columnContent = document.getElementById(`column-${status}`);
             if (columnContent) {
                 const loadedTickets = allStatusTickets.slice(0, newCount);
-                const ticketsHTML = loadedTickets.map(ticket => renderTicketCard(ticket, currentView === 'active')).join('');
+                const ticketsHTML = loadedTickets.map(ticket => renderTicketCard(ticket)).join('');
                 const hasMore = allStatusTickets.length > newCount;
                 
                 let loadMoreBtn = '';
@@ -1774,7 +1662,7 @@ ${JSON.stringify(error, null, 2)}
         }
 
         // Função para renderizar card de ticket
-        function renderTicketCard(ticket, isFiltered = false) {
+        function renderTicketCard(ticket) {
             let pendingHTML = '';
             if (ticket.status === 'pending' && ticket.timePending) {
                 pendingHTML = `
