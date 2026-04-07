@@ -395,6 +395,10 @@
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
             background-repeat: no-repeat;
             background-position: right 10px center;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-width: 130px;
         }
 
         .multi-select-header:hover {
@@ -405,6 +409,37 @@
         .multi-select-header:focus {
             outline: none;
             border-color: var(--primary);
+        }
+
+        .multi-select-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 4px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            z-index: 100;
+            overflow: hidden;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .multi-select-dropdown.open {
+            display: block;
+        }
+
+        .multi-select-dropdown label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 0.875rem;
         }
 
         .multi-select-dropdown label:hover {
@@ -418,6 +453,12 @@
 
         .multi-select-option input {
             cursor: pointer;
+            width: 16px;
+            height: 16px;
+        }
+
+        .filter-dropdown-wrapper {
+            position: relative;
         }
 
         .selected-entities {
@@ -1021,49 +1062,49 @@
             <input type="text" id="searchInput" placeholder="Buscar tickets..." oninput="applyFilters()">
         </div>
         
-        <div class="filter-select" style="position: relative;">
-            <div class="multi-select-header" onclick="toggleEntityDropdown()">
+        <div class="instance-dropdown" id="entityDropdownContainer">
+            <div class="instance-dropdown-header" onclick="toggleEntityDropdown()">
                 <span id="entitySelectLabel">Entidades</span>
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="6 9 12 15 18 9"></polyline>
                 </svg>
             </div>
-            <div id="entityDropdown" class="multi-select-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); max-height: 300px; overflow-y: auto; z-index: 50;">
-                <label class="multi-select-option" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; cursor: pointer; transition: background 0.2s;">
+            <div id="entityDropdown" class="instance-dropdown-menu">
+                <label class="instance-dropdown-option">
                     <input type="checkbox" id="entityAll" checked onchange="toggleAllEntities(this)">
-                    <span>Todas entidades</span>
+                    Todas entidades
                 </label>
                 <div id="entityOptions"></div>
             </div>
         </div>
 
-        <div class="filter-select" style="position: relative;">
-            <div class="multi-select-header" onclick="toggleCategoryDropdown()">
+        <div class="instance-dropdown" id="categoryDropdownContainer">
+            <div class="instance-dropdown-header" onclick="toggleCategoryDropdown()">
                 <span id="categorySelectLabel">Categorias</span>
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="6 9 12 15 18 9"></polyline>
                 </svg>
             </div>
-            <div id="categoryDropdown" class="multi-select-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); max-height: 300px; overflow-y: auto; z-index: 50;">
-                <label class="multi-select-option" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; cursor: pointer; transition: background 0.2s;">
+            <div id="categoryDropdown" class="instance-dropdown-menu">
+                <label class="instance-dropdown-option">
                     <input type="checkbox" id="categoryAll" checked onchange="toggleAllCategories(this)">
-                    <span>Todas categorias</span>
+                    Todas categorias
                 </label>
                 <div id="categoryOptions"></div>
             </div>
         </div>
 
-        <div class="filter-select" style="position: relative;">
-            <div class="multi-select-header" onclick="toggleGroupDropdown()">
+        <div class="instance-dropdown" id="groupDropdownContainer">
+            <div class="instance-dropdown-header" onclick="toggleGroupDropdown()">
                 <span id="groupSelectLabel">Responsáveis</span>
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="6 9 12 15 18 9"></polyline>
                 </svg>
             </div>
-            <div id="groupDropdown" class="multi-select-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); max-height: 300px; overflow-y: auto; z-index: 50;">
-                <label class="multi-select-option" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; cursor: pointer; transition: background 0.2s;">
+            <div id="groupDropdown" class="instance-dropdown-menu">
+                <label class="instance-dropdown-option">
                     <input type="checkbox" id="groupAll" checked onchange="toggleAllGroups(this)">
-                    <span>Todos responsáveis</span>
+                    Todos responsáveis
                 </label>
                 <div id="groupOptions"></div>
             </div>
@@ -1424,34 +1465,41 @@
         }
 
         function toggleEntityDropdown() {
-            const dropdown = document.getElementById('entityDropdown');
-            const isVisible = dropdown.style.display === 'block';
+            const container = document.getElementById('entityDropdownContainer');
+            const isOpen = container.classList.contains('open');
             closeAllDropdowns();
-            dropdown.style.display = isVisible ? 'none' : 'block';
+            if (!isOpen) {
+                container.classList.add('open');
+            }
         }
 
         function toggleCategoryDropdown() {
-            const dropdown = document.getElementById('categoryDropdown');
-            const isVisible = dropdown.style.display === 'block';
+            const container = document.getElementById('categoryDropdownContainer');
+            const isOpen = container.classList.contains('open');
             closeAllDropdowns();
-            dropdown.style.display = isVisible ? 'none' : 'block';
+            if (!isOpen) {
+                container.classList.add('open');
+            }
         }
 
         function toggleGroupDropdown() {
-            const dropdown = document.getElementById('groupDropdown');
-            const isVisible = dropdown.style.display === 'block';
+            const container = document.getElementById('groupDropdownContainer');
+            const isOpen = container.classList.contains('open');
             closeAllDropdowns();
-            dropdown.style.display = isVisible ? 'none' : 'block';
+            if (!isOpen) {
+                container.classList.add('open');
+            }
         }
 
         function closeAllDropdowns() {
-            document.getElementById('entityDropdown').style.display = 'none';
-            document.getElementById('categoryDropdown').style.display = 'none';
-            document.getElementById('groupDropdown').style.display = 'none';
+            document.getElementById('entityDropdownContainer')?.classList.remove('open');
+            document.getElementById('categoryDropdownContainer')?.classList.remove('open');
+            document.getElementById('groupDropdownContainer')?.classList.remove('open');
+            document.getElementById('instanceDropdownContainer')?.classList.remove('open');
         }
 
         document.addEventListener('click', function(e) {
-            if (!e.target.closest('.filter-select')) {
+            if (!e.target.closest('.instance-dropdown')) {
                 closeAllDropdowns();
             }
         });
