@@ -1079,6 +1079,24 @@
         }
 
         function processTickets(rawTickets, instanceName) {
+            if (rawTickets.length > 0 && console.group) {
+                console.group(`🔍 Análise dos campos do GLPI (${instanceName})`);
+                console.log('Campos disponíveis no primeiro ticket:');
+                const firstTicket = rawTickets[0];
+                for (let key in firstTicket) {
+                    if (key !== 'links' && key !== 'relationships') {
+                        console.log(`  ticket[${key}] = ${JSON.stringify(firstTicket[key])}`);
+                    }
+                }
+                console.log('\nCampos específicos para data:');
+                console.log(`  ticket[15] (date) = ${firstTicket[15]}`);
+                console.log(`  ticket[19] (date_mod) = ${firstTicket[19]}`);
+                console.log(`  ticket[91] = ${firstTicket[91]}`);
+                console.log(`  ticket.date_creation = ${firstTicket.date_creation}`);
+                console.log(`  ticket.date_mod = ${firstTicket.date_mod}`);
+                console.groupEnd();
+            }
+
             return rawTickets.map(ticket => {
                 const statusId = parseInt(ticket[12]) || 1;
                 const statusInfo = STATUS_CONFIG[statusId] || STATUS_CONFIG[1];
@@ -1096,6 +1114,8 @@
 
                 let category = ticket[7] || 'Não categorizado';
 
+                const lastUpdate = ticket.date_mod || ticket[19] || ticket[91] || ticket.date_creation || ticket[15];
+
                 return {
                     id: ticket[2] || ticket.id,
                     title: ticket[1] || 'Sem título',
@@ -1106,8 +1126,8 @@
                     status: statusInfo.key,
                     statusName: statusInfo.name,
                     group: ticket[8] || 'Não atribuído',
-                    dateCreated: ticket[15] || ticket.date_creation,
-                    lastUpdate: ticket[19] || ticket.date_creation,
+                    dateCreated: ticket.date_creation || ticket[15] || ticket.date,
+                    lastUpdate: lastUpdate,
                     instance: instanceName,
                     instanceUrl: INSTANCES[instanceName].TICKET_URL,
                 };
