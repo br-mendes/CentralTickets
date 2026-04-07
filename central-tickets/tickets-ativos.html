@@ -382,16 +382,29 @@
         }
 
         .multi-select-header {
-            background: var(--surface);
+            padding: 10px 32px 10px 12px;
             border: 1px solid var(--border);
             border-radius: var(--radius-md);
             font-size: 0.875rem;
+            background: var(--surface);
             color: var(--text-primary);
+            cursor: pointer;
             user-select: none;
+            transition: all 0.2s;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
         }
 
         .multi-select-header:hover {
             background: var(--background);
+            border-color: var(--primary);
+        }
+
+        .multi-select-header:focus {
+            outline: none;
+            border-color: var(--primary);
         }
 
         .multi-select-dropdown label:hover {
@@ -1009,7 +1022,7 @@
         </div>
         
         <div class="filter-select" style="position: relative;">
-            <div class="multi-select-header" onclick="toggleEntityDropdown()" style="padding: 10px 32px 10px 12px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
+            <div class="multi-select-header" onclick="toggleEntityDropdown()">
                 <span id="entitySelectLabel">Entidades</span>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);">
                     <polyline points="6 9 12 15 18 9"></polyline>
@@ -1025,7 +1038,7 @@
         </div>
 
         <div class="filter-select" style="position: relative;">
-            <div class="multi-select-header" onclick="toggleCategoryDropdown()" style="padding: 10px 32px 10px 12px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
+            <div class="multi-select-header" onclick="toggleCategoryDropdown()">
                 <span id="categorySelectLabel">Categorias</span>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);">
                     <polyline points="6 9 12 15 18 9"></polyline>
@@ -1041,7 +1054,7 @@
         </div>
 
         <div class="filter-select" style="position: relative;">
-            <div class="multi-select-header" onclick="toggleGroupDropdown()" style="padding: 10px 32px 10px 12px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
+            <div class="multi-select-header" onclick="toggleGroupDropdown()">
                 <span id="groupSelectLabel">Responsáveis</span>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);">
                     <polyline points="6 9 12 15 18 9"></polyline>
