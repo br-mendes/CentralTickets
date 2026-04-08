@@ -1340,6 +1340,7 @@
         // ========== FIM SUPABASE SYNC ==========
 
         const STATUS_CONFIG = {
+            1: { name: 'Novo', key: 'new' },
             2: { name: 'Em atendimento', key: 'processing' },
             3: { name: 'Em atendimento', key: 'processing' },
             4: { name: 'Pendente', key: 'pending' },
@@ -2050,8 +2051,9 @@
             return rawTickets.map(ticket => {
                 const statusId = parseInt(ticket[12]) || 2;
                 
-                // Filtrar apenas tickets não fechados (status 6 = closed)
-                if (statusId === 6) return null;
+                // Filtrar apenas tickets ativos (status 1=new, 2=processing, 3=processing, 4=pending)
+                // Remover status 5 (solved) e 6 (closed)
+                if (statusId === 5 || statusId === 6) return null;
                 
                 const statusInfo = STATUS_CONFIG[statusId] || STATUS_CONFIG[2];
                 
@@ -2066,9 +2068,18 @@
                 
                 entityShort = entityShort || entityFull;
                 
+                // Tempo para concluir excedido (campo 151 = due_date)
                 const dueDate = ticket[151];
                 const isSlaLate = isSlaExceeded(dueDate);
-
+                
+                // Calcular tempo de pausa: agora - última atualização
+                const lastUpdate = ticket.date_mod || ticket[19] || ticket[91] || ticket[15];
+                const timePending = calculatePendingTime(lastUpdate);
+                
+                // Técnico: campo 5 é o criador, mas técnico asignado pode estar em outro campo
+                //Vamos verificar campos comuns para técnico asignado
+                const technician = ticket[5] || ticket.users_id_recipient || ticket[4] || '';
+                
                 return {
                     id: ticket[2],
                     title: ticket[1],
@@ -2079,10 +2090,11 @@
                     status: statusInfo.key,
                     statusName: statusInfo.name,
                     group: ticket[8] || 'Não atribuído',
-                    technician: ticket[5] || '',
+                    technician: technician,
                     dateCreated: ticket[15],
                     dueDate: dueDate,
                     isSlaLate: isSlaLate,
+                    timePending: timePending,
                     pendingReason: ticket[400] || '',
                     timePending: statusInfo.key === 'pending' ? calculatePendingTime(ticket[15]) : null,
                     instance: instanceName,
@@ -2194,7 +2206,6 @@
                             <span class="instance-badge ${instanceClass}">${ticket.instance}</span>
                         </td>
                         <td class="entity col-entity" title="${ticket.entityFull}">${ticket.entity}</td>
-                        <td class="category col-category" title="${ticket.category}">${ticket.category}</td>
                         <td class="col-status">
                             <span class="status-badge ${ticket.status}">
                                 <span class="status-dot"></span>
@@ -2206,13 +2217,12 @@
                         <td class="date col-date">${formatDate(ticket.dateCreated)}</td>
                         <td class="date col-date">${formatDate(ticket.dueDate)}</td>
                         <td class="hide-mobile col-pending">
-                            ${ticket.timePending ? `<div class="pending-time">${ticket.timePending}</div>` : ''}
+                            ${ticket.timePending || '-'}
                         </td>
                         <td class="col-sla">
                             <span class="sla-badge ${slaClass}">
                                 ${slaText}
                             </span>
-                            ${ticket.dueDate ? `<span class="sla-countdown" data-due="${ticket.dueDate}">--:--:--</span>` : ''}
                         </td>
                     </tr>
                 `;
@@ -2226,9 +2236,8 @@
                                 <th onclick="sortTable('id')" class="col-id ${currentSort.field === 'id' ? 'sorted' : ''}">ID<span class="sort-icon">${getSortIcon('id')}</span></th>
                                 <th onclick="sortTable('instance')" class="col-instance ${currentSort.field === 'instance' ? 'sorted' : ''}">Instância<span class="sort-icon">${getSortIcon('instance')}</span></th>
                                 <th onclick="sortTable('entity')" class="col-entity ${currentSort.field === 'entity' ? 'sorted' : ''}">Entidade<span class="sort-icon">${getSortIcon('entity')}</span></th>
-                                <th onclick="sortTable('category')" class="col-category ${currentSort.field === 'category' ? 'sorted' : ''}">Categoria<span class="sort-icon">${getSortIcon('category')}</span></th>
                                 <th onclick="sortTable('status')" class="col-status ${currentSort.field === 'status' ? 'sorted' : ''}">Status<span class="sort-icon">${getSortIcon('status')}</span></th>
-                                <th onclick="sortTable('group')" class="col-group ${currentSort.field === 'group' ? 'sorted' : ''}">Responsável<span class="sort-icon">${getSortIcon('group')}</span></th>
+                                <th onclick="sortTable('group')" class="col-group ${currentSort.field === 'group' ? 'sorted' : ''}">Grupo Responsável<span class="sort-icon">${getSortIcon('group')}</span></th>
                                 <th>Técnico</th>
                                 <th onclick="sortTable('dateCreated')" class="col-date ${currentSort.field === 'dateCreated' ? 'sorted' : ''}">Abertura<span class="sort-icon">${getSortIcon('dateCreated')}</span></th>
                                 <th onclick="sortTable('dueDate')" class="col-date ${currentSort.field === 'dueDate' ? 'sorted' : ''}">Previsto<span class="sort-icon">${getSortIcon('dueDate')}</span></th>
