@@ -269,6 +269,16 @@
             color: var(--text-muted);
         }
 
+        .refresh-countdown {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-left: 10px;
+        }
+
+        .refresh-countdown::before {
+            content: "⏱️ ";
+        }
+
         .btn {
             display: inline-flex;
             align-items: center;
@@ -957,6 +967,7 @@
                         </svg>
                     </button>
                     <span class="last-update" id="lastUpdate"></span>
+                    <span class="refresh-countdown" id="refreshCountdown"></span>
                     <button class="btn btn-primary" id="refreshBtn" onclick="refreshTickets()">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M21 2v6h-6"></path>
@@ -1259,9 +1270,34 @@
         const INITIAL_LOAD = 100;
         const LOAD_MORE = 50;
 
-        // Intervalo de atualização automática (1 minuto)
-        const REFRESH_INTERVAL = 180000;
+        // Intervalo de atualização automática (30 minutos)
+        const REFRESH_INTERVAL = 1800000;
         let refreshTimer = null;
+        let countdownTimer = null;
+        let nextRefreshTime = null;
+
+        // Função para atualizar o contador regressivo
+        function updateCountdown() {
+            if (!nextRefreshTime) return;
+            
+            const now = Date.now();
+            const remaining = Math.max(0, nextRefreshTime - now);
+            const minutes = Math.floor(remaining / 60000);
+            const seconds = Math.floor((remaining % 60000) / 1000);
+            
+            const countdownEl = document.getElementById('refreshCountdown');
+            if (countdownEl) {
+                countdownEl.textContent = `Próximo refresh: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }
+        }
+
+        // Função para iniciar o contador regressivo
+        function startCountdown() {
+            nextRefreshTime = Date.now() + REFRESH_INTERVAL;
+            updateCountdown();
+            if (countdownTimer) clearInterval(countdownTimer);
+            countdownTimer = setInterval(updateCountdown, 1000);
+        }
 
         // Função para iniciar sessão na API - tenta diferentes endpoints
         async function initSession() {
@@ -1854,6 +1890,9 @@ ${JSON.stringify(error, null, 2)}
                     lastUpdateEl.textContent = `Última atualização: ${getCurrentTimeFormatted()}`;
                 }
                 
+                // Reiniciar contador regressivo
+                startCountdown();
+                
                 console.log('✅ Atualização concluída com sucesso');
             } catch (error) {
                 console.error('❌ Erro na atualização:', error);
@@ -1951,6 +1990,7 @@ ${JSON.stringify(error, null, 2)}
             // Configurar atualização automática
             refreshTimer = setInterval(refreshTickets, REFRESH_INTERVAL);
             countdownTimer = setInterval(updateSlaCountdowns, 1000);
+            startCountdown();
         });
 
         // Cleanup ao sair da página

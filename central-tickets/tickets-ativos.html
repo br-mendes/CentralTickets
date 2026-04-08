@@ -261,6 +261,16 @@
             color: var(--text-muted);
         }
 
+        .refresh-countdown {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-left: 10px;
+        }
+
+        .refresh-countdown::before {
+            content: "⏱️ ";
+        }
+
         .btn {
             display: inline-flex;
             align-items: center;
@@ -1047,6 +1057,7 @@
                     </svg>
                 </button>
                 <span class="last-update" id="lastUpdate"></span>
+                <span class="refresh-countdown" id="refreshCountdown"></span>
                 <button class="btn btn-primary" id="refreshBtn" onclick="refreshTickets()">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 2v6h-6"></path>
@@ -1349,6 +1360,31 @@
         let quickFilters = { slaLate: false, pending: false };
         const REFRESH_INTERVAL = 180000;
         let refreshTimer = null;
+        let countdownTimer = null;
+        let nextRefreshTime = null;
+
+        // Função para atualizar o contador regressivo
+        function updateCountdown() {
+            if (!nextRefreshTime) return;
+            
+            const now = Date.now();
+            const remaining = Math.max(0, nextRefreshTime - now);
+            const minutes = Math.floor(remaining / 60000);
+            const seconds = Math.floor((remaining % 60000) / 1000);
+            
+            const countdownEl = document.getElementById('refreshCountdown');
+            if (countdownEl) {
+                countdownEl.textContent = `Próximo refresh: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }
+        }
+
+        // Função para iniciar o contador regressivo
+        function startCountdown() {
+            nextRefreshTime = Date.now() + REFRESH_INTERVAL;
+            updateCountdown();
+            if (countdownTimer) clearInterval(countdownTimer);
+            countdownTimer = setInterval(updateCountdown, 1000);
+        }
 
         function initInstanceButtons() {
             const btnPeta = document.getElementById('btnPeta');
@@ -2241,6 +2277,9 @@
                 populateInstanceStats();
                 applyFilters();
                 document.getElementById('lastUpdate').textContent = `Atualizado: ${getCurrentTimeFormatted()}`;
+                
+                // Reiniciar contador regressivo
+                startCountdown();
             } catch (error) {
                 console.error('Erro ao carregar tickets:', error);
                 showError('Erro ao carregar tickets', 'Verifique sua conexão ou tente novamente.');
@@ -2313,6 +2352,7 @@
             refreshTickets();
             refreshTimer = setInterval(refreshTickets, REFRESH_INTERVAL);
             countdownTimer = setInterval(updateSlaCountdowns, 1000);
+            startCountdown();
         });
 
         window.addEventListener('beforeunload', () => {
