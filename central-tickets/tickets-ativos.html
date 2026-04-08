@@ -1972,45 +1972,58 @@
             }
 
             try {
-                const searchParams = new URLSearchParams({
-                    'range': '0-500',
-                    'expand_dropdowns': 'true',
-                    'get_hateoas': 'false',
-                });
+                const allTickets = [];
+                let page = 0;
+                const pageSize = 100;
+                let hasMore = true;
 
-                searchParams.append('criteria[0][link]', 'OR');
-                searchParams.append('criteria[0][field]', '12');
-                searchParams.append('criteria[0][searchtype]', 'equals');
-                searchParams.append('criteria[0][value]', '2');
-                
-                searchParams.append('criteria[1][link]', 'OR');
-                searchParams.append('criteria[1][field]', '12');
-                searchParams.append('criteria[1][searchtype]', 'equals');
-                searchParams.append('criteria[1][value]', '3');
-                
-                searchParams.append('criteria[2][link]', 'OR');
-                searchParams.append('criteria[2][field]', '12');
-                searchParams.append('criteria[2][searchtype]', 'equals');
-                searchParams.append('criteria[2][value]', '4');
+                while (hasMore) {
+                    const start = page * pageSize;
+                    const end = start + pageSize - 1;
 
-                const response = await fetch(
-                    `${instance.BASE_URL}/search/Ticket?${searchParams.toString()}`,
-                    {
-                        method: 'GET',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Session-Token': sessionTokens[instanceName],
-                            'App-Token': instance.APP_TOKEN,
-                        },
+                    const searchParams = new URLSearchParams({
+                        'range': `${start}-${end}`,
+                        'expand_dropdowns': 'true',
+                        'get_hateoas': 'false',
+                    });
+
+                    const response = await fetch(
+                        `${instance.BASE_URL}/search/Ticket?${searchParams.toString()}`,
+                        {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Session-Token': sessionTokens[instanceName],
+                                'App-Token': instance.APP_TOKEN,
+                            },
+                        }
+                    );
+
+                    if (!response.ok) {
+                        if (response.status === 401) {
+                            await initSession(instanceName);
+                            continue;
+                        }
+                        throw new Error(`Erro ao buscar tickets de ${instanceName}: ${response.status}`);
                     }
-                );
 
-                if (!response.ok) {
-                    throw new Error(`Erro ao buscar tickets de ${instanceName}: ${response.status}`);
+                    const data = await response.json();
+                    
+                    if (!data.data || data.data.length === 0) {
+                        hasMore = false;
+                        break;
+                    }
+
+                    allTickets.push(...data.data);
+                    page++;
+                    
+                    if (page >= 100 || allTickets.length >= data.totalcount) {
+                        hasMore = false;
+                    }
                 }
 
-                const data = await response.json();
-                return processTickets(data.data || [], instanceName);
+                console.log(`${instanceName}: ${allTickets.length} tickets carregados`);
+                return processTickets(allTickets, instanceName);
             } catch (error) {
                 console.error(`Erro ao buscar tickets de ${instanceName}:`, error);
                 throw error;
