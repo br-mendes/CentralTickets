@@ -2231,7 +2231,7 @@
                 try {
                     console.log(`Tentando autenticar em: ${baseUrl}`);
                     
-                    const response = await fetch(`${baseUrl}/initSession/`, {
+                    const response = await fetch(`${baseUrl}/initSession`, {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json',
@@ -2293,7 +2293,7 @@
             console.log(`[GLPI] App Token: ${instance.APP_TOKEN ? 'definido' : 'NÃO DEFINIDO'}`);
             
             try {
-                const response = await fetch(`${instance.BASE_URL}/initSession/`, {
+                const response = await fetch(`${instance.BASE_URL}/initSession`, {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
@@ -2346,7 +2346,7 @@
                     });
 
                     const response = await fetch(
-                        `${instance.BASE_URL}/search/Ticket/?${searchParams.toString()}`,
+                        `${instance.BASE_URL}/search/Ticket?${searchParams.toString()}`,
                         {
                             method: 'GET',
                             headers: {

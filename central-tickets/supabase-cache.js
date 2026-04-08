@@ -260,7 +260,7 @@ const GLPIFetcher = {
 
             try {
                 const response = await fetch(
-                    `${instanceConfig.BASE_URL}/search/Ticket/?${searchParams.toString()}`,
+                    `${instanceConfig.BASE_URL}/search/Ticket?${searchParams.toString()}`,
                     {
                         method: 'GET',
                         headers: {
@@ -312,7 +312,7 @@ const GLPIFetcher = {
 
             try {
                 const response = await fetch(
-                    `${instanceConfig.BASE_URL}/search/Ticket/?${searchParams.toString()}`,
+                    `${instanceConfig.BASE_URL}/search/Ticket?${searchParams.toString()}`,
                     {
                         method: 'GET',
                         headers: {
@@ -391,7 +391,7 @@ const HybridLoader = {
 
             try {
                 // Init session
-                const sessionResponse = await fetch(`${config.BASE_URL}/initSession/`, {
+                const sessionResponse = await fetch(`${config.BASE_URL}/initSession`, {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
@@ -474,7 +474,7 @@ const HybridLoader = {
 
             try {
                 const response = await fetch(
-                    `${config.BASE_URL}/search/Ticket/?${searchParams.toString()}`,
+                    `${config.BASE_URL}/search/Ticket?${searchParams.toString()}`,
                     {
                         method: 'GET',
                         headers: {

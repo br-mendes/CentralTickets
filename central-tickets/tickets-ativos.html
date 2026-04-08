@@ -1942,7 +1942,7 @@
         async function initSession(instanceName) {
             const instance = INSTANCES[instanceName];
             try {
-                const response = await fetch(`${instance.BASE_URL}/initSession/`, {
+                const response = await fetch(`${instance.BASE_URL}/initSession`, {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1994,7 +1994,7 @@
                 searchParams.append('criteria[2][value]', '4');
 
                 const response = await fetch(
-                    `${instance.BASE_URL}/search/Ticket/?${searchParams.toString()}`,
+                    `${instance.BASE_URL}/search/Ticket?${searchParams.toString()}`,
                     {
                         method: 'GET',
                         headers: {
