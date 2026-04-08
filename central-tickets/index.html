@@ -3375,30 +3375,20 @@ ${JSON.stringify(error, null, 2)}
                     console.log(`📂 Cache local carregado: ${tickets.length} tickets`);
                 }
 
-                // Carregamento híbrido: cache rápido + GLPI realtime
+                // Carregar tickets diretamente do GLPI (sem cache)
                 const result = await HybridLoader.loadTickets({
                     instances: selectedInstances,
                     instanceConfigs: INSTANCES,
                     onProgress: (progress) => {
-                        if (progress.stage === 'cache') {
-                            showLoading(`Cache: ${progress.message}`);
-                        } else if (progress.stage === 'glpi') {
+                        if (progress.stage === 'glpi') {
                             showLoading(`GLPI: ${progress.message}`);
                         }
                     },
-                    useCache: true,
-                    glpiLimit: 200 // Apenas os 200 mais recentes do GLPI
+                    useCache: false,
+                    glpiLimit: 500 // Buscar mais tickets do GLPI
                 });
 
                 tickets = result.tickets;
-                
-                // Sincronizar tickets mais recentes para o Supabase
-                const glpiTickets = result.sources.glpi;
-                if (glpiTickets.length > 0) {
-                    await syncTicketsToSupabase(glpiTickets, 'ALL');
-                }
-
-                saveCache();
                 loadedCounts = { processing: INITIAL_LOAD, pending: INITIAL_LOAD, solved: INITIAL_LOAD, closed: INITIAL_LOAD };
                 renderKanban(tickets);
                 
