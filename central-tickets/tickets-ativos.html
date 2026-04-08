@@ -1183,10 +1183,8 @@
 
     <script src="config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-cache.js"></script>
     <script>
-        // Auth temporarily disabled
-
-        // Configuração do Supabase via Environment Variables
         const SUPABASE_URL = window.APP_CONFIG?.SUPABASE_URL || '';
         const SUPABASE_ANON_KEY = window.APP_CONFIG?.SUPABASE_ANON_KEY || '';
         
@@ -2207,7 +2205,35 @@
             showLoading();
 
             try {
-                tickets = await getAllTickets();
+                const result = await HybridLoader.loadTickets({
+                    instances: selectedInstances,
+                    instanceConfigs: INSTANCES,
+                    glpiLimit: 200,
+                    onProgress: (progress) => {
+                        if (progress.stage === 'cache') {
+                            showLoading();
+                        }
+                    }
+                });
+
+                tickets = result.tickets.map(ticket => ({
+                    id: ticket.ticket_id || ticket.id,
+                    title: ticket.title || ticket.name || '',
+                    entity: ticket.entity || '',
+                    entityFull: ticket.entity_full || ticket.entity || '',
+                    category: ticket.category || ticket[7] || 'Não categorizado',
+                    statusId: ticket.status_id || parseInt(ticket[12]) || 2,
+                    status: ticket.status_key || ticket.status || 'processing',
+                    statusName: ticket.status_name || ticket.statusName || 'Em atendimento',
+                    group: ticket.group_name || ticket.group || ticket[8] || 'Não atribuído',
+                    dateCreated: ticket.date_created || ticket.date_creation || ticket[15] || '',
+                    dueDate: ticket.due_date || ticket[151] || '',
+                    isSlaLate: ticket.is_sla_late || false,
+                    instance: ticket.instance || '',
+                    instanceUrl: INSTANCES[ticket.instance]?.TICKET_URL || '',
+                    _source: ticket._source
+                }));
+
                 filteredTickets = [...tickets];
                 populateEntityFilter();
                 populateCategoryFilter();
@@ -2216,6 +2242,7 @@
                 applyFilters();
                 document.getElementById('lastUpdate').textContent = `Atualizado: ${getCurrentTimeFormatted()}`;
             } catch (error) {
+                console.error('Erro ao carregar tickets:', error);
                 showError('Erro ao carregar tickets', 'Verifique sua conexão ou tente novamente.');
             } finally {
                 isLoading = false;
@@ -2280,6 +2307,9 @@
             initTheme();
             initInstanceButtons();
             initInstanceDropdown();
+            if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+                SupabaseCache.init(SUPABASE_URL, SUPABASE_ANON_KEY);
+            }
             refreshTickets();
             refreshTimer = setInterval(refreshTickets, REFRESH_INTERVAL);
             countdownTimer = setInterval(updateSlaCountdowns, 1000);

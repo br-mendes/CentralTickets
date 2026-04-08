@@ -979,6 +979,7 @@
     </div>
 
     <script src="config.js"></script>
+    <script src="supabase-cache.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         // Auth temporarily disabled
@@ -1916,6 +1917,14 @@ ${JSON.stringify(error, null, 2)}
 
         // Inicialização
         document.addEventListener('DOMContentLoaded', () => {
+            // Inicializar Supabase cache
+            const supabaseUrl = window.APP_CONFIG?.SUPABASE_URL || '';
+            const supabaseKey = window.APP_CONFIG?.SUPABASE_ANON_KEY || '';
+            if (supabaseUrl && supabaseKey) {
+                SupabaseCache.init(supabaseUrl, supabaseKey);
+                console.log('✅ Supabase Cache inicializado');
+            }
+
             initTheme();
             initInstanceDropdown();
             
