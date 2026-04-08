@@ -2036,6 +2036,10 @@
         function processTickets(rawTickets, instanceName) {
             return rawTickets.map(ticket => {
                 const statusId = parseInt(ticket[12]) || 2;
+                
+                // Filtrar apenas tickets não fechados (status 6 = closed)
+                if (statusId === 6) return null;
+                
                 const statusInfo = STATUS_CONFIG[statusId] || STATUS_CONFIG[2];
                 
                 const entityFull = ticket[80] || '';
@@ -2062,6 +2066,7 @@
                     status: statusInfo.key,
                     statusName: statusInfo.name,
                     group: ticket[8] || 'Não atribuído',
+                    technician: ticket[5] || '',
                     dateCreated: ticket[15],
                     dueDate: dueDate,
                     isSlaLate: isSlaLate,
@@ -2070,7 +2075,7 @@
                     instance: instanceName,
                     instanceUrl: INSTANCES[instanceName].TICKET_URL,
                 };
-            });
+            }).filter(t => t !== null);
         }
 
         function isSlaExceeded(dueDateStr) {
@@ -2184,6 +2189,7 @@
                             </span>
                         </td>
                         <td class="col-group">${ticket.group}</td>
+                        <td>${ticket.technician || '-'}</td>
                         <td class="date col-date">${formatDate(ticket.dateCreated)}</td>
                         <td class="date col-date">${formatDate(ticket.dueDate)}</td>
                         <td class="hide-mobile col-pending">
@@ -2210,6 +2216,7 @@
                                 <th onclick="sortTable('category')" class="col-category ${currentSort.field === 'category' ? 'sorted' : ''}">Categoria<span class="sort-icon">${getSortIcon('category')}</span></th>
                                 <th onclick="sortTable('status')" class="col-status ${currentSort.field === 'status' ? 'sorted' : ''}">Status<span class="sort-icon">${getSortIcon('status')}</span></th>
                                 <th onclick="sortTable('group')" class="col-group ${currentSort.field === 'group' ? 'sorted' : ''}">Responsável<span class="sort-icon">${getSortIcon('group')}</span></th>
+                                <th>Técnico</th>
                                 <th onclick="sortTable('dateCreated')" class="col-date ${currentSort.field === 'dateCreated' ? 'sorted' : ''}">Abertura<span class="sort-icon">${getSortIcon('dateCreated')}</span></th>
                                 <th onclick="sortTable('dueDate')" class="col-date ${currentSort.field === 'dueDate' ? 'sorted' : ''}">Previsto<span class="sort-icon">${getSortIcon('dueDate')}</span></th>
                                 <th class="hide-mobile col-pending">Tempo Pausa</th>
@@ -2217,7 +2224,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            ${rowsHTML || '<tr><td colspan="10" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum ticket encontrado</td></tr>'}
+                            ${rowsHTML || '<tr><td colspan="11" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum ticket encontrado</td></tr>'}
                         </tbody>
                     </table>
                 </div>
