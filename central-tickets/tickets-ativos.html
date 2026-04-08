@@ -2248,11 +2248,11 @@
             showLoading();
 
             try {
-                // Buscar tickets diretamente do GLPI (sem cache)
+                // Buscar todos os tickets do GLPI (sem limite)
                 const result = await HybridLoader.loadTickets({
                     instances: selectedInstances,
                     instanceConfigs: INSTANCES,
-                    glpiLimit: 500,
+                    glpiLimit: 10000,
                     onProgress: (progress) => {
                         if (progress.stage === 'glpi') {
                             showLoading();

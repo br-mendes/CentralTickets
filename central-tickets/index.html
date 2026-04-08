@@ -3375,7 +3375,7 @@ ${JSON.stringify(error, null, 2)}
                     console.log(`📂 Cache local carregado: ${tickets.length} tickets`);
                 }
 
-                // Carregar tickets diretamente do GLPI (sem cache)
+                // Carregar tickets diretamente do GLPI (sem limite)
                 const result = await HybridLoader.loadTickets({
                     instances: selectedInstances,
                     instanceConfigs: INSTANCES,
@@ -3385,7 +3385,7 @@ ${JSON.stringify(error, null, 2)}
                         }
                     },
                     useCache: false,
-                    glpiLimit: 500 // Buscar mais tickets do GLPI
+                    glpiLimit: 10000 // Buscar todos os tickets (alta contagem)
                 });
 
                 tickets = result.tickets;

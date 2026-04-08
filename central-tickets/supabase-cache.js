@@ -456,12 +456,13 @@ const HybridLoader = {
         };
     },
 
-    async fetchNewestFromGLPI(config, sessionToken, limit = 200) {
+    async fetchNewestFromGLPI(config, sessionToken, limit = 10000) {
         const tickets = [];
         let page = 0;
         const pageSize = 100;
+        let hasMore = true;
 
-        while (tickets.length < limit) {
+        while (tickets.length < limit && hasMore) {
             const start = page * pageSize;
             const end = start + pageSize - 1;
 
@@ -471,29 +472,50 @@ const HybridLoader = {
                 'get_hateoas': 'false',
             });
 
-            const response = await fetch(
-                `${config.BASE_URL}/search/Ticket/?${searchParams.toString()}`,
-                {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Session-Token': sessionToken,
-                        'App-Token': config.APP_TOKEN,
-                    },
+            try {
+                const response = await fetch(
+                    `${config.BASE_URL}/search/Ticket/?${searchParams.toString()}`,
+                    {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Session-Token': sessionToken,
+                            'App-Token': config.APP_TOKEN,
+                        },
+                    }
+                );
+
+                if (!response.ok) {
+                    console.error(`Erro na busca: ${response.status}`);
+                    break;
                 }
-            );
 
-            if (!response.ok) break;
+                const data = await response.json();
+                if (!data.data || data.data.length === 0) {
+                    hasMore = false;
+                    break;
+                }
 
-            const data = await response.json();
-            if (!data.data || data.data.length === 0) break;
-
-            tickets.push(...data.data);
-            page++;
-
-            if (page >= Math.ceil(limit / pageSize)) break;
+                tickets.push(...data.data);
+                
+                // Verificar se há mais dados
+                if (data.data.length < pageSize || data.totalcount <= tickets.length) {
+                    hasMore = false;
+                }
+                
+                page++;
+                
+                // Limite de segurança (10000 tickets)
+                if (page >= 100) {
+                    hasMore = false;
+                }
+            } catch (error) {
+                console.error('Erro ao buscar tickets:', error);
+                break;
+            }
         }
 
+        console.log(`Total de tickets buscados: ${tickets.length}`);
         return tickets.slice(0, limit);
     },
 
