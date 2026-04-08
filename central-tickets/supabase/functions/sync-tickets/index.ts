@@ -67,7 +67,7 @@ async function initSession(instance: typeof GLPI_INSTANCES.PETA | typeof GLPI_IN
 async function getAllTickets(instance: typeof GLPI_INSTANCES.PETA | typeof GLPI_INSTANCES.GMX, sessionToken: string) {
   const allTickets: any[] = []
   let page = 0
-  const pageSize = 50
+  const pageSize = 25
 
   while (true) {
     const start = page * pageSize
@@ -108,7 +108,7 @@ async function getAllTickets(instance: typeof GLPI_INSTANCES.PETA | typeof GLPI_
 
     allTickets.push(...data.data)
     page++
-    if (page >= 50) break
+    if (page >= 25) break
   }
 
   return allTickets
@@ -274,10 +274,9 @@ Deno.serve(async (req) => {
   const startTime = Date.now()
   
   try {
-    const [petaResult, gmxResult] = await Promise.all([
-      syncInstance('PETA'),
-      syncInstance('GMX')
-    ])
+    // Sincronizar sequencialmente para evitar timeout
+    const petaResult = await syncInstance('PETA')
+    const gmxResult = await syncInstance('GMX')
     
     const duration = Date.now() - startTime
     
