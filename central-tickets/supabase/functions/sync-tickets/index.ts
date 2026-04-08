@@ -42,7 +42,10 @@ interface TicketData {
 }
 
 async function initSession(instance: typeof GLPI_INSTANCES.PETA | typeof GLPI_INSTANCES.GMX) {
-  const response = await fetch(`${instance.BASE_URL}/initSession/`, {
+  const url = `${instance.BASE_URL}/initSession`
+  console.log(`[${instance.BASE_URL}] Iniciando sessão...`)
+  
+  const response = await fetch(url, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -50,7 +53,13 @@ async function initSession(instance: typeof GLPI_INSTANCES.PETA | typeof GLPI_IN
       'App-Token': instance.APP_TOKEN,
     },
   })
-  if (!response.ok) throw new Error(`Erro ao iniciar sessão`)
+  
+  if (!response.ok) {
+    const errorText = await response.text()
+    console.error(`[${instance.BASE_URL}] Erro initSession: ${response.status}`, errorText)
+    throw new Error(`Erro ao iniciar sessão: ${response.status}`)
+  }
+  
   const data = await response.json()
   return data.session_token
 }
@@ -58,7 +67,7 @@ async function initSession(instance: typeof GLPI_INSTANCES.PETA | typeof GLPI_IN
 async function getAllTickets(instance: typeof GLPI_INSTANCES.PETA | typeof GLPI_INSTANCES.GMX, sessionToken: string) {
   const allTickets: any[] = []
   let page = 0
-  const pageSize = 100
+  const pageSize = 50
 
   while (true) {
     const start = page * pageSize
@@ -70,16 +79,40 @@ async function getAllTickets(instance: typeof GLPI_INSTANCES.PETA | typeof GLPI_
       'get_hateoas': 'false',
     })
 
-    const response = await fetch(
-      `${instance.BASE_URL}/search/Ticket/?${searchParams.toString()}`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Session-Token': sessionToken,
-          'App-Token': instance.APP_TOKEN,
-        },
+    const url = `${instance.BASE_URL}/search/Ticket?${searchParams.toString()}`
+    console.log(`[${instance.BASE_URL}] Buscando tickets página ${page} (range: ${start}-${end})`)
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Session-Token': sessionToken,
+        'App-Token': instance.APP_TOKEN,
+      },
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error(`[${instance.BASE_URL}] Erro busca: ${response.status}`, errorText)
+      if (response.status === 401) {
+        sessionToken = await initSession(instance)
+        continue
       }
+      throw new Error(`Erro na busca: ${response.status}`)
+    }
+
+    const data = await response.json()
+    console.log(`[${instance.BASE_URL}] Página ${page}: ${data.count || 0} tickets (total: ${data.totalcount})`)
+    
+    if (!data.data || data.data.length === 0) break
+
+    allTickets.push(...data.data)
+    page++
+    if (page >= 50) break
+  }
+
+  return allTickets
+}
     )
 
     if (!response.ok) {
@@ -95,7 +128,7 @@ async function getAllTickets(instance: typeof GLPI_INSTANCES.PETA | typeof GLPI_
 
     allTickets.push(...data.data)
     page++
-    if (page >= 100) break
+    if (page >= 50) break
   }
 
   return allTickets
@@ -179,9 +212,12 @@ async function syncInstance(instanceName: 'PETA' | 'GMX') {
   const instance = GLPI_INSTANCES[instanceName]
   
   console.log(`Iniciando sincronização de ${instanceName}...`)
+  console.log(`URL: ${instance.BASE_URL}`)
   
   try {
     const sessionToken = await initSession(instance)
+    console.log(`${instanceName}: Sessão iniciada, token: ${sessionToken.substring(0, 10)}...`)
+    
     const rawTickets = await getAllTickets(instance, sessionToken)
     const tickets = processTickets(rawTickets, instanceName)
     
