@@ -113,26 +113,6 @@ async function getAllTickets(instance: typeof GLPI_INSTANCES.PETA | typeof GLPI_
 
   return allTickets
 }
-    )
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        sessionToken = await initSession(instance)
-        continue
-      }
-      throw new Error(`Erro na busca: ${response.status}`)
-    }
-
-    const data = await response.json()
-    if (!data.data || data.data.length === 0) break
-
-    allTickets.push(...data.data)
-    page++
-    if (page >= 50) break
-  }
-
-  return allTickets
-}
 
 function processEntity(entityFull: string, instanceName: string): string {
   if (!entityFull) return entityFull
