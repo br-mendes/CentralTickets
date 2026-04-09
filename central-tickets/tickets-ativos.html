@@ -2415,7 +2415,7 @@ function lastGroupLabel(name) {
             
             isLoading = true;
             const refreshBtn = document.getElementById('refreshBtn');
-            refreshBtn.disabled = true;
+            if (refreshBtn) refreshBtn.disabled = true;
             showLoading();
 
             try {
@@ -2487,7 +2487,7 @@ function lastGroupLabel(name) {
                 showError('Erro ao carregar tickets', 'Verifique sua conexão ou tente novamente.');
             } finally {
                 isLoading = false;
-                refreshBtn.disabled = false;
+                if (refreshBtn) refreshBtn.disabled = false;
             }
         }
 
