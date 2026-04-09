@@ -41,6 +41,8 @@
             padding: 0;
             box-sizing: border-box;
         }
+        table { table-layout: fixed; width: 100%; }
+        th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -549,6 +551,11 @@
             font-weight: 600;
         }
 
+        .status-badge.pending-approval {
+            background: rgba(139, 92, 246, 0.25);
+            color: #6b21a8;
+        }
+
         .status-badge svg {
             width: 14px;
             height: 14px;
@@ -936,6 +943,10 @@
     </div>
 
     <script src="config.js"></script>
+    <script src="shared-header.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function(){ if (typeof renderSharedHeader === 'function') renderSharedHeader(); });
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         const SUPABASE_URL = window.APP_CONFIG?.SUPABASE_URL || '';
@@ -964,6 +975,7 @@
             4: { name: 'Pendente', key: 'pending' },
             5: { name: 'Solucionado', key: 'solved' },
             6: { name: 'Fechado', key: 'closed' },
+            7: { name: 'Aprovação', key: 'pending-approval', waitText: 'Esperando por uma validação' },
         };
 
         let sessionTokens = {};
@@ -1199,6 +1211,7 @@
 
                 const lastUpdate = ticket.date_mod || ticket[19] || ticket[91] || ticket.date_creation || ticket[15];
 
+                const statusName = (statusId === 7 && statusInfo.waitText) ? statusInfo.waitText : (statusInfo.name || '');
                 return {
                     id: ticket[2] || ticket.id,
                     title: ticket[1] || 'Sem título',
@@ -1207,8 +1220,8 @@
                     category: category,
                     statusId: statusId,
                     status: statusInfo.key,
-                    statusName: statusInfo.name,
-                    group: ticket[8] || 'Não atribuído',
+                    statusName: statusName,
+                    group: lastGroupLabel(ticket[8] || 'Não atribuído'),
                     dateCreated: ticket.date_creation || ticket[15] || ticket.date,
                     lastUpdate: lastUpdate,
                     instance: instanceName,

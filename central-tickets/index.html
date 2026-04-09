@@ -728,6 +728,11 @@
             background: var(--status-pending);
         }
 
+        .status-badge.pending-approval {
+            background: rgba(139, 92, 246, 0.25);
+            color: #6b21a8;
+        }
+
         .ticket-card.urgent {
             border-color: #f59e0b;
             background: linear-gradient(135deg, rgba(245, 158, 11, 0.05), transparent);
@@ -1830,6 +1835,14 @@
                         </svg>
                         Em Espera
                     </a>
+                    <a href="relatorios.html" class="nav-link">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 3h18v18H3z"/>
+                            <path d="M7 7h10"/>
+                            <path d="M7 12h6"/>
+                        </svg>
+                        Relatórios
+                    </a>
                 </nav>
                 <div class="header-right">
                     <div class="cache-actions">
@@ -1918,6 +1931,10 @@
     </div>
 
     <script src="config.js"></script>
+    <script src="shared-header.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function(){ if (typeof renderSharedHeader === 'function') renderSharedHeader(); });
+    </script>
     <script src="supabase-cache.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
@@ -2056,12 +2073,13 @@
 
         // Mapeamento de status do GLPI
         const TICKET_STATUS = {
-            1: { name: 'Novo', key: 'new', color: '#3b82f6' },
+            1: { name: 'Novo', nameLegacy:'Novo', key: 'new', color: '#3b82f6' },
             2: { name: 'Em atendimento', key: 'processing', color: '#f59e0b' },
             3: { name: 'Em atendimento', key: 'processing', color: '#f59e0b' },
             4: { name: 'Pendente', key: 'pending', color: '#8b5cf6' },
             5: { name: 'Solucionado', key: 'solved', color: '#10b981' },
             6: { name: 'Fechado', key: 'closed', color: '#6b7280' },
+            7: { name: 'Aprovação', key: 'pending-approval', color: '#8b5cf6', waitText: 'Esperando por uma validação' },
         };
 
         // Ordem dos status no Kanban (removido 'new')
@@ -2458,7 +2476,7 @@
                     entity: ticket[80] || 'Entidade não definida',
                     category: category,
                     rootCategory: getRootCategory(category),
-                    group: ticket[8] || 'Não atribuído',
+                    group: lastGroupLabel(ticket[8] || 'Não atribuído'),
                     statusId: statusId,
                     status: statusInfo.key,
                     statusName: statusInfo.name,
@@ -3395,8 +3413,7 @@ ${JSON.stringify(error, null, 2)}
                 // Atualizar última atualização
                 const lastUpdateEl = document.getElementById('lastUpdate');
                 if (lastUpdateEl) {
-                    const syncInfo = `Cache: ${result.summary.fromCache} | Realtime: ${result.summary.fromGlpi}`;
-                    lastUpdateEl.textContent = `Atualizado: ${getCurrentTimeFormatted()} (${syncInfo})`;
+                    lastUpdateEl.textContent = `Atualizado: ${getCurrentTimeFormatted()}`;
                 }
                 
                 // Reiniciar contador regressivo
@@ -3504,3 +3521,9 @@ ${JSON.stringify(error, null, 2)}
     </script>
 </body>
 </html>
+        // Helper: extract last segment of group label (global utility across pages)
+        function lastGroupLabel(name) {
+            if (!name) return '';
+            const parts = String(name).split('>');
+            return parts[parts.length - 1].trim();
+        }

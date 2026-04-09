@@ -362,12 +362,14 @@
             color: #c2410c;
         }
 
-        .col-entity, .col-category, .col-group {
-            max-width: 150px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
+.col-entity, .col-category, .col-group {
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+table { table-layout: fixed; width: 100%; }
+th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         .status-badge {
             display: inline-flex;
@@ -380,10 +382,11 @@
         }
 
         .status-badge.new { background: rgba(59, 130, 246, 0.12); color: #2563eb; }
-        .status-badge.processing { background: rgba(245, 158, 11, 0.12); color: #d97706; }
-        .status-badge.pending { background: rgba(139, 92, 246, 0.12); color: #7c3aed; }
-        .status-badge.solved { background: rgba(16, 185, 129, 0.12); color: #059669; }
-        .status-badge.closed { background: rgba(107, 114, 128, 0.12); color: #6b7280; }
+        .status-badge.processing { background: rgba(59, 130, 246, 0.12); color: #1e3a8a; }
+        .status-badge.pending { background: rgba(245, 158, 11, 0.12); color: #d97706; }
+        .status-badge.solved { background: rgba(107, 114, 128, 0.20); color: #374151; }
+        .status-badge.closed { background: rgba(0, 0, 0, 0.12); color: #000; }
+        .status-badge.pending-approval { background: rgba(139, 92, 246, 0.25); color: #6b21a8; }
 
         .sla-badge {
             padding: 2px 8px;
@@ -633,6 +636,10 @@
     </div>
 
     <script src="config.js"></script>
+    <script src="shared-header.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function(){ if (typeof renderSharedHeader === 'function') renderSharedHeader(); });
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         const SUPABASE_URL = window.APP_CONFIG?.SUPABASE_URL || '';
@@ -781,7 +788,7 @@
         // Cache de nomes de usuários para evitar múltiplas chamadas
         const userNameCache = {};
 
-        // Função para buscar nome de usuário pelo ID
+        // Função para buscar nome de usuário pelo ID usando a API de busca
         async function getUserName(userId, instanceName) {
             if (!userId) return '';
             
@@ -792,8 +799,24 @@
 
             try {
                 const instance = INSTANCES[instanceName];
+                
+                // Verificar se sessão ainda é válida
+                if (!sessionTokens[instanceName]) {
+                    await initSession(instanceName);
+                }
+                
+                // Usar a API de busca para buscar usuário por ID
+                const searchParams = new URLSearchParams({
+                    'criteria[0][link]': 'AND',
+                    'criteria[0][field]': '1', // ID field
+                    'criteria[0][searchtype]': 'equals',
+                    'criteria[0][value]': userId.toString(),
+                    'range': '0-0',
+                    'uid_cols': 'true',
+                });
+
                 const response = await fetch(
-                    `${instance.BASE_URL}/User/${userId}`,
+                    `${instance.BASE_URL}/search/User?${searchParams.toString()}`,
                     {
                         method: 'GET',
                         headers: {
@@ -806,10 +829,25 @@
 
                 if (!response.ok) return userId.toString();
 
-                const userData = await response.json();
-                const userName = userData.name || userData.realname ? 
-                    `${userData.name || ''} ${userData.realname || ''}`.trim() : 
-                    userId.toString();
+                const data = await response.json();
+                
+                // O resultado vem com chaves como "User.name" ou "2" (id)
+                // Primeiro tenta buscar pelo nome completo (campo 2 = name)
+                // Campo 2 = Name, Campo 5 = Realname, Campo 1 = ID
+                let userName = userId.toString();
+                
+                if (data.data && data.data[0]) {
+                    // Tentar diferentes campos de nome
+                    const userData = data.data[0];
+                    if (userData['2']) {
+                        userName = userData['2'].toString();
+                    } else if (userData['User.name']) {
+                        userName = userData['User.name'].toString();
+                    } else if (userData['5']) {
+                        // Tentar campo 5 (realname)
+                        userName = userData['5'].toString();
+                    }
+                }
                 
                 userNameCache[cacheKey] = userName;
                 return userName;
@@ -880,6 +918,7 @@
             return rawTickets.map(ticket => {
                 const statusId = parseInt(ticket[12]) || 1;
                 const statusInfo = STATUS_CONFIG[statusId] || STATUS_CONFIG[1];
+                const statusName = (statusId === 7 && statusInfo?.waitText) ? statusInfo.waitText : (statusInfo?.name || '');
                 
                 const entityFull = ticket[80] || '';
                 let entityShort = entityFull;
@@ -908,8 +947,8 @@
                     entity: entityShort,
                     category: category,
                     status: statusInfo.key,
-                    statusName: statusInfo.name,
-                    group: ticket[8] || 'Não atribuído',
+                    statusName: statusName,
+                    group: (function(){ var g = ticket[8] || 'Não atribuído'; if (g) { var parts = String(g).split('>'); return parts[parts.length-1].trim(); } return g; })(),
                     technician: ticket._technicianName || getTechnicianFromTicket(ticket),
                     slaAtendimento: isSlaOwnOverdue ? 'Fora do prazo' : 'No prazo',
                     slaSolucao: isSlaResolveOverdue ? 'Fora do prazo' : 'No prazo',

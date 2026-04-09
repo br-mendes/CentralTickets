@@ -40,6 +40,8 @@
             padding: 0;
             box-sizing: border-box;
         }
+        table { table-layout: fixed; width: 100%; }
+        th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -1193,6 +1195,10 @@
     </main>
 
     <script src="config.js"></script>
+    <script src="shared-header.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function(){ if (typeof renderSharedHeader === 'function') renderSharedHeader(); });
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-cache.js"></script>
     <script>
@@ -1359,10 +1365,16 @@
         let allGroups = [];
         let selectedInstances = ['Peta', 'GMX'];
         let quickFilters = { slaLate: false, pending: false };
-        const REFRESH_INTERVAL = 180000;
+        const REFRESH_INTERVAL = 600000;
         let refreshTimer = null;
         let countdownTimer = null;
-        let nextRefreshTime = null;
+let nextRefreshTime = null;
+// Helper: extract last segment of a group label (e.g. "SUPORTE > Segurança" -> "Segurança")
+function lastGroupLabel(name) {
+    if (!name) return '';
+    const parts = String(name).split('>');
+    return parts[parts.length - 1].trim();
+}
 
         // Função para atualizar o contador regressivo
         function updateCountdown() {
@@ -2055,7 +2067,7 @@
         // Cache de nomes de usuários para evitar múltiplas chamadas
         const userNameCache = {};
 
-        // Função para buscar nome de usuário pelo ID
+        // Função para buscar nome de usuário pelo ID usando a API de busca
         async function getUserName(userId, instanceName) {
             if (!userId) return '';
             
@@ -2066,8 +2078,24 @@
 
             try {
                 const instance = INSTANCES[instanceName];
+                
+                // Verificar se sessão ainda é válida
+                if (!sessionTokens[instanceName]) {
+                    await initSession(instanceName);
+                }
+                
+                // Usar a API de busca para buscar usuário por ID
+                const searchParams = new URLSearchParams({
+                    'criteria[0][link]': 'AND',
+                    'criteria[0][field]': '1', // ID field
+                    'criteria[0][searchtype]': 'equals',
+                    'criteria[0][value]': userId.toString(),
+                    'range': '0-0',
+                    'uid_cols': 'true',
+                });
+
                 const response = await fetch(
-                    `${instance.BASE_URL}/User/${userId}`,
+                    `${instance.BASE_URL}/search/User?${searchParams.toString()}`,
                     {
                         method: 'GET',
                         headers: {
@@ -2080,10 +2108,22 @@
 
                 if (!response.ok) return userId.toString();
 
-                const userData = await response.json();
-                const userName = userData.name || userData.realname ? 
-                    `${userData.name || ''} ${userData.realname || ''}`.trim() : 
-                    userId.toString();
+                const data = await response.json();
+                
+                // O resultado vem com chaves como "User.name" ou "2" (id)
+                // Campo 2 = Name, Campo 5 = Realname, Campo 1 = ID
+                let userName = userId.toString();
+                
+                if (data.data && data.data[0]) {
+                    const userData = data.data[0];
+                    if (userData['2']) {
+                        userName = userData['2'].toString();
+                    } else if (userData['User.name']) {
+                        userName = userData['User.name'].toString();
+                    } else if (userData['5']) {
+                        userName = userData['5'].toString();
+                    }
+                }
                 
                 userNameCache[cacheKey] = userName;
                 return userName;
@@ -2145,6 +2185,8 @@
         function processTickets(rawTickets, instanceName) {
             return rawTickets.map(ticket => {
                 const statusId = parseInt(ticket[12]) || 2;
+                // Exclui itens com status Novo (1) e já finalizados (5,6) para a página de ativos
+                if (statusId === 1 || statusId === 5 || statusId === 6) return null;
                 
                 // Filtrar apenas tickets ativos (status 1=new, 2=processing, 3=processing, 4=pending)
                 // Remover status 5 (solved) e 6 (closed)
@@ -2167,9 +2209,8 @@
                 const dueDate = ticket[151];
                 const isSlaLate = isSlaExceeded(dueDate);
                 
-                // Calcular tempo de pausa: agora - última atualização
+                // data de atualização da tarefa
                 const lastUpdate = ticket.date_mod || ticket[19] || ticket[91] || ticket[15];
-                const timePending = calculatePendingTime(lastUpdate);
                 
                 // Técnico: usar função para buscar campo 4 (atribuído) ou 5 (solicitante)
                 const technician = ticket._technicianName || getTechnicianFromTicket(ticket);
@@ -2183,12 +2224,12 @@
                     statusId: statusId,
                     status: statusInfo.key,
                     statusName: statusInfo.name,
-                    group: ticket[8] || 'Não atribuído',
+                    group: lastGroupLabel(ticket[8] || 'Não atribuído'),
                     technician: technician,
                     dateCreated: ticket[15],
                     dueDate: dueDate,
                     isSlaLate: isSlaLate,
-                    timePending: timePending,
+                    // timePending foi removido deste relatório
                     pendingReason: ticket[400] || '',
                     instance: instanceName,
                     instanceUrl: INSTANCES[instanceName].TICKET_URL,
@@ -2309,9 +2350,7 @@
                         <td>${ticket.technician || '-'}</td>
                         <td class="date col-date">${formatDate(ticket.dateCreated)}</td>
                         <td class="date col-date">${formatDate(ticket.dueDate)}</td>
-                        <td class="hide-mobile col-pending">
-                            ${ticket.timePending || '-'}
-                        </td>
+                        
                         <td class="col-sla">
                             <span class="sla-badge ${slaClass}">
                                 ${slaText}
@@ -2334,7 +2373,7 @@
                                 <th>Técnico</th>
                                 <th onclick="sortTable('dateCreated')" class="col-date ${currentSort.field === 'dateCreated' ? 'sorted' : ''}">Abertura<span class="sort-icon">${getSortIcon('dateCreated')}</span></th>
                                 <th onclick="sortTable('dueDate')" class="col-date ${currentSort.field === 'dueDate' ? 'sorted' : ''}">Previsto<span class="sort-icon">${getSortIcon('dueDate')}</span></th>
-                                <th class="hide-mobile col-pending">Tempo Pausa</th>
+                                
                                 <th onclick="sortTable('sla')" class="col-sla ${currentSort.field === 'sla' ? 'sorted' : ''}">SLA<span class="sort-icon">${getSortIcon('sla')}</span></th>
                             </tr>
                         </thead>
@@ -2385,7 +2424,7 @@
                     statusId: ticket.status_id || parseInt(ticket[12]) || 2,
                     status: ticket.status_key || ticket.status || 'processing',
                     statusName: ticket.status_name || ticket.statusName || 'Em atendimento',
-                    group: ticket.group_name || ticket.group || ticket[8] || 'Não atribuído',
+                    group: lastGroupLabel(ticket.group_name || ticket.group || ticket[8] || 'Não atribuído'),
                     dateCreated: ticket.date_created || ticket.date_creation || ticket[15] || '',
                     dueDate: ticket.due_date || ticket[151] || '',
                     isSlaLate: ticket.is_sla_late || false,
@@ -2393,6 +2432,28 @@
                     instanceUrl: INSTANCES[ticket.instance]?.TICKET_URL || '',
                     _source: ticket._source
                 }));
+
+                // Resolver nomes de técnicos para os tickets carregados
+                const petaTickets = tickets.filter(t => t.instance === 'Peta');
+                const gmxTickets = tickets.filter(t => t.instance === 'GMX');
+                
+                if (petaTickets.length > 0) {
+                    const resolvedPeta = await resolveTechnicianNamesForPage(petaTickets, 'Peta');
+                    // Substituir os tickets PETA pelos resolvidos
+                    const petaIndices = tickets.map((t, i) => t.instance === 'Peta' ? i : -1).filter(i => i !== -1);
+                    resolvedPeta.forEach((resolvedTicket, index) => {
+                        tickets[petaIndices[index]] = resolvedTicket;
+                    });
+                }
+                
+                if (gmxTickets.length > 0) {
+                    const resolvedGmx = await resolveTechnicianNamesForPage(gmxTickets, 'GMX');
+                    // Substituir os tickets GMX pelos resolvidos
+                    const gmxIndices = tickets.map((t, i) => t.instance === 'GMX' ? i : -1).filter(i => i !== -1);
+                    resolvedGmx.forEach((resolvedTicket, index) => {
+                        tickets[gmxIndices[index]] = resolvedTicket;
+                    });
+                }
 
                 filteredTickets = [...tickets];
                 populateEntityFilter();
