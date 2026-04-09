@@ -2037,7 +2037,8 @@
             for (const instanceName of selectedInstances) {
                 try {
                     const instanceTickets = await getTicketsFromInstance(instanceName);
-                    allTickets.push(...instanceTickets);
+                    const resolvedTickets = await resolveTechnicianNamesForPage(instanceTickets, instanceName);
+                    allTickets.push(...resolvedTickets);
                     console.log(`${instanceName}: ${instanceTickets.length} tickets carregados`);
                 } catch (error) {
                     console.error(`Falha ao carregar tickets de ${instanceName}:`, error);
@@ -2050,6 +2051,86 @@
         // Função para extrair técnico do ticket
         // Campo 4 = assignee (atribuído)
         // Campo 5 = requester (solicitante)
+        
+        // Cache de nomes de usuários para evitar múltiplas chamadas
+        const userNameCache = {};
+
+        // Função para buscar nome de usuário pelo ID
+        async function getUserName(userId, instanceName) {
+            if (!userId) return '';
+            
+            const cacheKey = `${instanceName}_${userId}`;
+            if (userNameCache[cacheKey]) {
+                return userNameCache[cacheKey];
+            }
+
+            try {
+                const instance = INSTANCES[instanceName];
+                const response = await fetch(
+                    `${instance.BASE_URL}/User/${userId}`,
+                    {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Session-Token': sessionTokens[instanceName],
+                            'App-Token': instance.APP_TOKEN,
+                        },
+                    }
+                );
+
+                if (!response.ok) return userId.toString();
+
+                const userData = await response.json();
+                const userName = userData.name || userData.realname ? 
+                    `${userData.name || ''} ${userData.realname || ''}`.trim() : 
+                    userId.toString();
+                
+                userNameCache[cacheKey] = userName;
+                return userName;
+            } catch (error) {
+                console.error(`Erro ao buscar usuário ${userId}:`, error);
+                return userId.toString();
+            }
+        }
+
+        // Função para buscar nomes de técnicos de uma lista de tickets
+        async function resolveTechnicianNamesForPage(tickets, instanceName) {
+            const userIds = new Set();
+            
+            tickets.forEach(ticket => {
+                const assigned = ticket[4];
+                if (assigned) {
+                    if (Array.isArray(assigned)) {
+                        assigned.forEach(id => userIds.add(id));
+                    } else {
+                        userIds.add(assigned);
+                    }
+                }
+            });
+
+            await Promise.all(Array.from(userIds).map(userId => 
+                getUserName(userId, instanceName)
+            ));
+
+            return tickets.map(ticket => {
+                const assigned = ticket[4];
+                let technicianName = '';
+                
+                if (assigned) {
+                    if (Array.isArray(assigned) && assigned.length > 0) {
+                        technicianName = userNameCache[`${instanceName}_${assigned[0]}`] || assigned[0].toString();
+                    } else {
+                        technicianName = userNameCache[`${instanceName}_${assigned}`] || assigned.toString();
+                    }
+                }
+
+                return {
+                    ...ticket,
+                    _technicianName: technicianName
+                };
+            });
+        }
+
         function getTechnicianFromTicket(ticket) {
             const assigned = ticket[4];
             if (assigned) {
@@ -2091,7 +2172,7 @@
                 const timePending = calculatePendingTime(lastUpdate);
                 
                 // Técnico: usar função para buscar campo 4 (atribuído) ou 5 (solicitante)
-                const technician = getTechnicianFromTicket(ticket);
+                const technician = ticket._technicianName || getTechnicianFromTicket(ticket);
                 
                 return {
                     id: ticket[2],
