@@ -295,7 +295,7 @@
 
         .table-container {
             overflow-x: auto;
-            max-height: 600px;
+            max-height: calc(100vh - 250px);
             overflow-y: auto;
         }
 
@@ -812,7 +812,7 @@
                     status: statusInfo.key,
                     statusName: statusInfo.name,
                     group: ticket[8] || 'Não atribuído',
-                    technician: ticket[5] || ticket.users_id_recipient || 'Não atribuído',
+                    technician: ticket[5] || ticket[4] || ticket.users_id_recipient || '',
                     slaAtendimento: isSlaOwnOverdue ? 'Fora do prazo' : 'No prazo',
                     slaSolucao: isSlaResolveOverdue ? 'Fora do prazo' : 'No prazo',
                     dateCreated: dateCreated,
@@ -989,7 +989,7 @@
                                 <th class="col-entity">Entidade</th>
                                 <th class="col-category">Categoria</th>
                                 <th>Status</th>
-                                <th class="col-group">Responsável</th>
+                                <th class="col-group">Grupo Responsável</th>
                                 <th>Técnico</th>
                                 <th>SLA Atendimento</th>
                                 <th>SLA Solução</th>
@@ -1012,7 +1012,10 @@
                 'Entidade': t.entity,
                 'Categoria': t.category,
                 'Status': t.statusName,
-                'Responsável': t.group,
+                'Grupo Responsável': t.group,
+                'Técnico': t.technician || '',
+                'SLA Atendimento': t.slaAtendimento || '',
+                'SLA Solução': t.slaSolucao || '',
                 'Data de Abertura': formatDate(t.dateCreated),
                 'Última Atualização': formatDateTime(t.lastUpdate)
             }));
