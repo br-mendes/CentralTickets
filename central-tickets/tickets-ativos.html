@@ -2047,6 +2047,20 @@
             return allTickets;
         }
 
+        // Função para extrair técnico do ticket
+        // Campo 4 = assignee (atribuído)
+        // Campo 5 = requester (solicitante)
+        function getTechnicianFromTicket(ticket) {
+            const assigned = ticket[4];
+            if (assigned) {
+                if (Array.isArray(assigned) && assigned.length > 0) {
+                    return assigned[0].toString();
+                }
+                return assigned.toString();
+            }
+            return ticket[5] ? ticket[5].toString() : '';
+        }
+
         function processTickets(rawTickets, instanceName) {
             return rawTickets.map(ticket => {
                 const statusId = parseInt(ticket[12]) || 2;
@@ -2076,9 +2090,8 @@
                 const lastUpdate = ticket.date_mod || ticket[19] || ticket[91] || ticket[15];
                 const timePending = calculatePendingTime(lastUpdate);
                 
-                // Técnico: campo 5 é o criador, mas técnico asignado pode estar em outro campo
-                //Vamos verificar campos comuns para técnico asignado
-                const technician = ticket[5] || ticket.users_id_recipient || ticket[4] || '';
+                // Técnico: usar função para buscar campo 4 (atribuído) ou 5 (solicitante)
+                const technician = getTechnicianFromTicket(ticket);
                 
                 return {
                     id: ticket[2],
@@ -2096,7 +2109,6 @@
                     isSlaLate: isSlaLate,
                     timePending: timePending,
                     pendingReason: ticket[400] || '',
-                    timePending: statusInfo.key === 'pending' ? calculatePendingTime(ticket[15]) : null,
                     instance: instanceName,
                     instanceUrl: INSTANCES[instanceName].TICKET_URL,
                 };

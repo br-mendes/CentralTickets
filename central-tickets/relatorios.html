@@ -778,6 +778,22 @@
             return processTickets(allTickets, instanceName);
         }
 
+        // Função para extrair técnico do ticket
+        // Campo 5 = requester (solicitante)
+        // Campo 4 = assignee (atribuído) - pode ser array de IDs
+        function getTechnicianFromTicket(ticket) {
+            // Tentar campo 4 (atribuído) primeiro - pode ser array ou número
+            const assigned = ticket[4];
+            if (assigned) {
+                if (Array.isArray(assigned) && assigned.length > 0) {
+                    return assigned[0]; // Retorna primeiro usuário atribuído
+                }
+                return assigned.toString();
+            }
+            // Fallback para campo 5 (solicitante)
+            return ticket[5] ? ticket[5].toString() : '';
+        }
+
         function processTickets(rawTickets, instanceName) {
             return rawTickets.map(ticket => {
                 const statusId = parseInt(ticket[12]) || 1;
@@ -812,7 +828,7 @@
                     status: statusInfo.key,
                     statusName: statusInfo.name,
                     group: ticket[8] || 'Não atribuído',
-                    technician: ticket[5] || ticket[4] || ticket.users_id_recipient || '',
+                    technician: getTechnicianFromTicket(ticket),
                     slaAtendimento: isSlaOwnOverdue ? 'Fora do prazo' : 'No prazo',
                     slaSolucao: isSlaResolveOverdue ? 'Fora do prazo' : 'No prazo',
                     dateCreated: dateCreated,
