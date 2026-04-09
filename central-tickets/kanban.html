@@ -1468,9 +1468,53 @@
             
             for (const instanceName of selectedInstances) {
                 try {
+                    const cachedOld = (typeof loadOldTicketsForInstance === 'function') ? loadOldTicketsForInstance(instanceName) : [];
+                    if (cachedOld && cachedOld.length) {
+                        allTickets.push(...cachedOld);
+                    }
                     const instanceTickets = await getTicketsFromInstance(instanceName);
                     allTickets.push(...instanceTickets);
                     console.log(`${instanceName}: ${instanceTickets.length} tickets carregados`);
+                    if (typeof cacheOldTicketsForInstance === 'function') {
+                        const statusesToCache = [2, 4, 7];
+                        const toCache = instanceTickets.filter(t => {
+                            const sid = parseInt(t[12]) || 0;
+                            return statusesToCache.includes(sid);
+                        }).map(t => {
+                            const statusId = parseInt(t[12]) || 0;
+                            const id = t[2] ?? t.id;
+                            const title = t[1] ?? '';
+                            const entityFull = t[80] ?? '';
+                            const entity = entityFull;
+                            const category = t[7] ?? '';
+                            let status = '';
+                            let statusName = '';
+                            if (statusId === 2) { status = 'processing'; statusName = 'Em atendimento'; }
+                            else if (statusId === 4) { status = 'pending'; statusName = 'Pendente'; }
+                            else if (statusId === 7) { status = 'pending-approval'; statusName = 'Aprovação'; }
+                            const group = t[8] ?? 'Não atribuído';
+                            const dateCreated = t[15] ?? t.date_creation ?? '';
+                            const dueDate = t[151] ?? '';
+                            const lastUpdate = t.date_mod ?? t[19] ?? '';
+                            return {
+                                id,
+                                title,
+                                entity,
+                                entityFull,
+                                category,
+                                statusId,
+                                status,
+                                statusName,
+                                group,
+                                dateCreated,
+                                dueDate,
+                                lastUpdate,
+                                instance: instanceName,
+                                instanceUrl: INSTANCES[instanceName].TICKET_URL
+                            };
+                        });
+                        cacheOldTicketsForInstance(instanceName, toCache);
+                    }
                 } catch (error) {
                     console.error(`Falha ao carregar tickets de ${instanceName}:`, error);
                 }
