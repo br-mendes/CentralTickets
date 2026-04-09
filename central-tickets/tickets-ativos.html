@@ -1865,6 +1865,8 @@ function lastGroupLabel(name) {
             const statusFilter = document.getElementById('statusFilter').value;
             const slaFilter = document.getElementById('slaFilter').value;
 
+            console.log(`applyFilters: tickets=${tickets.length}, filteredTickets before=${filteredTickets.length}`);
+
             filteredTickets = tickets.filter(ticket => {
                 if (searchTerm) {
                     const searchableText = `${ticket.id} ${ticket.title} ${ticket.entity} ${ticket.category} ${ticket.group}`.toLowerCase();
@@ -2473,6 +2475,7 @@ function lastGroupLabel(name) {
                 }
 
                 filteredTickets = [...tickets];
+                console.log('Tickets loaded:', tickets.length, 'Filtered:', filteredTickets.length);
                 populateEntityFilter();
                 populateCategoryFilter();
                 populateGroupFilter();
