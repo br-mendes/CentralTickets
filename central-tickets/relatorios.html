@@ -976,11 +976,6 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                 
                 // Carregar PETA
                 try {
-                    // Carrega do cache antigo se disponível
-                    const cachedPeta = (typeof loadOldTicketsForInstance === 'function') ? loadOldTicketsForInstance('Peta') : [];
-                    if (cachedPeta && cachedPeta.length) {
-                        allTickets.push(...cachedPeta);
-                    }
                     const petaTickets = await getTicketsFromInstance('Peta');
                     const petaResolved = await resolveTechnicianNames(petaTickets, 'Peta');
                     allTickets.push(...petaResolved);
@@ -990,10 +985,6 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                 
                 // Carregar GMX
                 try {
-                    const cachedGmx = (typeof loadOldTicketsForInstance === 'function') ? loadOldTicketsForInstance('GMX') : [];
-                    if (cachedGmx && cachedGmx.length) {
-                        allTickets.push(...cachedGmx);
-                    }
                     const gmxTickets = await getTicketsFromInstance('GMX');
                     const gmxResolved = await resolveTechnicianNames(gmxTickets, 'GMX');
                     allTickets.push(...gmxResolved);
