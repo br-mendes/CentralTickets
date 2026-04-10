@@ -1865,7 +1865,7 @@ function lastGroupLabel(name) {
             const statusFilter = document.getElementById('statusFilter').value;
             const slaFilter = document.getElementById('slaFilter').value;
 
-            console.log(`applyFilters: tickets=${tickets.length}, filteredTickets before=${filteredTickets.length}`);
+            console.log(`applyFilters: tickets=${tickets.length}, selectedInstances=${JSON.stringify(selectedInstances)}`);
 
             filteredTickets = tickets.filter(ticket => {
                 if (searchTerm) {
@@ -1879,13 +1879,18 @@ function lastGroupLabel(name) {
                 if (selectedEntities.length > 0 && !selectedEntities.includes(ticket.entity)) return false;
                 if (selectedCategories.length > 0 && !selectedCategories.includes(ticket.category)) return false;
                 if (selectedGroups.length > 0 && !selectedGroups.includes(ticket.group)) return false;
-                if (!selectedInstances.includes(ticket.instance)) return false;
+                
+                // Fix: include check with fallback for empty instance
+                const ticketInstance = ticket.instance || ticket._source || '';
+                if (ticketInstance && !selectedInstances.includes(ticketInstance)) return false;
                 
                 if (quickFilters.slaLate && !ticket.isSlaLate) return false;
                 if (quickFilters.pending && ticket.status !== 'pending') return false;
 
                 return true;
             });
+
+            console.log(`applyFilters result: filtered=${filteredTickets.length}`);
 
             renderTable(filteredTickets);
         }
@@ -2422,6 +2427,7 @@ function lastGroupLabel(name) {
 
             try {
                 // Buscar todos os tickets do GLPI (sem limite)
+                console.log('Starting HybridLoader.loadTickets...');
                 const result = await HybridLoader.loadTickets({
                     instances: selectedInstances,
                     instanceConfigs: INSTANCES,
@@ -2433,6 +2439,7 @@ function lastGroupLabel(name) {
                     },
                     useCache: false
                 });
+                console.log('HybridLoader returned, tickets:', result.tickets?.length);
 
                 tickets = result.tickets.map(ticket => ({
                     id: ticket.ticket_id || ticket.id,
@@ -2447,10 +2454,11 @@ function lastGroupLabel(name) {
                     dateCreated: ticket.date_created || ticket.date_creation || ticket[15] || '',
                     dueDate: ticket.due_date || ticket[151] || '',
                     isSlaLate: ticket.is_sla_late || false,
-                    instance: ticket.instance || '',
-                    instanceUrl: INSTANCES[ticket.instance]?.TICKET_URL || '',
+                    instance: ticket.instance || ticket._source || '',
+                    instanceUrl: INSTANCES[ticket.instance || ticket._source]?.TICKET_URL || '',
                     _source: ticket._source
                 }));
+                console.log('Tickets mapped, checking instance field:', tickets.slice(0,3).map(t => t.instance));
 
                 // Resolver nomes de técnicos para os tickets carregados
                 const petaTickets = tickets.filter(t => t.instance === 'Peta');
