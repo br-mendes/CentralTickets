@@ -3461,6 +3461,12 @@ ${JSON.stringify(error, null, 2)}
                 loadedCounts = { processing: INITIAL_LOAD, pending: INITIAL_LOAD, solved: INITIAL_LOAD, closed: INITIAL_LOAD };
                 renderKanban(tickets);
                 
+                // Dispatch event for Tailwind dashboard
+                const tally = window.DashboardUtils?.tallyTickets?.(tickets);
+                if (tally) {
+                    window.dispatchEvent(new CustomEvent('tickets-updated', { detail: tally }));
+                }
+                
                 // Atualizar última atualização
                 const lastUpdateEl = document.getElementById('lastUpdate');
                 if (lastUpdateEl) {
