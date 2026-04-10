@@ -2503,20 +2503,6 @@ function lastGroupLabel(name) {
                 populateGroupFilter();
                 populateInstanceStats();
                 applyFilters();
-                    // Substituir os tickets GMX pelos resolvidos
-                    const gmxIndices = tickets.map((t, i) => t.instance === 'GMX' ? i : -1).filter(i => i !== -1);
-                    resolvedGmx.forEach((resolvedTicket, index) => {
-                        tickets[gmxIndices[index]] = resolvedTicket;
-                    });
-                }
-
-                filteredTickets = [...tickets];
-                console.log('Tickets loaded:', tickets.length, 'Filtered:', filteredTickets.length);
-                populateEntityFilter();
-                populateCategoryFilter();
-                populateGroupFilter();
-                populateInstanceStats();
-                applyFilters();
                 const lastUpdateEl = document.getElementById('lastUpdate');
                 if (lastUpdateEl) {
                     lastUpdateEl.textContent = `Atualizado: ${getCurrentTimeFormatted()}`;
