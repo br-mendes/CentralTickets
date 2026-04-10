@@ -2494,7 +2494,10 @@ function lastGroupLabel(name) {
                 populateGroupFilter();
                 populateInstanceStats();
                 applyFilters();
-                document.getElementById('lastUpdate').textContent = `Atualizado: ${getCurrentTimeFormatted()}`;
+                const lastUpdateEl = document.getElementById('lastUpdate');
+                if (lastUpdateEl) {
+                    lastUpdateEl.textContent = `Atualizado: ${getCurrentTimeFormatted()}`;
+                }
                 
                 // Reiniciar contador regressivo
                 startCountdown();
