@@ -1862,7 +1862,19 @@ function lastGroupLabel(name) {
 
         // Função para aplicar filtros e renderizar resultados parciais (durante carregamento incremental)
         function applyFiltersToPartialResults(currentTickets) {
-            // Use the same filtering logic as applyFilters but work with currentTickets
+            // Show partial count
+            console.log(`applyFiltersToPartialResults: rendering ${currentTickets.length} tickets`);
+            
+            // Update loading indicator to show partial progress
+            const mainContent = document.getElementById('mainContent');
+            if (mainContent) {
+                const loadingEl = mainContent.querySelector('.loading-text');
+                if (loadingEl) {
+                    loadingEl.textContent = `Carregando tickets... ${currentTickets.length} carregados`;
+                }
+            }
+            
+            // Apply filters and render
             const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
             const statusFilter = document.getElementById('statusFilter').value;
             const slaFilter = document.getElementById('slaFilter').value;
@@ -1880,7 +1892,6 @@ function lastGroupLabel(name) {
                 if (selectedCategories.length > 0 && !selectedCategories.includes(ticket.category)) return false;
                 if (selectedGroups.length > 0 && !selectedGroups.includes(ticket.group)) return false;
                 
-                // Fix: include check with fallback for empty instance
                 const ticketInstance = ticket.instance || ticket._source || '';
                 if (ticketInstance && !selectedInstances.includes(ticketInstance)) return false;
                 
@@ -2085,6 +2096,7 @@ function lastGroupLabel(name) {
         }
 
         async function getAllTickets() {
+            console.log('getAllTickets called with incremental rendering');
             const BATCH_SIZE = 50; // Process tickets in batches for incremental rendering
             const allTickets = [];
             
@@ -2100,11 +2112,12 @@ function lastGroupLabel(name) {
                         const resolvedBatch = await resolveTechnicianNamesForPage(batch, instanceName);
                         allTickets.push(...resolvedBatch);
                         
-                        // Update UI incrementally
-                        if (window.renderTable && typeof window.renderTable === 'function') {
-                            // Apply current filters to show partial results
-                            window.applyFiltersToPartialResults(allTickets);
-                        }
+                    // Update UI incrementally
+                    console.log(`Processing batch for ${instanceName}, current tickets: ${allTickets.length}`);
+                    if (window.renderTable && typeof window.renderTable === 'function') {
+                        // Apply current filters to show partial results
+                        window.applyFiltersToPartialResults(allTickets);
+                    }
                     }
                 } catch (error) {
                     console.error(`Falha ao carregar tickets de ${instanceName}:`, error);
@@ -2478,55 +2491,18 @@ function lastGroupLabel(name) {
             showLoading();
 
             try {
-                // Buscar todos os tickets do GLPI (sem limite)
-                console.log('Starting HybridLoader.loadTickets...');
-                const result = await HybridLoader.loadTickets({
-                    instances: selectedInstances,
-                    instanceConfigs: INSTANCES,
-                    glpiLimit: 10000,
-                    onProgress: (progress) => {
-                        if (progress.stage === 'glpi') {
-                            showLoading();
-                        }
-                    },
-                    useCache: false
-                });
-                console.log('HybridLoader returned, tickets:', result.tickets?.length);
+                // Buscar todos os tickets do GLPI usando getAllTickets (incremental)
+                console.log('Starting getAllTickets (incremental loading)...');
+                tickets = await getAllTickets();
+                console.log('getAllTickets completed, tickets:', tickets.length);
 
-                tickets = result.tickets.map(ticket => ({
-                    id: ticket.ticket_id || ticket.id,
-                    title: ticket.title || ticket.name || '',
-                    entity: ticket.entity || '',
-                    entityFull: ticket.entity_full || ticket.entity || '',
-                    category: ticket.category || ticket[7] || 'Não categorizado',
-                    statusId: ticket.status_id || parseInt(ticket[12]) || 2,
-                    status: ticket.status_key || ticket.status || 'processing',
-                    statusName: ticket.status_name || ticket.statusName || 'Em atendimento',
-                    group: lastGroupLabel(ticket.group_name || ticket.group || ticket[8] || 'Não atribuído'),
-                    dateCreated: ticket.date_created || ticket.date_creation || ticket[15] || '',
-                    dueDate: ticket.due_date || ticket[151] || '',
-                    isSlaLate: ticket.is_sla_late || false,
-                    instance: ticket.instance || ticket._source || '',
-                    instanceUrl: INSTANCES[ticket.instance || ticket._source]?.TICKET_URL || '',
-                    _source: ticket._source
-                }));
-                console.log('Tickets mapped, checking instance field:', tickets.slice(0,3).map(t => t.instance));
-
-                // Resolver nomes de técnicos para os tickets carregados
-                const petaTickets = tickets.filter(t => t.instance === 'Peta');
-                const gmxTickets = tickets.filter(t => t.instance === 'GMX');
-                
-                if (petaTickets.length > 0) {
-                    const resolvedPeta = await resolveTechnicianNamesForPage(petaTickets, 'Peta');
-                    // Substituir os tickets PETA pelos resolvidos
-                    const petaIndices = tickets.map((t, i) => t.instance === 'Peta' ? i : -1).filter(i => i !== -1);
-                    resolvedPeta.forEach((resolvedTicket, index) => {
-                        tickets[petaIndices[index]] = resolvedTicket;
-                    });
-                }
-                
-                if (gmxTickets.length > 0) {
-                    const resolvedGmx = await resolveTechnicianNamesForPage(gmxTickets, 'GMX');
+                filteredTickets = [...tickets];
+                console.log('Tickets loaded:', tickets.length, 'Filtered:', filteredTickets.length);
+                populateEntityFilter();
+                populateCategoryFilter();
+                populateGroupFilter();
+                populateInstanceStats();
+                applyFilters();
                     // Substituir os tickets GMX pelos resolvidos
                     const gmxIndices = tickets.map((t, i) => t.instance === 'GMX' ? i : -1).filter(i => i !== -1);
                     resolvedGmx.forEach((resolvedTicket, index) => {
