@@ -1433,47 +1433,15 @@
                 `;
             }).join('');
 
-            document.getElementById('totalCount').textContent = filtered.length;
-            document.getElementById('warningCount').textContent = warningCount;
-            document.getElementById('dangerCount').textContent = dangerCount;
-
-            mainContent.innerHTML = `
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th onclick="sortTable('id')" class="col-id ${currentSort.field === 'id' ? 'sorted' : ''}">ID<span class="sort-icon">${getSortIcon('id')}</span></th>
-                                <th class="col-instance">Instância</th>
-                                <th onclick="sortTable('entity')" class="col-entity ${currentSort.field === 'entity' ? 'sorted' : ''}">Entidade<span class="sort-icon">${getSortIcon('entity')}</span></th>
-                                <th onclick="sortTable('status')" class="col-status ${currentSort.field === 'status' ? 'sorted' : ''}">Status<span class="sort-icon">${getSortIcon('status')}</span></th>
-                                <th onclick="sortTable('group')" class="col-group ${currentSort.field === 'group' ? 'sorted' : ''}">Responsável<span class="sort-icon">${getSortIcon('group')}</span></th>
-                                <th onclick="sortTable('category')" class="col-category ${currentSort.field === 'category' ? 'sorted' : ''}">Categoria<span class="sort-icon">${getSortIcon('category')}</span></th>
-                                <th onclick="sortTable('dateCreated')" class="col-date ${currentSort.field === 'dateCreated' ? 'sorted' : ''}">Abertura<span class="sort-icon">${getSortIcon('dateCreated')}</span></th>
-                                <th onclick="sortTable('lastUpdate')" class="col-last-update ${currentSort.field === 'lastUpdate' ? 'sorted' : ''}">Última Atualização<span class="sort-icon">${getSortIcon('lastUpdate')}</span></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${rowsHTML || '<tr><td colspan="8" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum ticket encontrado</td></tr>'}
-                        </tbody>
-                    </table>
-                </div>
-            `;
-        }
-
-        async function refreshTickets() {
-            if (isLoading) return;
+            const totalCountEl = document.getElementById('totalCount');
+            const warningCountEl = document.getElementById('warningCount');
+            const dangerCountEl = document.getElementById('dangerCount');
+            const lastUpdateEl = document.getElementById('lastUpdate');
             
-            isLoading = true;
-            const refreshBtn = document.getElementById('refreshBtn');
-            if (refreshBtn) refreshBtn.disabled = true;
-            showLoading();
-            
-            console.log('Iniciando atualização de tickets...');
-
-            try {
-                tickets = await getAllTickets();
-                
-                document.getElementById('lastUpdate').textContent = `Atualizado: ${new Date().toLocaleTimeString('pt-BR')}`;
+            if (totalCountEl) totalCountEl.textContent = filtered.length;
+            if (warningCountEl) warningCountEl.textContent = warningCount;
+            if (dangerCountEl) dangerCountEl.textContent = dangerCount;
+            if (lastUpdateEl) lastUpdateEl.textContent = `Atualizado: ${new Date().toLocaleTimeString('pt-BR')}`;
                 
                 // Reiniciar contador regressivo
                 startCountdown();
