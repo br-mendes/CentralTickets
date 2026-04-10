@@ -1,18 +1,1140 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Aprovação - Central de Tickets</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Central de Tickets - Aprovação</title>
+    <link rel="icon" href="favicon-peta.png" type="image/png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --background: #f8fafc;
+            --surface: #ffffff;
+            --border: #e2e8f0;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --status-processing: #f59e0b;
+            --status-pending: #8b5cf6;
+            --sla-ok: #10b981;
+            --sla-late: #ef4444;
+            --radius-sm: 6px;
+            --radius-md: 8px;
+        }
+
+        [data-theme="dark"] {
+            --background: #0f172a;
+            --surface: #1e293b;
+            --border: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        table { table-layout: fixed; width: 100%; }
+        th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--background);
+            color: var(--text-primary);
+            line-height: 1.5;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        .header-content {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header h1 .page-title {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .header h1 .title-main {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.2;
+        }
+
+        .header h1 .subtitle {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .header-logo {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            flex-shrink: 0;
+        }
+
+        .header-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .header-logo-fallback {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header-logo-fallback svg {
+            width: 22px;
+            height: 22px;
+            color: white;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover {
+            background: var(--surface);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .nav-link.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .instance-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .instance-toggle label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--surface);
+        }
+
+        .instance-toggle input:checked + label {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .instance-toggle input {
+            display: none;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .refresh-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .app {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .main {
+            flex: 1;
+            padding: 24px;
+            max-width: 1600px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .filters-bar {
+            display: flex;
+            gap: 12px;
+            padding: 16px 24px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .search-box {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .search-box svg {
+            width: 16px;
+            height: 16px;
+            color: var(--text-muted);
+        }
+
+        .search-box input {
+            border: none;
+            background: none;
+            outline: none;
+            width: 100%;
+            font-size: 0.875rem;
+            color: var(--text-primary);
+        }
+
+        .filter-select {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--surface);
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+
+        .table-container {
+            background: var(--surface);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: var(--background);
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+        }
+
+        td {
+            padding: 12px 16px;
+            font-size: 0.875rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        tr:hover {
+            background: var(--background);
+        }
+
+        .ticket-id {
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            padding: 4px 8px;
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .status-new { background: #dbeafe; color: #1e40af; }
+        .status-processing { background: #fef3c7; color: #92400e; }
+        .status-pending { background: #ede9fe; color: #6d28d9; }
+        .status-pending-approval { background: #fef3c7; color: #92400e; }
+        .status-solved { background: #d1fae5; color: #065f46; }
+        .status-closed { background: #f3f4f6; color: #6b7280; }
+
+        .instance-badge {
+            display: inline-flex;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .instance-peta { background: #dbeafe; color: #1e40af; }
+        .instance-gmx { background: #d1fae5; color: #065f46; }
+
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 48px;
+            gap: 16px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 48px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state h3 {
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .batch-progress {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            padding: 8px 16px;
+            background: var(--background);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .batch-progress .spinner {
+            width: 14px;
+            height: 14px;
+            border-width: 2px;
+        }
+
+        .stats-bar {
+            display: flex;
+            gap: 24px;
+            padding: 16px 24px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .stat-item.warning .stat-value { color: #f59e0b; }
+        .stat-item.danger .stat-value { color: #ef4444; }
+
+        .approve-btn {
+            padding: 4px 8px;
+            font-size: 0.75rem;
+            background: #10b981;
+            color: white;
+        }
+
+        .reject-btn {
+            padding: 4px 8px;
+            font-size: 0.75rem;
+            background: #ef4444;
+            color: white;
+        }
+    </style>
 </head>
 <body>
-  <div class="main" style="padding:24px;">
-    <h1>Aprovação</h1>
-    <p>Conteúdo da página de aprovação de tickets.</p>
-  </div>
-  <script src="shared-header.js"></script>
-  <script>
-    if (typeof renderSharedHeader === 'function') renderSharedHeader();
-  </script>
+    <div class="app">
+        <header class="header">
+            <div class="header-content">
+                <div class="header-left">
+                    <h1>
+                        <span class="header-logo">
+                            <img src="favicon-peta.png" alt="Logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <span class="header-logo-fallback" style="display: none;">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                    <polyline points="22,6 12,13 2,6"></polyline>
+                                </svg>
+                            </span>
+                        </span>
+                        <span class="page-title">
+                            <span class="title-main">Aprovação de Tickets</span>
+                            <span class="subtitle">Tickets aguardando validação</span>
+                        </span>
+                    </h1>
+                </div>
+                <nav class="header-nav">
+                    <a href="index.html" class="nav-link">Dashboard</a>
+                    <a href="kanban.html" class="nav-link">Kanban</a>
+                    <a href="tickets-ativos.html" class="nav-link">Tickets Ativos</a>
+                    <a href="tickets-em-espera.html" class="nav-link">Em Espera</a>
+                    <a href="relatorios.html" class="nav-link">Relatórios</a>
+                    <a href="aprovacao.html" class="nav-link active">Aprovação</a>
+                </nav>
+                <div class="header-right">
+                    <div class="instance-toggle">
+                        <input type="checkbox" id="checkPeta" checked>
+                        <label for="checkPeta">Peta</label>
+                        <input type="checkbox" id="checkGmx" checked>
+                        <label for="checkGmx">GMX</label>
+                    </div>
+                    <span class="refresh-info">
+                        <span class="refresh-countdown" id="refreshCountdown"></span>
+                        <button class="btn btn-primary" id="refreshBtn" onclick="refreshTickets()">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 2v6h-6"></path>
+                                <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
+                                <path d="M3 22v-6h6"></path>
+                                <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+                            </svg>
+                            Atualizar
+                        </button>
+                    </span>
+                </div>
+            </div>
+        </header>
+
+        <div class="filters-bar">
+            <div class="search-box">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" id="searchInput" placeholder="Buscar por ID, título, entidade..." oninput="applyFilters()">
+            </div>
+            <select class="filter-select" id="entityFilter" onchange="applyFilters()">
+                <option value="">Todas as entidades</option>
+            </select>
+            <select class="filter-select" id="groupFilter" onchange="applyFilters()">
+                <option value="">Todos os grupos</option>
+            </select>
+        </div>
+
+        <main class="main" id="mainContent">
+            <div class="loading-container" id="loadingState">
+                <div class="spinner"></div>
+                <p class="loading-text">Carregando tickets...</p>
+            </div>
+        </main>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="shared-header.js"></script>
+    <script src="incremental-loader.js"></script>
+    <script src="dashboard-utils.js"></script>
+    <script src="cache-manager.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        const SUPABASE_URL = window.APP_CONFIG?.SUPABASE_URL || '';
+        const SUPABASE_ANON_KEY = window.APP_CONFIG?.SUPABASE_ANON_KEY || '';
+        const sbClient = window._sb || (window._sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
+
+        const INSTANCES = {
+            'Peta': {
+                BASE_URL: window.APP_CONFIG?.GLPI_PETA_URL || '',
+                USER_TOKEN: window.APP_CONFIG?.GLPI_PETA_USER_TOKEN || '',
+                APP_TOKEN: window.APP_CONFIG?.GLPI_PETA_APP_TOKEN || '',
+                TICKET_URL: window.APP_CONFIG?.GLPI_PETA_TICKET_URL || ''
+            },
+            'GMX': {
+                BASE_URL: window.APP_CONFIG?.GLPI_GMX_URL || '',
+                USER_TOKEN: window.APP_CONFIG?.GLPI_GMX_USER_TOKEN || '',
+                APP_TOKEN: window.APP_CONFIG?.GLPI_GMX_APP_TOKEN || '',
+                TICKET_URL: window.APP_CONFIG?.GLPI_GMX_TICKET_URL || ''
+            }
+        };
+
+        const STATUS_CONFIG = {
+            1: { name: 'Novo', key: 'new' },
+            2: { name: 'Em atendimento', key: 'processing' },
+            3: { name: 'Em atendimento', key: 'processing' },
+            4: { name: 'Pendente', key: 'pending' },
+            5: { name: 'Solucionado', key: 'solved' },
+            6: { name: 'Fechado', key: 'closed' },
+            7: { name: 'Aprovação', key: 'pending-approval', waitText: 'Esperando por uma validação' },
+        };
+
+        let tickets = [];
+        let filteredTickets = [];
+        let sessionTokens = {};
+        let isLoading = false;
+        let refreshTimer = null;
+        const REFRESH_INTERVAL = 300000; // 5 minutes
+        let selectedInstances = ['Peta', 'GMX'];
+
+        function lastGroupLabel(name) {
+            if (!name) return '';
+            const parts = String(name).split('>');
+            return parts[parts.length - 1].trim();
+        }
+
+        // Cache de nomes de usuários para evitar múltiplas chamadas
+        const userNameCache = {};
+
+        async function getUserName(userId, instanceName) {
+            if (!userId) return '';
+            
+            const cacheKey = `${instanceName}_${userId}`;
+            if (userNameCache[cacheKey]) {
+                return userNameCache[cacheKey];
+            }
+            const cachedPersist = window.loadUserNameFromCache?.(instanceName, userId);
+            if (cachedPersist) {
+                userNameCache[cacheKey] = cachedPersist;
+                return cachedPersist;
+            }
+
+            try {
+                const instance = INSTANCES[instanceName];
+                
+                if (!sessionTokens[instanceName]) {
+                    await initSession(instanceName);
+                }
+                
+                const searchParams = new URLSearchParams({
+                    'criteria[0][link]': 'AND',
+                    'criteria[0][field]': '1',
+                    'criteria[0][searchtype']: 'equals',
+                    'criteria[0][value]': userId.toString(),
+                    'range': '0-0',
+                    'uid_cols': 'true',
+                });
+
+                const response = await fetch(
+                    `${instance.BASE_URL}/search/User?${searchParams.toString()}`,
+                    {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Session-Token': sessionTokens[instanceName],
+                            'App-Token': instance.APP_TOKEN,
+                        },
+                    }
+                );
+
+                if (!response.ok) {
+                    const cachedPersist2 = window.loadUserNameFromCache?.(instanceName, userId);
+                    if (cachedPersist2) {
+                        userNameCache[cacheKey] = cachedPersist2;
+                        return cachedPersist2;
+                    }
+                    return userId.toString();
+                }
+
+                const data = await response.json();
+                let userName = userId.toString();
+
+                if (data.data && data.data.length > 0) {
+                    const user = data.data[0];
+                    userName = user['2'] || userName;
+                    if (user['5'] && user['5'] !== userName) {
+                        userName = `${user['5']} ${userName}`;
+                    }
+                }
+
+                userNameCache[cacheKey] = userName;
+                window.saveUserNameToCache?.(instanceName, userId, userName);
+                return userName;
+            } catch (error) {
+                console.error(`Erro ao buscar nome do usuário ${userId}:`, error);
+                const cachedPersist3 = window.loadUserNameFromCache?.(instanceName, userId);
+                if (cachedPersist3) {
+                    userNameCache[cacheKey] = cachedPersist3;
+                    return cachedPersist3;
+                }
+                return userId.toString();
+            }
+        }
+
+        async function resolveTechnicianNamesForPage(tickets, instanceName) {
+            const userIds = new Set();
+            
+            tickets.forEach(ticket => {
+                const assigned = ticket[4];
+                if (assigned) {
+                    if (Array.isArray(assigned)) {
+                        assigned.forEach(id => userIds.add(id));
+                    } else {
+                        userIds.add(assigned);
+                    }
+                }
+            });
+
+            await Promise.all(Array.from(userIds).map(userId => 
+                getUserName(userId, instanceName)
+            ));
+
+            return tickets.map(ticket => {
+                const assigned = ticket[4];
+                let technicianName = '';
+                
+                if (assigned) {
+                    if (Array.isArray(assigned) && assigned.length > 0) {
+                        technicianName = userNameCache[`${instanceName}_${assigned[0]}`] || assigned[0].toString();
+                    } else {
+                        technicianName = userNameCache[`${instanceName}_${assigned}`] || assigned.toString();
+                    }
+                }
+
+                return {
+                    ...ticket,
+                    _technicianName: technicianName
+                };
+            });
+        }
+
+        async function initSession(instanceName) {
+            const instance = INSTANCES[instanceName];
+            try {
+                const response = await fetch(`${instance.BASE_URL}/initSession`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `user_token ${instance.USER_TOKEN}`,
+                        'App-Token': instance.APP_TOKEN,
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Erro ao iniciar sessão em ${instanceName}: ${response.status}`);
+                }
+
+                const data = await response.json();
+                sessionTokens[instanceName] = data.session_token;
+                return data.session_token;
+            } catch (error) {
+                console.error(`Erro na autenticação ${instanceName}:`, error);
+                throw error;
+            }
+        }
+
+        async function getTicketsFromInstance(instanceName) {
+            const instance = INSTANCES[instanceName];
+            
+            if (!sessionTokens[instanceName]) {
+                await initSession(instanceName);
+            }
+
+            const allTickets = [];
+            let page = 0;
+            const pageSize = 100;
+            let hasMore = true;
+
+            while (hasMore) {
+                const start = page * pageSize;
+                const end = start + pageSize - 1;
+
+                const searchParams = new URLSearchParams({
+                    'range': `${start}-${end}`,
+                    'expand_dropdowns': 'true',
+                    'get_hateoas': 'false',
+                    // Filter for approval status (7)
+                    'criteria[0][link]': 'AND',
+                    'criteria[0][field]': '12',
+                    'criteria[0][searchtype]': 'equals',
+                    'criteria[0][value]': '7',
+                });
+
+                try {
+                    const response = await fetch(
+                        `${instance.BASE_URL}/search/Ticket?${searchParams.toString()}`,
+                        {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Session-Token': sessionTokens[instanceName],
+                                'App-Token': instance.APP_TOKEN,
+                            },
+                        }
+                    );
+
+                    if (!response.ok) {
+                        if (response.status === 401) {
+                            sessionTokens[instanceName] = null;
+                            await initSession(instanceName);
+                            continue;
+                        }
+                        throw new Error(`Erro ao buscar tickets de ${instanceName}: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    
+                    if (data.data) {
+                        const ticketsArray = Array.isArray(data.data) ? data.data : Object.values(data.data);
+                        
+                        if (ticketsArray.length === 0) {
+                            hasMore = false;
+                        } else {
+                            allTickets.push(...ticketsArray);
+                            page++;
+                            
+                            if (ticketsArray.length < pageSize || page >= 50) {
+                                hasMore = false;
+                            }
+                        }
+                    } else {
+                        hasMore = false;
+                    }
+                } catch (error) {
+                    console.error(`Erro na página ${page}:`, error);
+                    hasMore = false;
+                }
+            }
+
+            return processTickets(allTickets, instanceName);
+        }
+
+        async function getAllTickets() {
+            const BATCH_SIZE = 50;
+            const allTickets = [];
+            
+            for (const instanceName of selectedInstances) {
+                try {
+                    const instanceTickets = await getTicketsFromInstance(instanceName);
+                    console.log(`${instanceName}: ${instanceTickets.length} tickets de aprovação carregados`);
+                    
+                    for (let i = 0; i < instanceTickets.length; i += BATCH_SIZE) {
+                        const batch = instanceTickets.slice(i, i + BATCH_SIZE);
+                        const resolvedBatch = await resolveTechnicianNamesForPage(batch, instanceName);
+                        allTickets.push(...resolvedBatch);
+                        
+                        if (window.renderTable && typeof window.renderTable === 'function') {
+                            window.applyFiltersToPartialResults(allTickets);
+                        }
+                    }
+                } catch (error) {
+                    console.error(`Falha ao carregar tickets de ${instanceName}:`, error);
+                }
+            }
+            
+            console.log(`Total de tickets de aprovação carregados: ${allTickets.length}`);
+            return allTickets;
+        }
+
+        function processTickets(rawTickets, instanceName) {
+            return rawTickets.map(ticket => {
+                const statusId = parseInt(ticket[12]) || 7;
+                const statusInfo = STATUS_CONFIG[statusId] || STATUS_CONFIG[7];
+                
+                const entityFull = ticket[80] || '';
+                let entityShort = entityFull;
+                
+                if (instanceName === 'Peta') {
+                    entityShort = entityFull.replace(/^PETA GRUPO\s*>\s*/i, '').trim();
+                } else if (instanceName === 'GMX') {
+                    entityShort = entityFull.replace(/^GMX\s*TECNOLOGIA\s*>\s*/i, '').trim();
+                }
+                
+                entityShort = entityShort || entityFull;
+
+                let category = ticket[7] || 'Não categorizado';
+                const lastUpdate = ticket.date_mod || ticket[19] || ticket[91] || ticket.date_creation || ticket[15];
+
+                return {
+                    id: ticket[2] || ticket.id,
+                    title: ticket[1] || 'Sem título',
+                    entity: entityShort,
+                    entityFull: entityFull,
+                    category: category,
+                    statusId: statusId,
+                    status: statusInfo.key,
+                    statusName: statusInfo.waitText || statusInfo.name,
+                    group: lastGroupLabel(ticket[8] || 'Não atribuído'),
+                    technician: ticket._technicianName || '',
+                    dateCreated: ticket.date_creation || ticket[15] || ticket.date,
+                    lastUpdate: lastUpdate,
+                    instance: instanceName,
+                    instanceUrl: INSTANCES[instanceName].TICKET_URL,
+                };
+            });
+        }
+
+        function renderTable(data) {
+            const mainContent = document.getElementById('mainContent');
+            
+            if (!data || data.length === 0) {
+                mainContent.innerHTML = `
+                    <div class="empty-state">
+                        <h3>Nenhum ticket de aprovação encontrado</h3>
+                        <p>Não há tickets aguardando validação no momento.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const entities = [...new Set(data.map(t => t.entity).filter(Boolean))].sort();
+            const groups = [...new Set(data.map(t => t.group).filter(Boolean))].sort();
+
+            const entityFilter = document.getElementById('entityFilter');
+            const groupFilter = document.getElementById('groupFilter');
+            
+            if (entityFilter) {
+                const currentVal = entityFilter.value;
+                entityFilter.innerHTML = '<option value="">Todas as entidades</option>' + 
+                    entities.map(e => `<option value="${e}">${e}</option>`).join('');
+                entityFilter.value = currentVal;
+            }
+            if (groupFilter) {
+                const currentVal = groupFilter.value;
+                groupFilter.innerHTML = '<option value="">Todos os grupos</option>' + 
+                    groups.map(g => `<option value="${g}">${g}</option>`).join('');
+                groupFilter.value = currentVal;
+            }
+
+            mainContent.innerHTML = `
+                <div class="batch-progress">
+                    <div class="spinner"></div>
+                    <span>Carregando: ${data.length} tickets</span>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 80px;">ID</th>
+                                <th>Título</th>
+                                <th>Entidade</th>
+                                <th>Grupo</th>
+                                <th>Técnico</th>
+                                <th style="width: 140px;">Data Abertura</th>
+                                <th style="width: 140px;">Última Atualização</th>
+                                <th style="width: 100px;">Instância</th>
+                                <th style="width: 120px;">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.map(ticket => `
+                                <tr>
+                                    <td class="ticket-id">
+                                        <a href="${ticket.instanceUrl}/front/ticket.form.php?id=${ticket.id}" target="_blank">${ticket.id}</a>
+                                    </td>
+                                    <td>${ticket.title || 'Sem título'}</td>
+                                    <td>${ticket.entity || 'N/A'}</td>
+                                    <td>${ticket.group || 'Não atribuído'}</td>
+                                    <td>${ticket.technician || 'Não atribuído'}</td>
+                                    <td>${formatDateTime(ticket.dateCreated).date} ${formatDateTime(ticket.dateCreated).time}</td>
+                                    <td>${formatDateTime(ticket.lastUpdate).date} ${formatDateTime(ticket.lastUpdate).time}</td>
+                                    <td><span class="instance-badge instance-${ticket.instance.toLowerCase()}">${ticket.instance}</span></td>
+                                    <td>
+                                        <button class="btn approve-btn" onclick="approveTicket(${ticket.id}, '${ticket.instance}')">Aprovar</button>
+                                        <button class="btn reject-btn" onclick="rejectTicket(${ticket.id}, '${ticket.instance}')">Rejeitar</button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function formatDateTime(dateStr) {
+            if (!dateStr) return { date: 'N/A', time: '' };
+            try {
+                const date = new Date(dateStr);
+                if (isNaN(date.getTime())) return { date: 'N/A', time: '' };
+                return {
+                    date: date.toLocaleDateString('pt-BR'),
+                    time: date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                };
+            } catch {
+                return { date: 'N/A', time: '' };
+            }
+        }
+
+        function applyFilters() {
+            const searchTerm = document.getElementById('searchInput')?.value?.toLowerCase() || '';
+            const entityFilter = document.getElementById('entityFilter')?.value || '';
+            const groupFilter = document.getElementById('groupFilter')?.value || '';
+
+            filteredTickets = tickets.filter(ticket => {
+                const matchSearch = !searchTerm || 
+                    ticket.id.toString().includes(searchTerm) ||
+                    (ticket.title || '').toLowerCase().includes(searchTerm) ||
+                    (ticket.entity || '').toLowerCase().includes(searchTerm);
+                
+                const matchEntity = !entityFilter || ticket.entity === entityFilter;
+                const matchGroup = !groupFilter || ticket.group === groupFilter;
+
+                return matchSearch && matchEntity && matchGroup;
+            });
+
+            renderTable(filteredTickets);
+        }
+
+        window.applyFiltersToPartialResults = applyFilters;
+
+        async function refreshTickets() {
+            isLoading = true;
+            const refreshBtn = document.getElementById('refreshBtn');
+            if (refreshBtn) refreshBtn.disabled = true;
+            showLoading();
+
+            // Update selected instances
+            selectedInstances = [];
+            const checkPeta = document.getElementById('checkPeta');
+            const checkGmx = document.getElementById('checkGmx');
+            if (checkPeta?.checked) selectedInstances.push('Peta');
+            if (checkGmx?.checked) selectedInstances.push('GMX');
+            if (selectedInstances.length === 0) {
+                selectedInstances = ['Peta', 'GMX'];
+                if (checkPeta) checkPeta.checked = true;
+                if (checkGmx) checkGmx.checked = true;
+            }
+
+            try {
+                tickets = await getAllTickets();
+                filteredTickets = [...tickets];
+                applyFilters();
+                startCountdown();
+            } catch (error) {
+                console.error('Erro ao carregar tickets:', error);
+                showError('Erro ao carregar tickets', error.message);
+            } finally {
+                isLoading = false;
+                if (refreshBtn) refreshBtn.disabled = false;
+            }
+        }
+
+        function showLoading() {
+            const mainContent = document.getElementById('mainContent');
+            mainContent.innerHTML = `
+                <div class="loading-container">
+                    <div class="spinner"></div>
+                    <p class="loading-text">Carregando tickets de aprovação...</p>
+                </div>
+            `;
+        }
+
+        function showError(title, message) {
+            const mainContent = document.getElementById('mainContent');
+            mainContent.innerHTML = `
+                <div class="empty-state">
+                    <h3>${title}</h3>
+                    <p>${message}</p>
+                    <button class="btn btn-primary" onclick="refreshTickets()">Tentar novamente</button>
+                </div>
+            `;
+        }
+
+        let nextRefreshTime = null;
+        let countdownTimer = null;
+
+        function startCountdown() {
+            if (countdownTimer) clearInterval(countdownTimer);
+            nextRefreshTime = Date.now() + REFRESH_INTERVAL;
+            
+            countdownTimer = setInterval(() => {
+                const remaining = Math.max(0, nextRefreshTime - Date.now());
+                const minutes = Math.floor(remaining / 60000);
+                const seconds = Math.floor((remaining % 60000) / 1000);
+                
+                const countdownEl = document.getElementById('refreshCountdown');
+                if (countdownEl) {
+                    countdownEl.textContent = `Atualiza em ${minutes}:${seconds.toString().padStart(2, '0')}`;
+                }
+            }, 1000);
+        }
+
+        async function approveTicket(ticketId, instanceName) {
+            if (!confirm(`Aprovar ticket #${ticketId}?`)) return;
+            
+            try {
+                const instance = INSTANCES[instanceName];
+                if (!sessionTokens[instanceName]) {
+                    await initSession(instanceName);
+                }
+
+                const response = await fetch(`${instance.BASE_URL}/Ticket/${ticketId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Session-Token': sessionTokens[instanceName],
+                        'App-Token': instance.APP_TOKEN,
+                    },
+                    body: JSON.stringify({
+                        status: 2 // Set to "Em atendimento"
+                    })
+                });
+
+                if (response.ok) {
+                    alert(`Ticket #${ticketId} aprovado com sucesso!`);
+                    refreshTickets();
+                } else {
+                    throw new Error('Erro ao aprovar ticket');
+                }
+            } catch (error) {
+                console.error('Erro ao aprovar ticket:', error);
+                alert('Erro ao aprovar ticket: ' + error.message);
+            }
+        }
+
+        async function rejectTicket(ticketId, instanceName) {
+            const reason = prompt('Motivo da rejeição:');
+            if (!reason) return;
+            
+            try {
+                const instance = INSTANCES[instanceName];
+                if (!sessionTokens[instanceName]) {
+                    await initSession(instanceName);
+                }
+
+                const response = await fetch(`${instance.BASE_URL}/Ticket/${ticketId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Session-Token': sessionTokens[instanceName],
+                        'App-Token': instance.APP_TOKEN,
+                    },
+                    body: JSON.stringify({
+                        status: 4, // Pendente
+                        // Could add a note or comment here
+                    })
+                });
+
+                if (response.ok) {
+                    alert(`Ticket #${ticketId} rejeitado!`);
+                    refreshTickets();
+                } else {
+                    throw new Error('Erro ao rejeitar ticket');
+                }
+            } catch (error) {
+                console.error('Erro ao rejeitar ticket:', error);
+                alert('Erro ao rejeitar ticket: ' + error.message);
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof renderSharedHeader === 'function') renderSharedHeader();
+            refreshTickets();
+            refreshTimer = setInterval(refreshTickets, REFRESH_INTERVAL);
+        });
+    </script>
 </body>
 </html>

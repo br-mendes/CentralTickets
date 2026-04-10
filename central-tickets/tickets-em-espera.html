@@ -946,86 +946,7 @@
     <script src="shared-header.js"></script>
     <script src="incremental-loader.js"></script>
     <script src="dashboard-utils.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function(){ if (typeof renderSharedHeader === 'function') renderSharedHeader(); });
-        async function fetchFromEsperaPaged(instanceName, page, batchSize) {
-            const inst = INSTANCES[instanceName];
-            if (!inst) return [];
-            if (!sessionTokens[instanceName]) await initSession(instanceName);
-            const start = page * batchSize;
-            const end = start + batchSize - 1;
-            const searchParams = new URLSearchParams({ range: `${start}-${end}`, expand_dropdowns: 'true', get_hateoas: 'false' });
-            try {
-                const resp = await fetch(`${inst.BASE_URL}/search/Ticket?${searchParams.toString()}`, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Session-Token': sessionTokens[instanceName],
-                        'App-Token': inst.APP_TOKEN
-                    }
-                });
-                if (!resp.ok) return [];
-                const data = await resp.json();
-                const rows = data?.data ?? [];
-                return rows.map(t => ({
-                    id: t.ticket_id ?? t.id,
-                    title: t.title ?? t.name ?? '',
-                    entity: t.entity ?? '',
-                    entityFull: t.entity_full ?? t.entity ?? '',
-                    category: t.category ?? t[7] ?? 'Não categorizado',
-                    statusId: t.status_id ?? parseInt(t[12]) ?? 2,
-                    status: t.status_key ?? t.status ?? 'processing',
-                    statusName: t.status_name ?? t.statusName ?? 'Em atendimento',
-                    group: t.group_name ?? t.group ?? t[8] ?? 'Não atribuído',
-                    dateCreated: t.date_created ?? t.date_creation ?? '',
-                    dueDate: t.due_date ?? t[151] ?? '',
-                    isSlaLate: t.is_sla_late ?? false,
-                    instance: instanceName,
-                    instanceUrl: INSTANCES[instanceName]?.TICKET_URL ?? '',
-                    _source: t
-                }));
-            } catch {
-                return [];
-            }
-        }
-
-        async function loadEsperaTicketsIncremental() {
-            const sources = [
-                { name: 'Peta', fetcher: (p,b)=> fetchFromEsperaPaged('Peta', p, b) },
-                { name: 'GMX', fetcher: (p,b)=> fetchFromEsperaPaged('GMX', p, b) }
-            ];
-            if (typeof IncrementalLoader === 'undefined') { console.log('IncrementalLoader not found'); return; }
-            await IncrementalLoader.loadInBatches({
-              sources, batchSize: 50,
-              onBatch: (ctx, all) => {
-                tickets = all;
-                filteredTickets = [...tickets];
-                renderTable(filteredTickets);
-                const tally = window.DashboardUtils?.tallyTickets ? window.DashboardUtils.tallyTickets(all) : null;
-                if (tally) window.dispatchEvent(new CustomEvent('tickets-updated', { detail: tally }));
-              },
-              onDone: (all) => {
-                tickets = all;
-                filteredTickets = [...tickets];
-                renderTable(filteredTickets);
-                const tally = window.DashboardUtils?.tallyTickets ? window.DashboardUtils.tallyTickets(all) : null;
-                if (tally) window.dispatchEvent(new CustomEvent('tickets-updated', { detail: tally }));
-              }
-            });
-        }
-
-        document.addEventListener('DOMContentLoaded', ()=>{
-          if (typeof IncrementalLoader !== 'undefined') loadEsperaTicketsIncremental();
-        });
-    </script>
-    <script>
-      document.addEventListener('DOMContentLoaded', () => {
-        if (typeof IncrementalLoader !== 'undefined') {
-          // Start incremental loading for Em Espera tickets
-          loadEsperaTicketsIncremental();
-        }
-      });
-    </script>
+    <script src="cache-manager.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         const SUPABASE_URL = window.APP_CONFIG?.SUPABASE_URL || '';
@@ -1186,6 +1107,135 @@
                 console.error(`Erro na autenticação ${instanceName}:`, error);
                 throw error;
             }
+        }
+
+        function lastGroupLabel(name) {
+    if (!name) return '';
+    const parts = String(name).split('>');
+    return parts[parts.length - 1].trim();
+}
+
+// Cache de nomes de usuários para evitar múltiplas chamadas
+        const userNameCache = {};
+
+        // Função para buscar nome de usuário pelo ID usando a API de busca
+        async function getUserName(userId, instanceName) {
+            if (!userId) return '';
+            
+            const cacheKey = `${instanceName}_${userId}`;
+            // In-memory cache
+            if (userNameCache[cacheKey]) {
+                return userNameCache[cacheKey];
+            }
+            // Persistent cache (localStorage) with TTL
+            const cachedPersist = window.loadUserNameFromCache?.(instanceName, userId);
+            if (cachedPersist) {
+                userNameCache[cacheKey] = cachedPersist;
+                return cachedPersist;
+            }
+
+            try {
+                const instance = INSTANCES[instanceName];
+                
+                // Verificar se sessão ainda é válida
+                if (!sessionTokens[instanceName]) {
+                    await initSession(instanceName);
+                }
+                
+                // Usar a API de busca para buscar usuário por ID
+                const searchParams = new URLSearchParams({
+                    'criteria[0][link]': 'AND',
+                    'criteria[0][field]': '1',
+                    'criteria[0][searchtype]': 'equals',
+                    'criteria[0][value]': userId.toString(),
+                    'range': '0-0',
+                    'uid_cols': 'true',
+                });
+
+                const response = await fetch(
+                    `${instance.BASE_URL}/search/User?${searchParams.toString()}`,
+                    {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Session-Token': sessionTokens[instanceName],
+                            'App-Token': instance.APP_TOKEN,
+                        },
+                    }
+                );
+
+                if (!response.ok) {
+                    const cachedPersist2 = window.loadUserNameFromCache?.(instanceName, userId);
+                    if (cachedPersist2) {
+                        userNameCache[cacheKey] = cachedPersist2;
+                        return cachedPersist2;
+                    }
+                    return userId.toString();
+                }
+
+                const data = await response.json();
+                let userName = userId.toString();
+
+                if (data.data && data.data.length > 0) {
+                    const user = data.data[0];
+                    // Campo 2 = Name, Campo 5 = Realname
+                    userName = user['2'] || userName;
+                    if (user['5'] && user['5'] !== userName) {
+                        userName = `${user['5']} ${userName}`;
+                    }
+                }
+
+                userNameCache[cacheKey] = userName;
+                // Save to persistent cache
+                window.saveUserNameToCache?.(instanceName, userId, userName);
+                return userName;
+            } catch (error) {
+                console.error(`Erro ao buscar nome do usuário ${userId}:`, error);
+                const cachedPersist3 = window.loadUserNameFromCache?.(instanceName, userId);
+                if (cachedPersist3) {
+                    userNameCache[cacheKey] = cachedPersist3;
+                    return cachedPersist3;
+                }
+                return userId.toString();
+            }
+        }
+
+        // Função para resolver nomes de técnicos para um batch de tickets
+        async function resolveTechnicianNamesForPage(tickets, instanceName) {
+            const userIds = new Set();
+            
+            tickets.forEach(ticket => {
+                const assigned = ticket[4];
+                if (assigned) {
+                    if (Array.isArray(assigned)) {
+                        assigned.forEach(id => userIds.add(id));
+                    } else {
+                        userIds.add(assigned);
+                    }
+                }
+            });
+
+            await Promise.all(Array.from(userIds).map(userId => 
+                getUserName(userId, instanceName)
+            ));
+
+            return tickets.map(ticket => {
+                const assigned = ticket[4];
+                let technicianName = '';
+                
+                if (assigned) {
+                    if (Array.isArray(assigned) && assigned.length > 0) {
+                        technicianName = userNameCache[`${instanceName}_${assigned[0]}`] || assigned[0].toString();
+                    } else {
+                        technicianName = userNameCache[`${instanceName}_${assigned}`] || assigned.toString();
+                    }
+                }
+
+                return {
+                    ...ticket,
+                    _technicianName: technicianName
+                };
+            });
         }
 
         async function getTicketsFromInstance(instanceName) {
