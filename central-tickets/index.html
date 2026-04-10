@@ -2219,6 +2219,12 @@
             const checkPeta = document.getElementById('checkPeta');
             const checkGmx = document.getElementById('checkGmx');
             
+            if (!checkPeta || !checkGmx) {
+                // Elementos ainda não renderizados, adiar
+                setTimeout(initInstanceDropdown, 100);
+                return;
+            }
+            
             checkPeta.checked = selectedInstances.includes('Peta');
             checkGmx.checked = selectedInstances.includes('GMX');
             updateInstanceSelection();
@@ -3563,12 +3569,13 @@ ${JSON.stringify(error, null, 2)}
             }
             killSession();
         });
-    </script>
-</body>
-</html>
-        // Helper: extract last segment of group label (global utility across pages)
+
+        // Helper: extract last segment of group label
         function lastGroupLabel(name) {
             if (!name) return '';
             const parts = String(name).split('>');
             return parts[parts.length - 1].trim();
         }
+    </script>
+</body>
+</html>
