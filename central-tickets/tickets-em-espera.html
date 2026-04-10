@@ -1176,11 +1176,36 @@
         }
 
         async function getAllTickets() {
-            const startTime = Date.now();
-            const timeoutHandle = setTimeout(function() {
-                if (Date.now() - startTime > 15000) {
-                    showError('Erro ao carregar tickets', 'Tempo de carregamento excedido. Verifique a conexão com GLPI.');
+            const BATCH_SIZE = 50; // Process tickets in batches for incremental rendering
+            const allTickets = [];
+            
+            // Process each instance separately to show progress
+            for (const instanceName of selectedInstances) {
+                try {
+                    const instanceTickets = await getTicketsFromInstance(instanceName);
+                    console.log(`${instanceName}: ${instanceTickets.length} tickets brutos carregados`);
+                    
+                    // Process tickets in batches for incremental rendering
+                    for (let i = 0; i < instanceTickets.length; i += BATCH_SIZE) {
+                        const batch = instanceTickets.slice(i, i + BATCH_SIZE);
+                        const resolvedBatch = await resolveTechnicianNamesForPage(batch, instanceName);
+                        allTickets.push(...resolvedBatch);
+                        
+                        // Update UI incrementally
+                        if (window.renderTable && typeof window.renderTable === 'function') {
+                            // Apply current filters to show partial results
+                            window.applyFiltersToPartialResults(allTickets);
+                        }
+                    }
+                } catch (error) {
+                    console.error(`Falha ao carregar tickets de ${instanceName}:`, error);
                 }
+            }
+            
+            clearTimeout(timeoutHandle);
+            console.log(`Total de tickets carregados: ${allTickets.length}`);
+            return allTickets;
+        }
             }, 15000);
             const allTickets = [];
             
@@ -1312,6 +1337,37 @@
         function getSortIcon(field) {
             if (currentSort.field !== field) return '↕';
             return currentSort.direction === 'asc' ? '↑' : '↓';
+        }
+
+        // Função para aplicar filtros e renderizar resultados parciais (durante carregamento incremental)
+        function applyFiltersToPartialResults(currentTickets) {
+            // Apply current filters to show partial results
+            const searchText = document.getElementById('searchInput').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+            const waitingFilter = document.getElementById('waitingFilter').value;
+
+            let filtered = currentTickets.filter(t => {
+                if (!selectedInstances.includes(t.instance)) return false;
+                
+                if (t.status === 'solved' || t.status === 'closed') return false;
+                
+                if (searchText) {
+                    const searchableText = `${t.id} ${t.title} ${t.entity} ${t.category} ${t.group}`.toLowerCase();
+                    if (!searchableText.includes(searchText)) return false;
+                }
+                
+                if (statusFilter && t.status !== statusFilter) return false;
+                
+                if (waitingFilter) {
+                    const hours = getHoursSinceUpdate(t.lastUpdate);
+                    if (waitingFilter === 'warning' && hours < 24) return false;
+                    if (waitingFilter === 'danger' && hours < 72) return false;
+                }
+                
+                return true;
+            });
+
+            renderTable(filtered);
         }
 
         function applyFilters() {

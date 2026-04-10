@@ -962,7 +962,7 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         async function loadAllTickets() {
             if (isLoading) return;
             isLoading = true;
-
+        
             const content = document.getElementById('resultsContent');
             content.innerHTML = `
                 <div class="loading-overlay">
@@ -970,15 +970,28 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                     <p>Carregando tickets...</p>
                 </div>
             `;
-
+        
             try {
                 allTickets = [];
+                const BATCH_SIZE = 50; // Process tickets in batches for incremental rendering
                 
                 // Carregar PETA
                 try {
                     const petaTickets = await getTicketsFromInstance('Peta');
-                    const petaResolved = await resolveTechnicianNames(petaTickets, 'Peta');
-                    allTickets.push(...petaResolved);
+                    console.log(`Peta: ${petaTickets.length} tickets brutos carregados`);
+                    
+                    // Process tickets in batches for incremental rendering
+                    for (let i = 0; i < petaTickets.length; i += BATCH_SIZE) {
+                        const batch = petaTickets.slice(i, i + BATCH_SIZE);
+                        const resolvedBatch = await resolveTechnicianNames(batch, 'Peta');
+                        allTickets.push(...resolvedBatch);
+                        
+                        // Update UI incrementally
+                        if (window.renderResults && typeof window.renderResults === 'function') {
+                            // Apply current filters to show partial results
+                            window.applyFiltersToPartialResults(allTickets);
+                        }
+                    }
                 } catch (error) {
                     console.error(`Falha ao carregar PETA:`, error);
                 }
@@ -986,12 +999,24 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                 // Carregar GMX
                 try {
                     const gmxTickets = await getTicketsFromInstance('GMX');
-                    const gmxResolved = await resolveTechnicianNames(gmxTickets, 'GMX');
-                    allTickets.push(...gmxResolved);
+                    console.log(`GMX: ${gmxTickets.length} tickets brutos carregados`);
+                    
+                    // Process tickets in batches for incremental rendering
+                    for (let i = 0; i < gmxTickets.length; i += BATCH_SIZE) {
+                        const batch = gmxTickets.slice(i, i + BATCH_SIZE);
+                        const resolvedBatch = await resolveTechnicianNames(batch, 'GMX');
+                        allTickets.push(...resolvedBatch);
+                        
+                        // Update UI incrementally
+                        if (window.renderResults && typeof window.renderResults === 'function') {
+                            // Apply current filters to show partial results
+                            window.applyFiltersToPartialResults(allTickets);
+                        }
+                    }
                 } catch (error) {
                     console.error(`Falha ao carregar GMX:`, error);
                 }
-
+                
                 populateYearFilter();
                 populateEntityFilter();
                 console.log(`Total de tickets carregados: ${allTickets.length}`);
@@ -1058,6 +1083,41 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
             }
         }
 
+        // Função para aplicar filtros e renderizar resultados parciais (durante carregamento incremental)
+        function applyFiltersToPartialResults(currentTickets) {
+            // Apply current filters to show partial results
+            const dateType = document.getElementById('dateTypeFilter').value;
+            const year = document.getElementById('yearFilter').value;
+            const month = document.getElementById('monthFilter').value;
+            const instance = document.getElementById('instanceFilter').value;
+            const entity = document.getElementById('entityFilter').value;
+            const status = document.getElementById('statusFilter').value;
+
+            if (!year && !month) {
+                // If no date filter, show all
+                filteredTickets = currentTickets;
+                renderResults();
+                return;
+            }
+
+            filteredTickets = currentTickets.filter(ticket => {
+                const dateToCheck = dateType === 'opening' ? ticket.dateCreated : ticket.lastUpdate;
+                if (!dateToCheck) return false;
+                const date = new Date(dateToCheck);
+                if (isNaN(date.getTime())) return false;
+
+                if (year && date.getFullYear() !== parseInt(year)) return false;
+                if (month && (date.getMonth() + 1) !== parseInt(month)) return false;
+                if (instance && ticket.instance !== instance) return false;
+                if (entity && ticket.entity !== entity) return false;
+                if (status && ticket.status !== status) return false;
+
+                return true;
+            });
+
+            renderResults();
+        }
+
         function loadReport() {
             const dateType = document.getElementById('dateTypeFilter').value;
             const year = document.getElementById('yearFilter').value;
@@ -1070,6 +1130,24 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                 alert('Selecione pelo menos o ano ou o mês para gerar o relatório.');
                 return;
             }
+
+            filteredTickets = allTickets.filter(ticket => {
+                const dateToCheck = dateType === 'opening' ? ticket.dateCreated : ticket.lastUpdate;
+                if (!dateToCheck) return false;
+                const date = new Date(dateToCheck);
+                if (isNaN(date.getTime())) return false;
+
+                if (year && date.getFullYear() !== parseInt(year)) return false;
+                if (month && (date.getMonth() + 1) !== parseInt(month)) return false;
+                if (instance && ticket.instance !== instance) return false;
+                if (entity && ticket.entity !== entity) return false;
+                if (status && ticket.status !== status) return false;
+
+                return true;
+            });
+
+            renderResults();
+        }
 
             filteredTickets = allTickets.filter(ticket => {
                 const dateToCheck = dateType === 'opening' ? ticket.dateCreated : ticket.lastUpdate;

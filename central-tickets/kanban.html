@@ -1462,19 +1462,35 @@
             }
         }
 
-        // Função para buscar tickets de todas as instâncias
+        // Função para buscar tickets de todas as instâncias com renderização incremental
         async function getAllTickets() {
+            const BATCH_SIZE = 50; // Process tickets in batches for incremental rendering
             const allTickets = [];
+            
+            // Process each instance separately to show progress
             for (const instanceName of selectedInstances) {
                 try {
                     const instanceTickets = await getTicketsFromInstance(instanceName);
-                    const resolvedTickets = await resolveTechnicianNamesForPage(instanceTickets, instanceName);
-                    allTickets.push(...resolvedTickets);
-                    console.log(`${instanceName}: ${instanceTickets.length} tickets carregados`);
+                    console.log(`${instanceName}: ${instanceTickets.length} tickets brutos carregados`);
+                    
+                    // Process tickets in batches for incremental rendering
+                    for (let i = 0; i < instanceTickets.length; i += BATCH_SIZE) {
+                        const batch = instanceTickets.slice(i, i + BATCH_SIZE);
+                        const resolvedBatch = await resolveTechnicianNamesForPage(batch, instanceName);
+                        allTickets.push(...resolvedBatch);
+                        
+                        // Update UI incrementally
+                        if (window.renderKanban && typeof window.renderKanban === 'function') {
+                            // Apply current sorting/filters to show partial results
+                            window.renderKanbanIncremental(allTickets);
+                        }
+                    }
                 } catch (error) {
                     console.error(`Falha ao carregar tickets de ${instanceName}:`, error);
                 }
             }
+            
+            console.log(`Total de tickets carregados: ${allTickets.length}`);
             return allTickets;
         }
 
@@ -1626,7 +1642,7 @@ ${JSON.stringify(error, null, 2)}
             `;
         }
 
-        // Função para renderizar o Kanban
+        // Função para renderizar o Kanban com todos os tickets
         function renderKanban(tickets) {
             const mainContent = document.getElementById('mainContent');
             
@@ -1659,7 +1675,7 @@ ${JSON.stringify(error, null, 2)}
                         </button>
                     `;
                 }
-
+                
                 return `
                     <div class="kanban-column">
                         <div class="column-header">
@@ -1676,7 +1692,63 @@ ${JSON.stringify(error, null, 2)}
                     </div>
                 `;
             }).join('');
+            
+            mainContent.innerHTML = `<div class="kanban-board">${columnsHTML}</div>`;
+        }
 
+        // Função para renderizar o Kanban incrementalmente (durante carregamento)
+        function renderKanbanIncremental(currentTickets) {
+            // Apply current sorting to show partial results
+            const mainContent = document.getElementById('mainContent');
+            
+            ticketsByStatus = STATUS_ORDER.reduce((acc, status) => {
+                acc[status] = currentTickets.filter(t => t.status === status);
+                return acc;
+            }, {});
+            
+            // Ensure loadedCounts exists for all statuses
+            STATUS_ORDER.forEach(status => {
+                if (loadedCounts[status] === undefined) {
+                    loadedCounts[status] = Math.min(INITIAL_LOAD, ticketsByStatus[status]?.length || 0);
+                }
+            });
+            
+            let columnsHTML = STATUS_ORDER.map(status => {
+                const allStatusTickets = ticketsByStatus[status] || [];
+                const label = STATUS_LABELS[status];
+                const loadedTickets = allStatusTickets.slice(0, loadedCounts[status]);
+                const hasMore = allStatusTickets.length > loadedCounts[status];
+                
+                let ticketsHTML = loadedTickets.length === 0 
+                    ? '<div class="empty-column">Nenhum ticket</div>'
+                    : loadedTickets.map(ticket => renderTicketCard(ticket)).join('');
+                
+                let loadMoreBtn = '';
+                if (hasMore) {
+                    loadMoreBtn = `
+                        <button class="load-more-btn" onclick="loadMore('${status}')">
+                            Carregar mais (${allStatusTickets.length - loadedCounts[status]} restantes)
+                        </button>
+                    `;
+                }
+                
+                return `
+                    <div class="kanban-column">
+                        <div class="column-header">
+                            <div class="column-title">
+                                <span class="status-dot ${status}"></span>
+                                ${label}
+                            </div>
+                            <span class="column-count">${allStatusTickets.length}</span>
+                        </div>
+                        <div class="column-content" id="column-${status}">
+                            ${ticketsHTML}
+                            ${loadMoreBtn}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
             mainContent.innerHTML = `<div class="kanban-board">${columnsHTML}</div>`;
         }
 

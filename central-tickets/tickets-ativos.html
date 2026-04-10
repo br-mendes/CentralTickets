@@ -1860,6 +1860,39 @@ function lastGroupLabel(name) {
             applyFilters();
         }
 
+        // Função para aplicar filtros e renderizar resultados parciais (durante carregamento incremental)
+        function applyFiltersToPartialResults(currentTickets) {
+            // Use the same filtering logic as applyFilters but work with currentTickets
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+            const statusFilter = document.getElementById('statusFilter').value;
+            const slaFilter = document.getElementById('slaFilter').value;
+
+            const filtered = currentTickets.filter(ticket => {
+                if (searchTerm) {
+                    const searchableText = `${ticket.id} ${ticket.title} ${ticket.entity} ${ticket.category} ${ticket.group}`.toLowerCase();
+                    if (!searchableText.includes(searchTerm)) return false;
+                }
+                
+                if (statusFilter && ticket.status !== statusFilter) return false;
+                if (slaFilter === 'ok' && ticket.isSlaLate) return false;
+                if (slaFilter === 'late' && !ticket.isSlaLate) return false;
+                if (selectedEntities.length > 0 && !selectedEntities.includes(ticket.entity)) return false;
+                if (selectedCategories.length > 0 && !selectedCategories.includes(ticket.category)) return false;
+                if (selectedGroups.length > 0 && !selectedGroups.includes(ticket.group)) return false;
+                
+                // Fix: include check with fallback for empty instance
+                const ticketInstance = ticket.instance || ticket._source || '';
+                if (ticketInstance && !selectedInstances.includes(ticketInstance)) return false;
+                
+                if (quickFilters.slaLate && !ticket.isSlaLate) return false;
+                if (quickFilters.pending && ticket.status !== 'pending') return false;
+
+                return true;
+            });
+
+            renderTable(filtered);
+        }
+
         function applyFilters() {
             const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
             const statusFilter = document.getElementById('statusFilter').value;
@@ -2052,20 +2085,34 @@ function lastGroupLabel(name) {
         }
 
         async function getAllTickets() {
-            const promises = selectedInstances.map(async (instanceName) => {
-                const instTickets = await getTicketsFromInstance(instanceName);
-                const resolved = await resolveTechnicianNamesForPage(instTickets, instanceName);
-                return resolved;
-            });
-            try {
-                const results = await Promise.all(promises);
-                const merged = results.flat();
-                console.log(`Total de tickets carregados: ${merged.length}`);
-                return merged;
-            } catch (err) {
-                console.error('Erro ao carregar tickets (paralelo):', err);
-                return [];
+            const BATCH_SIZE = 50; // Process tickets in batches for incremental rendering
+            const allTickets = [];
+            
+            // Process each instance separately to show progress
+            for (const instanceName of selectedInstances) {
+                try {
+                    const instanceTickets = await getTicketsFromInstance(instanceName);
+                    console.log(`${instanceName}: ${instanceTickets.length} tickets brutos carregados`);
+                    
+                    // Process tickets in batches for incremental rendering
+                    for (let i = 0; i < instanceTickets.length; i += BATCH_SIZE) {
+                        const batch = instanceTickets.slice(i, i + BATCH_SIZE);
+                        const resolvedBatch = await resolveTechnicianNamesForPage(batch, instanceName);
+                        allTickets.push(...resolvedBatch);
+                        
+                        // Update UI incrementally
+                        if (window.renderTable && typeof window.renderTable === 'function') {
+                            // Apply current filters to show partial results
+                            window.applyFiltersToPartialResults(allTickets);
+                        }
+                    }
+                } catch (error) {
+                    console.error(`Falha ao carregar tickets de ${instanceName}:`, error);
+                }
             }
+            
+            console.log(`Total de tickets carregados: ${allTickets.length}`);
+            return allTickets;
         }
 
         // Função para extrair técnico do ticket
