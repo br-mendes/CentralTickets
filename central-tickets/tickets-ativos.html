@@ -2546,13 +2546,20 @@ function lastGroupLabel(name) {
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOMContentLoaded fired - starting initialization');
             initTheme();
             initInstanceButtons();
             initInstanceDropdown();
+            console.log('Before SupabaseCache.init');
             if (SUPABASE_URL && SUPABASE_ANON_KEY) {
                 SupabaseCache.init(SUPABASE_URL, SUPABASE_ANON_KEY);
             }
-            refreshTickets();
+            console.log('Calling refreshTickets()');
+            refreshTickets().then(() => {
+                console.log('refreshTickets completed');
+            }).catch(err => {
+                console.error('refreshTickets error:', err);
+            });
             refreshTimer = setInterval(refreshTickets, REFRESH_INTERVAL);
             countdownTimer = setInterval(updateSlaCountdowns, 1000);
             startCountdown();
