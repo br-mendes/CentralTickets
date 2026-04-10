@@ -2342,16 +2342,21 @@ function lastGroupLabel(name) {
             const totalPending = tickets.filter(t => t.status === 'pending').length;
             const totalSlaLate = tickets.filter(t => t.isSlaLate).length;
 
-            document.getElementById('countProcessing').textContent = totalProcessing;
-            document.getElementById('countPending').textContent = totalPending;
-            document.getElementById('countSlaLate').textContent = totalSlaLate;
-            document.getElementById('resultsCount').textContent = `${ticketsToRender.length} de ${tickets.length} tickets`;
+            const countProcessingEl = document.getElementById('countProcessing');
+            const countPendingEl = document.getElementById('countPending');
+            const countSlaLateEl = document.getElementById('countSlaLate');
+            const resultsCountEl = document.getElementById('resultsCount');
+
+            if (countProcessingEl) countProcessingEl.textContent = totalProcessing;
+            if (countPendingEl) countPendingEl.textContent = totalPending;
+            if (countSlaLateEl) countSlaLateEl.textContent = totalSlaLate;
+            if (resultsCountEl) resultsCountEl.textContent = `${ticketsToRender.length} de ${tickets.length} tickets`;
 
             const rowsHTML = ticketsToRender.map(ticket => {
                 const rowClass = ticket.isSlaLate ? 'row-sla-late' : '';
                 const slaClass = ticket.isSlaLate ? 'late' : 'ok';
                 const slaText = ticket.isSlaLate ? 'Fora do prazo' : 'No prazo';
-                const instanceClass = ticket.instance.toLowerCase();
+                const instanceClass = (ticket.instance || '').toLowerCase();
                 
                 return `
                     <tr class="${rowClass}">
