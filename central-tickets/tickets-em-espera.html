@@ -1206,23 +1206,6 @@
             console.log(`Total de tickets carregados: ${allTickets.length}`);
             return allTickets;
         }
-            }, 15000);
-            const allTickets = [];
-            
-            for (const instanceName of selectedInstances) {
-                try {
-                    const instanceTickets = await getTicketsFromInstance(instanceName);
-                    const resolvedTickets = await resolveTechnicianNamesForPage(instanceTickets, instanceName);
-                    allTickets.push(...resolvedTickets);
-                    console.log(`${instanceName}: ${instanceTickets.length} tickets carregados`);
-                } catch (error) {
-                    console.error(`Falha ao carregar tickets de ${instanceName}:`, error);
-                }
-            }
-            
-            clearTimeout(timeoutHandle);
-            return allTickets;
-        }
 
         function processTickets(rawTickets, instanceName) {
             return rawTickets.map(ticket => {
