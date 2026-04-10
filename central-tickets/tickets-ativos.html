@@ -1195,11 +1195,48 @@
     </main>
 
     <script src="config.js"></script>
+    <script src="incremental-loader.js"></script>
+    <script src="dashboard-utils.js"></script>
     <script src="cache-manager.js"></script>
     <script src="shared-header.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function(){ if (typeof renderSharedHeader === 'function') renderSharedHeader(); });
     </script>
+  <script>
+    // Incremental loader for active tickets (Peta/GMX)
+    async function loadActiveTicketsIncremental() {
+      const batchSize = 50;
+      const sources = [
+        { name: 'Peta', fetcher: (page, size) => fetchFromInstancePaged('Peta', page, size) },
+        { name: 'GMX', fetcher: (page, size) => fetchFromInstancePaged('GMX', page, size) }
+      ];
+      if (typeof IncrementalLoader === 'undefined') {
+        console.log('IncrementalLoader not found');
+        return;
+      }
+      await IncrementalLoader.loadInBatches({
+        sources,
+        batchSize,
+        onBatch: (ctx, all) => {
+          tickets = all;
+          filteredTickets = [...tickets];
+          renderTable(filteredTickets);
+          const tally = window.DashboardUtils?.tallyTickets ? window.DashboardUtils.tallyTickets(all) : null;
+          if (tally) window.dispatchEvent(new CustomEvent('tickets-updated', { detail: tally }));
+        },
+        onDone: (all) => {
+          tickets = all;
+          filteredTickets = [...tickets];
+          renderTable(filteredTickets);
+          const tally = window.DashboardUtils?.tallyTickets ? window.DashboardUtils.tallyTickets(all) : null;
+          if (tally) window.dispatchEvent(new CustomEvent('tickets-updated', { detail: tally }));
+        }
+      });
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      if (typeof IncrementalLoader !== 'undefined') loadActiveTicketsIncremental();
+    });
+  </script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-cache.js"></script>
     <script>
@@ -2481,6 +2518,101 @@ function lastGroupLabel(name) {
                 second: '2-digit',
             });
         }
+
+        // Incremental loader for active tickets (Peta/GMX)
+        async function fetchFromInstancePaged(instanceName, page, batchSize) {
+            // Build GLPI request for a single page of tickets for an instance
+            const inst = INSTANCES[instanceName];
+            if (!inst) return [];
+            if (!sessionTokens[instanceName]) {
+                await initSession(instanceName);
+            }
+            const start = page * batchSize;
+            const end = start + batchSize - 1;
+            const searchParams = new URLSearchParams({
+                range: `${start}-${end}`,
+                expand_dropdowns: 'true',
+                get_hateoas: 'false',
+            });
+            try {
+                const resp = await fetch(
+                    `${inst.BASE_URL}/search/Ticket?${searchParams.toString()}`,
+                    {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Session-Token': sessionTokens[instanceName],
+                            'App-Token': inst.APP_TOKEN
+                        }
+                    }
+                );
+                if (!resp.ok) { return []; }
+                const data = await resp.json();
+                const rows = data?.data ?? [];
+                const mapped = rows.map(t => {
+                    const id = t.ticket_id ?? t.id;
+                    const title = t.title ?? t.name ?? '';
+                    const entity = t.entity ?? '';
+                    const entityFull = t.entity_full ?? t.entity ?? '';
+                    const category = t.category ?? t[7] ?? 'Não categorizado';
+                    const statusId = t.status_id ?? parseInt(t[12]) ?? 2;
+                    const status = t.status_key ?? t.status ?? 'processing';
+                    const statusName = t.status_name ?? t.statusName ?? 'Em atendimento';
+                    const gp = t.group_name ?? t.group ?? t[8] ?? 'Não atribuído';
+                    const dateCreated = t.date_created ?? t.date_creation ?? '';
+                    const dueDate = t.due_date ?? t[151] ?? '';
+                    const isSlaLate = t.is_sla_late ?? false;
+                    return {
+                        id, title, entity, entityFull, category, statusId, status, statusName,
+                        group: gp, dateCreated, dueDate, isSlaLate, instance: instanceName,
+                        instanceUrl: INSTANCES[instanceName]?.TICKET_URL ?? '', _source: t
+                    };
+                });
+                return mapped;
+            } catch (e) {
+                console.error('incremental load error', instanceName, e);
+                return [];
+            }
+        }
+
+        async function loadActiveTicketsIncremental() {
+            const sources = [
+              { name: 'Peta', fetcher: (p, batch) => fetchFromInstancePaged('Peta', p, batch) },
+              { name: 'GMX', fetcher: (p, batch) => fetchFromInstancePaged('GMX', p, batch) }
+            ];
+            const batchSize = 50;
+            if (typeof IncrementalLoader === 'undefined') {
+                console.log('IncrementalLoader not found. Skipping incremental load.');
+                return;
+            }
+            await IncrementalLoader.loadInBatches({
+              sources,
+              batchSize,
+              onBatch: (ctx, batchAll) => {
+                // batchAll contains all accumulated tickets so far, but we keep only the latest subset for render
+                tickets = batchAll;
+                filteredTickets = [...tickets];
+                renderTable(filteredTickets);
+                const tally = window.DashboardUtils?.tallyTickets ? window.DashboardUtils.tallyTickets(batchAll) : null;
+                if (tally) window.dispatchEvent(new CustomEvent('tickets-updated', { detail: tally }));
+              },
+              onDone: (all) => {
+                tickets = all;
+                filteredTickets = [...tickets];
+                renderTable(filteredTickets);
+                const tally = window.DashboardUtils?.tallyTickets ? window.DashboardUtils.tallyTickets(all) : null;
+                if (tally) window.dispatchEvent(new CustomEvent('tickets-updated', { detail: tally }));
+              }
+            });
+        }
+
+        // Trigger incremental load after DOM ready
+        document.addEventListener('DOMContentLoaded', () => {
+            // Start incremental loading for active tickets
+            if (typeof IncrementalLoader !== 'undefined') {
+                loadActiveTicketsIncremental();
+            }
+        });
 
         async function refreshTickets() {
             if (isLoading) return;

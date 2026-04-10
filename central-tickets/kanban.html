@@ -994,6 +994,10 @@
 
     <script src="config.js"></script>
     <script src="shared-header.js"></script>
+    <script src="incremental-loader.js"></script>
+    <script src="dashboard-utils.js"></script>
+    <script src="incremental-loader.js"></script>
+    <script src="dashboard-utils.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function(){ if (typeof renderSharedHeader === 'function') renderSharedHeader(); });
     </script>
@@ -1751,6 +1755,76 @@ ${JSON.stringify(error, null, 2)}
             
             mainContent.innerHTML = `<div class="kanban-board">${columnsHTML}</div>`;
         }
+
+        // Incremental Kanban loading
+        async function fetchFromKanbanPaged(instanceName, page, batchSize) {
+            const inst = INSTANCES[instanceName];
+            if (!inst) return [];
+            if (!sessionTokens[instanceName]) await initSession(instanceName);
+            const start = page * batchSize;
+            const end = start + batchSize - 1;
+            const searchParams = new URLSearchParams({ range: `${start}-${end}`, expand_dropdowns: 'true', get_hateoas: 'false' });
+            try {
+                const resp = await fetch(`${inst.BASE_URL}/search/Ticket?${searchParams.toString()}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Session-Token': sessionTokens[instanceName],
+                        'App-Token': inst.APP_TOKEN
+                    }
+                });
+                if (!resp.ok) return [];
+                const data = await resp.json();
+                const rows = data?.data ?? [];
+                return rows.map(t => ({
+                    id: t.ticket_id ?? t.id,
+                    title: t.title ?? t.name ?? '',
+                    entity: t.entity ?? '',
+                    entityFull: t.entity_full ?? t.entity ?? '',
+                    category: t.category ?? t[7] ?? 'Não categorizado',
+                    statusId: t.status_id ?? parseInt(t[12]) ?? 2,
+                    status: t.status_key ?? t.status ?? 'processing',
+                    statusName: t.status_name ?? t.statusName ?? 'Em atendimento',
+                    group: t.group_name ?? t.group ?? t[8] ?? 'Não atribuído',
+                    dateCreated: t.date_created ?? t.date_creation ?? '',
+                    dueDate: t.due_date ?? t[151] ?? '',
+                    isSlaLate: t.is_sla_late ?? false,
+                    instance: instanceName,
+                    instanceUrl: INSTANCES[instanceName]?.TICKET_URL ?? '',
+                    _source: t
+                }));
+            } catch {
+                return [];
+            }
+        }
+
+        async function loadKanbanIncremental() {
+            const sources = [
+              { name: 'Peta', fetcher: (p,b)=> fetchFromKanbanPaged('Peta', p, b) },
+              { name: 'GMX', fetcher: (p,b)=> fetchFromKanbanPaged('GMX', p, b) }
+            ];
+            if (typeof IncrementalLoader === 'undefined') { console.log('IncrementalLoader not found'); return; }
+            await IncrementalLoader.loadInBatches({
+              sources,
+              batchSize: 50,
+              onBatch: (ctx, all) => {
+                tickets = all;
+                renderKanbanIncremental(all);
+                const tally = window.DashboardUtils?.tallyTickets ? window.DashboardUtils.tallyTickets(all) : null;
+                if (tally) window.dispatchEvent(new CustomEvent('tickets-updated', { detail: tally }));
+              },
+              onDone: (all) => {
+                tickets = all;
+                renderKanbanIncremental(all);
+                const tally = window.DashboardUtils?.tallyTickets ? window.DashboardUtils.tallyTickets(all) : null;
+                if (tally) window.dispatchEvent(new CustomEvent('tickets-updated', { detail: tally }));
+              }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+          if (typeof IncrementalLoader !== 'undefined') loadKanbanIncremental();
+        });
 
         function loadMore(status) {
             const allStatusTickets = ticketsByStatus[status] || [];
