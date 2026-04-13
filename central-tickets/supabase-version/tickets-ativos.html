@@ -1,0 +1,2731 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Central de Tickets - Ativos</title>
+    <link rel="icon" href="favicon-peta.png" type="image/png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --background: #f8fafc;
+            --surface: #ffffff;
+            --border: #e2e8f0;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --status-processing: #f59e0b;
+            --status-pending: #8b5cf6;
+            --sla-ok: #10b981;
+            --sla-late: #ef4444;
+            --radius-sm: 6px;
+            --radius-md: 8px;
+        }
+
+        [data-theme="dark"] {
+            --background: #0f172a;
+            --surface: #1e293b;
+            --border: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        table { table-layout: fixed; width: 100%; }
+        th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--background);
+            color: var(--text-primary);
+            line-height: 1.5;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        .header-content {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header h1 .page-title {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .header h1 .title-main {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.2;
+        }
+
+        .header h1 .subtitle {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .header-logo {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            flex-shrink: 0;
+        }
+
+        .header-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .header-logo-fallback {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header-logo-fallback svg {
+            width: 22px;
+            height: 22px;
+            color: white;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover {
+            background: var(--border);
+            color: var(--text-primary);
+        }
+
+        .nav-link.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .nav-link.active:hover {
+            background: var(--primary-dark);
+            color: white;
+        }
+
+        .nav-link svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .header-nav {
+            display: flex;
+            gap: 8px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 12px;
+        }
+
+        .header-stats .stat {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.875rem;
+        }
+
+        .theme-toggle {
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .theme-toggle:hover {
+            background: var(--border);
+        }
+
+        .theme-toggle svg {
+            width: 20px;
+            height: 20px;
+            color: var(--text-primary);
+        }
+
+        .header-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .stats {
+            display: flex;
+            gap: 16px;
+        }
+
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.875rem;
+        }
+
+        .stat-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .stat-dot.processing { background: var(--status-processing); }
+        .stat-dot.pending { background: var(--status-pending); }
+        .stat-dot.sla-late { background: var(--sla-late); }
+
+        .stat-value {
+            font-weight: 600;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .last-update {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .refresh-countdown {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-left: 10px;
+        }
+
+        .refresh-countdown::before {
+            content: "⏱️ ";
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .filters-bar {
+            max-width: 1600px;
+            margin: 0 auto 16px;
+            padding: 0 24px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 250px;
+            max-width: 400px;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 12px 10px 40px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            background: var(--surface);
+            color: var(--text-primary);
+            transition: all 0.2s;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .search-box svg {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            color: var(--text-muted);
+        }
+
+        .filter-select {
+            padding: 10px 32px 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            background: var(--surface);
+            color: var(--text-primary);
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            transition: all 0.2s;
+        }
+
+        .filter-select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .filter-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+
+        .filter-checkbox:hover {
+            background: var(--background);
+        }
+
+        .filter-checkbox input {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        .multi-select-header {
+            padding: 10px 32px 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            background: var(--surface);
+            color: var(--text-primary);
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-width: 130px;
+        }
+
+        .multi-select-header:hover {
+            background: var(--background);
+            border-color: var(--primary);
+        }
+
+        .multi-select-header:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .multi-select-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 4px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            z-index: 100;
+            overflow: hidden;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .multi-select-dropdown.open {
+            display: block;
+        }
+
+        .multi-select-dropdown label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 0.875rem;
+        }
+
+        .multi-select-dropdown label:hover {
+            background: var(--background);
+        }
+
+        .multi-select-option {
+            font-size: 0.875rem;
+            color: var(--text-primary);
+        }
+
+        .multi-select-option input {
+            cursor: pointer;
+            width: 16px;
+            height: 16px;
+        }
+
+        .filter-dropdown-wrapper {
+            position: relative;
+        }
+
+        .selected-entities {
+            display: inline-flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-left: 8px;
+        }
+
+        .selected-entity-tag {
+            background: var(--primary);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+        }
+
+        .results-count {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-left: auto;
+        }
+
+        .main {
+            padding: 0 24px 24px;
+            max-width: 98%;
+            margin: 0 auto;
+        }
+
+        .table-container {
+            background: var(--surface);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            overflow-x: auto;
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+
+        thead {
+            background: var(--background);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            transition: background-color 0.3s;
+        }
+
+        th {
+            padding: 12px 10px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            user-select: none;
+            transition: color 0.2s;
+        }
+
+        td {
+            padding: 10px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+            transition: border-color 0.3s;
+        }
+
+        th:hover {
+            color: var(--primary);
+        }
+
+        th .sort-icon {
+            margin-left: 4px;
+            opacity: 0.3;
+        }
+
+        th.sorted .sort-icon {
+            opacity: 1;
+        }
+
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+            transition: border-color 0.3s;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(37, 99, 235, 0.02);
+        }
+
+        [data-theme="dark"] tr:hover td {
+            background: rgba(37, 99, 235, 0.05);
+        }
+
+        .ticket-id {
+            font-weight: 600;
+            color: var(--primary);
+            width: 70px;
+        }
+
+        .ticket-id a {
+            color: var(--primary);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .ticket-id a:hover {
+            color: var(--primary-dark);
+            text-decoration: underline;
+        }
+
+        .col-instance {
+            width: 80px;
+        }
+
+        .entity {
+            color: var(--text-secondary);
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .col-entity {
+            width: 130px;
+        }
+
+        .col-category {
+            width: auto;
+            min-width: 180px;
+        }
+
+        .category {
+            max-width: 250px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .col-status {
+            width: 140px;
+        }
+
+        .col-group {
+            width: 160px;
+        }
+
+        .col-date {
+            width: 140px;
+        }
+
+        .col-pending {
+            width: 90px;
+        }
+
+        .col-sla {
+            width: 100px;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .status-badge.processing {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--status-processing);
+        }
+
+        .status-badge.pending {
+            background: rgba(139, 92, 246, 0.15);
+            color: var(--status-pending);
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .status-badge.processing .status-dot { background: var(--status-processing); }
+        .status-badge.pending .status-dot { background: var(--status-pending); }
+
+        .date {
+            white-space: nowrap;
+            color: var(--text-secondary);
+        }
+
+        .sla-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .sla-badge.ok {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--sla-ok);
+        }
+
+        .sla-badge.late {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--sla-late);
+        }
+
+        .sla-countdown {
+            display: block;
+            font-size: 0.7rem;
+            margin-top: 4px;
+            opacity: 0.8;
+        }
+
+        .sla-countdown.warning {
+            color: var(--status-processing);
+        }
+
+        .sla-countdown.critical {
+            color: var(--sla-late);
+            font-weight: 600;
+        }
+
+        @keyframes blink-red {
+            0%, 50% { background-color: rgba(239, 68, 68, 0.15); }
+            51%, 100% { background-color: transparent; }
+        }
+
+        .row-sla-late {
+            animation: blink-red 1s infinite;
+        }
+
+        [data-theme="dark"] .row-sla-late {
+            animation: blink-red-dark 1s infinite;
+        }
+
+        @keyframes blink-red-dark {
+            0%, 50% { background-color: rgba(239, 68, 68, 0.25); }
+            51%, 100% { background-color: rgba(239, 68, 68, 0.1); }
+        }
+
+        .pending-reason {
+            font-size: 0.75rem;
+            color: var(--status-pending);
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .pending-time {
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .instance-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .instance-badge.peta {
+            background: rgba(37, 99, 235, 0.15);
+            color: #2563eb;
+        }
+
+        .instance-badge.gmx {
+            background: rgba(234, 88, 12, 0.15);
+            color: #ea580c;
+        }
+
+        .filter-instance-group {
+            display: flex;
+            gap: 4px;
+        }
+
+        .instance-filter-btn {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: var(--surface);
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .instance-filter-btn:hover {
+            background: var(--background);
+        }
+
+        .instance-filter-btn.active {
+            border-color: var(--primary);
+            background: rgba(37, 99, 235, 0.1);
+            color: var(--primary);
+        }
+
+        .instance-filter-btn.peta.active {
+            border-color: #2563eb;
+            background: rgba(37, 99, 235, 0.15);
+            color: #2563eb;
+        }
+
+        .instance-filter-btn.gmx.active {
+            border-color: #ea580c;
+            background: rgba(234, 88, 12, 0.15);
+            color: #ea580c;
+        }
+
+        .instance-dropdown {
+            position: relative;
+        }
+
+        .instance-dropdown-header {
+            padding: 8px 12px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.875rem;
+            user-select: none;
+            transition: border-color 0.2s, background-color 0.2s;
+        }
+
+        .instance-dropdown-header:hover {
+            border-color: var(--primary);
+            background: var(--background);
+        }
+
+        .instance-dropdown-header svg {
+            width: 16px;
+            height: 16px;
+            transition: transform 0.2s;
+        }
+
+        .instance-dropdown.open .instance-dropdown-header svg {
+            transform: rotate(180deg);
+        }
+
+        .instance-dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 4px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            z-index: 100;
+            overflow: hidden;
+        }
+
+        .instance-dropdown.open .instance-dropdown-menu {
+            display: block;
+        }
+
+        .instance-dropdown-option {
+            padding: 10px 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.2s;
+        }
+
+        .instance-dropdown-option:hover {
+            background: var(--background);
+        }
+
+        .instance-dropdown-option input {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        .instance-dropdown-option.peta {
+            color: #2563eb;
+        }
+
+        .instance-dropdown-option.gmx {
+            color: #7c3aed;
+        }
+
+        .quick-filters {
+            display: flex;
+            gap: 6px;
+        }
+
+        .quick-filter-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 10px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: var(--surface);
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .quick-filter-btn:hover {
+            background: var(--background);
+            border-color: var(--primary);
+        }
+
+        .quick-filter-btn.active {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: #ef4444;
+            color: #ef4444;
+        }
+
+        .quick-filter-btn.active.pending-btn {
+            background: rgba(139, 92, 246, 0.1);
+            border-color: #8b5cf6;
+            color: #8b5cf6;
+        }
+
+        .filters-bar .search-box {
+            flex: 1;
+        }
+
+        @media (max-width: 900px) {
+            .header-content {
+                flex-wrap: wrap;
+                gap: 16px;
+            }
+
+            .header-stats {
+                order: 3;
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 700px) {
+            .header-nav {
+                width: 100%;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+
+            .nav-link {
+                flex: 1;
+                justify-content: center;
+                min-width: 100px;
+            }
+
+            .header-right {
+                width: 100%;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 12px;
+            }
+
+            .header-stats {
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 500px) {
+            .header-nav {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="header-left">
+                <h1>
+                    <span class="header-logo">
+                        <img src="favicon-peta.png" alt="Logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <span class="header-logo-fallback" style="display: none;">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                <polyline points="22,6 12,13 2,6"></polyline>
+                            </svg>
+                        </span>
+                    </span>
+                    <span class="page-title">
+                        <span class="title-main">Central de Tickets</span>
+                        <span class="subtitle">Tickets Ativos</span>
+                    </span>
+                </h1>
+            </div>
+            <nav class="header-nav">
+                <a href="index.html" class="nav-link">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="14" width="7" height="7"></rect>
+                        <rect x="3" y="14" width="7" height="7"></rect>
+                    </svg>
+                    Dashboard
+                </a>
+                <a href="kanban.html" class="nav-link">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="9" y1="3" x2="9" y2="21"></line>
+                        <line x1="15" y1="3" x2="15" y2="21"></line>
+                    </svg>
+                    Kanban
+                </a>
+                <a href="tickets-ativos.html" class="nav-link active">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                        <polyline points="22,6 12,13 2,6"></polyline>
+                    </svg>
+                    Tickets Ativos
+                </a>
+                <a href="tickets-em-espera.html" class="nav-link">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    Em Espera
+                </a>
+            </nav>
+            <div class="header-right">
+                <div class="header-stats">
+                    <div class="stat">
+                        <span class="stat-dot processing"></span>
+                        <span class="stat-value" id="countProcessing">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-dot pending"></span>
+                        <span class="stat-value" id="countPending">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-dot sla-late"></span>
+                        <span class="stat-value" id="countSlaLate">0</span>
+                    </div>
+                </div>
+                <button class="theme-toggle" onclick="toggleTheme()" title="Alternar tema">
+                    <svg id="sunIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                    <svg id="moonIcon" style="display:none;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                </button>
+                <button class="cache-btn" onclick="syncToSupabase()" title="Sincronizar com Supabase" id="syncBtn">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 12a9 9 0 0 1-9 9m0 0A9 9 0 0 1 3 12m9 9a9 9 0 0 1-9-9m0 0a9 9 0 0 1 9-9"></path>
+                        <polyline points="17 1 21 5 17 9"></polyline>
+                        <path d="M3 12a9 9 0 0 1 9-9m0 0a9 9 0 0 1 9 9"></path>
+                        <polyline points="7 23 3 19 7 15"></polyline>
+                    </svg>
+                </button>
+                <span class="last-update" id="lastUpdate"></span>
+                <span class="refresh-countdown" id="refreshCountdown"></span>
+                <button class="btn btn-primary" id="refreshBtn" onclick="refreshTickets()">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 2v6h-6"></path>
+                        <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
+                        <path d="M3 22v-6h6"></path>
+                        <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+                    </svg>
+                    Atualizar
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="filters-bar">
+        <div class="search-box" style="flex: 2; min-width: 200px; max-width: 350px;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="searchInput" placeholder="Buscar tickets..." oninput="applyFilters()">
+        </div>
+        
+        <div class="instance-dropdown" id="entityDropdownContainer">
+            <div class="instance-dropdown-header" onclick="toggleEntityDropdown()">
+                <span id="entitySelectLabel">Entidades</span>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+            <div id="entityDropdown" class="instance-dropdown-menu">
+                <label class="instance-dropdown-option">
+                    <input type="checkbox" id="entityAll" checked onchange="toggleAllEntities(this)">
+                    Todas entidades
+                </label>
+                <div id="entityOptions"></div>
+            </div>
+        </div>
+
+        <div class="instance-dropdown" id="categoryDropdownContainer">
+            <div class="instance-dropdown-header" onclick="toggleCategoryDropdown()">
+                <span id="categorySelectLabel">Categorias</span>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+            <div id="categoryDropdown" class="instance-dropdown-menu">
+                <label class="instance-dropdown-option">
+                    <input type="checkbox" id="categoryAll" checked onchange="toggleAllCategories(this)">
+                    Todas categorias
+                </label>
+                <div id="categoryOptions"></div>
+            </div>
+        </div>
+
+        <div class="instance-dropdown" id="groupDropdownContainer">
+            <div class="instance-dropdown-header" onclick="toggleGroupDropdown()">
+                <span id="groupSelectLabel">Responsáveis</span>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+            <div id="groupDropdown" class="instance-dropdown-menu">
+                <label class="instance-dropdown-option">
+                    <input type="checkbox" id="groupAll" checked onchange="toggleAllGroups(this)">
+                    Todos responsáveis
+                </label>
+                <div id="groupOptions"></div>
+            </div>
+        </div>
+
+        <select class="filter-select" id="statusFilter" onchange="applyFilters()">
+            <option value="">Status: Todos</option>
+            <option value="processing">Em atendimento</option>
+            <option value="pending">Pendente</option>
+        </select>
+
+        <select class="filter-select" id="slaFilter" onchange="applyFilters()">
+            <option value="">SLA: Todos</option>
+            <option value="ok">No prazo</option>
+            <option value="late">Fora do prazo</option>
+        </select>
+
+        <div class="instance-dropdown" id="instanceDropdownContainer">
+            <div class="instance-dropdown-header" onclick="toggleInstanceDropdown()">
+                <span id="instanceDropdownLabel">Todas as instâncias</span>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+            <div class="instance-dropdown-menu" id="instanceDropdownMenu">
+                <label class="instance-dropdown-option peta">
+                    <input type="checkbox" id="checkPeta" checked onchange="updateInstanceSelection()"> Peta
+                </label>
+                <label class="instance-dropdown-option gmx">
+                    <input type="checkbox" id="checkGmx" checked onchange="updateInstanceSelection()"> GMX
+                </label>
+            </div>
+        </div>
+
+        <div class="quick-filters">
+            <button class="quick-filter-btn" id="btnSlaLate" onclick="toggleQuickFilter('slaLate')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                SLA fora
+            </button>
+            <button class="quick-filter-btn" id="btnPending" onclick="toggleQuickFilter('pending')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                Pendentes
+            </button>
+            <button class="quick-filter-btn" id="btnClearFilters" onclick="clearAllFilters()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+                Limpar
+            </button>
+        </div>
+
+        <span class="results-count" id="resultsCount"></span>
+    </div>
+
+    <main class="main" id="mainContent">
+        <div class="loading-container" id="loadingState">
+            <div class="spinner"></div>
+            <p class="loading-text">Carregando tickets ativos...</p>
+        </div>
+    </main>
+
+    <script src="config.js"></script>
+    <script src="incremental-loader.js"></script>
+    <script src="dashboard-utils.js"></script>
+    <script src="cache-manager.js"></script>
+    <script src="shared-header.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function(){ if (typeof renderSharedHeader === 'function') renderSharedHeader(); });
+    </script>
+  <script>
+    // Incremental loader for active tickets (Peta/GMX)
+    async function loadActiveTicketsIncremental() {
+      const batchSize = 50;
+      const sources = [
+        { name: 'Peta', fetcher: (page, size) => fetchFromInstancePaged('Peta', page, size) },
+        { name: 'GMX', fetcher: (page, size) => fetchFromInstancePaged('GMX', page, size) }
+      ];
+      if (typeof IncrementalLoader === 'undefined') {
+        console.log('IncrementalLoader not found');
+        return;
+      }
+      await IncrementalLoader.loadInBatches({
+        sources,
+        batchSize,
+        onBatch: (ctx, all) => {
+          tickets = all;
+          filteredTickets = [...tickets];
+          renderTable(filteredTickets);
+          const tally = window.DashboardUtils?.tallyTickets ? window.DashboardUtils.tallyTickets(all) : null;
+          if (tally) window.dispatchEvent(new CustomEvent('tickets-updated', { detail: tally }));
+        },
+        onDone: (all) => {
+          tickets = all;
+          filteredTickets = [...tickets];
+          renderTable(filteredTickets);
+          const tally = window.DashboardUtils?.tallyTickets ? window.DashboardUtils.tallyTickets(all) : null;
+          if (tally) window.dispatchEvent(new CustomEvent('tickets-updated', { detail: tally }));
+        }
+      });
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      if (typeof IncrementalLoader !== 'undefined') loadActiveTicketsIncremental();
+    });
+  </script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-cache.js"></script>
+    <script>
+        const SUPABASE_URL = window.APP_CONFIG?.SUPABASE_URL || '';
+        const SUPABASE_ANON_KEY = window.APP_CONFIG?.SUPABASE_ANON_KEY || '';
+        
+        const sbClient = window._sb || (window._sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
+
+        const INSTANCES = {
+            'Peta': {
+                BASE_URL: window.APP_CONFIG?.GLPI_PETA_URL || '',
+                USER_TOKEN: window.APP_CONFIG?.GLPI_PETA_USER_TOKEN || '',
+                APP_TOKEN: window.APP_CONFIG?.GLPI_PETA_APP_TOKEN || '',
+                TICKET_URL: window.APP_CONFIG?.GLPI_PETA_TICKET_URL || ''
+            },
+            'GMX': {
+                BASE_URL: window.APP_CONFIG?.GLPI_GMX_URL || '',
+                USER_TOKEN: window.APP_CONFIG?.GLPI_GMX_USER_TOKEN || '',
+                APP_TOKEN: window.APP_CONFIG?.GLPI_GMX_APP_TOKEN || '',
+                TICKET_URL: window.APP_CONFIG?.GLPI_GMX_TICKET_URL || ''
+            }
+        };
+
+        // Debug: Verificar se config está carregado
+        console.log('[CONFIG] Configurações carregadas:');
+        console.log('[CONFIG] GLPI_PETA_URL:', INSTANCES['Peta'].BASE_URL);
+        console.log('[CONFIG] GLPI_PETA_USER_TOKEN:', INSTANCES['Peta'].USER_TOKEN ? 'DEFINIDO' : 'NÃO DEFINIDO');
+
+        // ========== SUPABASE SYNC ==========
+        async function syncTicketsToSupabase(glpiTickets, instanceName) {
+            try {
+                console.log(`[Supabase] Sincronizando ${glpiTickets.length} tickets de ${instanceName}...`);
+                
+                const ticketsToUpsert = glpiTickets.map(ticket => ({
+                    glpi_id: ticket.id,
+                    instance: instanceName.toUpperCase(),
+                    title: ticket.title || ticket.name || '',
+                    content: ticket.content || ticket.description || '',
+                    entity: ticket.entity || '',
+                    category: ticket.category || '',
+                    technician: ticket.technician || ticket.user || '',
+                    status: ticket.status || 1,
+                    date_opening: ticket.date_creation || ticket.date || null,
+                    date_takeaccount: ticket.date_takeaccount || null,
+                    date_solve: ticket.solvedate || null,
+                    date_close: ticket.closedate || null,
+                    internal_time_to_own: ticket.time_to_own || null,
+                    internal_time_to_resolve: ticket.time_to_resolve || null,
+                    sla_percentage_first: ticket.sla_agreement_tto_percent_done || null,
+                    sla_percentage_resolve: ticket.sla_agreement_ttr_percent_done || null,
+                    is_overdue_first: ticket.is_late === '1' || ticket.time_to_own <= 0,
+                    is_overdue_resolve: ticket.is_late === '1' || ticket.time_to_resolve <= 0,
+                    updated_at: new Date().toISOString()
+                }));
+
+                const { data, error } = await sbClient
+                    .from('tickets')
+                    .upsert(ticketsToUpsert, { 
+                        onConflict: 'glpi_id,instance',
+                        ignoreDuplicates: false 
+                    });
+
+                if (error) {
+                    console.error('[Supabase] Erro ao sincronizar:', error);
+                    return false;
+                }
+
+                console.log(`[Supabase] ${glpiTickets.length} tickets sincronizados com sucesso!`);
+                return true;
+            } catch (err) {
+                console.error('[Supabase] Erro na sincronização:', err);
+                return false;
+            }
+        }
+
+        async function fetchTicketsFromSupabase(instanceFilter = null) {
+            try {
+                let query = supabase
+                    .from('tickets')
+                    .select('*')
+                    .order('date_opening', { ascending: false });
+
+                if (instanceFilter && instanceFilter.length > 0) {
+                    query = query.in('instance', instanceFilter.map(i => i.toUpperCase()));
+                }
+
+                const { data, error } = await query;
+
+                if (error) {
+                    console.error('[Supabase] Erro ao buscar tickets:', error);
+                    return null;
+                }
+
+                return data || [];
+            } catch (err) {
+                console.error('[Supabase] Erro ao buscar tickets:', err);
+                return null;
+            }
+        }
+
+        async function getLastSyncTime() {
+            try {
+                const { data, error } = await sbClient
+                    .from('tickets')
+                    .select('updated_at')
+                    .order('updated_at', { ascending: false })
+                    .limit(1);
+                
+                if (error) return null;
+                return data && data.length > 0 ? data[0].updated_at : null;
+            } catch {
+                return null;
+            }
+        }
+
+        async function syncToSupabase() {
+            const syncBtn = document.getElementById('syncBtn');
+            if (syncBtn) {
+                syncBtn.disabled = true;
+                syncBtn.style.opacity = '0.5';
+            }
+            
+            try {
+                console.log('🔄 Sincronizando com Supabase...');
+                
+                for (const instanceName of selectedInstances) {
+                    const instanceTickets = tickets.filter(t => t.instance === instanceName);
+                    if (instanceTickets.length > 0) {
+                        await syncTicketsToSupabase(instanceTickets, instanceName);
+                    }
+                }
+                
+                alert('Sincronização com Supabase concluída!');
+            } catch (error) {
+                console.error('❌ Erro na sincronização:', error);
+                alert('Erro ao sincronizar com Supabase');
+            } finally {
+                if (syncBtn) {
+                    syncBtn.disabled = false;
+                    syncBtn.style.opacity = '1';
+                }
+            }
+        }
+
+        // ========== FIM SUPABASE SYNC ==========
+
+        const STATUS_CONFIG = {
+            1: { name: 'Novo', key: 'new' },
+            2: { name: 'Em atendimento', key: 'processing' },
+            3: { name: 'Em atendimento', key: 'processing' },
+            4: { name: 'Pendente', key: 'pending' },
+        };
+
+        let sessionTokens = {};
+        let tickets = [];
+        let filteredTickets = [];
+        let isLoading = false;
+        let currentSort = { field: 'sla', direction: 'asc' };
+        let selectedEntities = [];
+        let allEntities = [];
+        let selectedCategories = [];
+        let allCategories = [];
+        let selectedGroups = [];
+        let allGroups = [];
+        let selectedInstances = ['Peta', 'GMX'];
+        let quickFilters = { slaLate: false, pending: false };
+        const REFRESH_INTERVAL = 600000;
+        let refreshTimer = null;
+        let countdownTimer = null;
+let nextRefreshTime = null;
+// Helper: extract last segment of a group label (e.g. "SUPORTE > Segurança" -> "Segurança")
+function lastGroupLabel(name) {
+    if (!name) return '';
+    const parts = String(name).split('>');
+    return parts[parts.length - 1].trim();
+}
+
+        // Função para atualizar o contador regressivo
+        function updateCountdown() {
+            if (!nextRefreshTime) return;
+            
+            const now = Date.now();
+            const remaining = Math.max(0, nextRefreshTime - now);
+            const minutes = Math.floor(remaining / 60000);
+            const seconds = Math.floor((remaining % 60000) / 1000);
+            
+            const countdownEl = document.getElementById('refreshCountdown');
+            if (countdownEl) {
+                countdownEl.textContent = `Próximo refresh: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }
+        }
+
+        // Função para iniciar o contador regressivo
+        function startCountdown() {
+            nextRefreshTime = Date.now() + REFRESH_INTERVAL;
+            updateCountdown();
+            if (countdownTimer) clearInterval(countdownTimer);
+            countdownTimer = setInterval(updateCountdown, 1000);
+        }
+
+        function initInstanceButtons() {
+            const btnPeta = document.getElementById('btnPeta');
+            const btnGmx = document.getElementById('btnGmx');
+            
+            if (btnPeta && btnGmx) {
+                btnPeta.classList.toggle('active', selectedInstances.includes('Peta'));
+                btnGmx.classList.toggle('active', selectedInstances.includes('GMX'));
+            }
+        }
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const isDark = html.getAttribute('data-theme') === 'dark';
+            
+            if (isDark) {
+                html.removeAttribute('data-theme');
+                localStorage.setItem('theme', 'light');
+                document.getElementById('sunIcon').style.display = 'block';
+                document.getElementById('moonIcon').style.display = 'none';
+            } else {
+                html.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+                document.getElementById('sunIcon').style.display = 'none';
+                document.getElementById('moonIcon').style.display = 'block';
+            }
+        }
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                document.getElementById('sunIcon').style.display = 'none';
+                document.getElementById('moonIcon').style.display = 'block';
+            }
+        }
+
+        function toggleInstance(instance) {
+        }
+
+        function toggleInstanceDropdown() {
+            const container = document.getElementById('instanceDropdownContainer');
+            const isOpen = container.classList.contains('open');
+            
+            if (isOpen) {
+                container.classList.remove('open');
+            } else {
+                container.classList.add('open');
+            }
+            
+            document.addEventListener('click', closeInstanceDropdownOnClickOutside);
+        }
+
+        function closeInstanceDropdownOnClickOutside(e) {
+            const container = document.getElementById('instanceDropdownContainer');
+            if (!container.contains(e.target)) {
+                container.classList.remove('open');
+                document.removeEventListener('click', closeInstanceDropdownOnClickOutside);
+            }
+        }
+
+        function updateInstanceSelection() {
+            const checkPeta = document.getElementById('checkPeta');
+            const checkGmx = document.getElementById('checkGmx');
+            const label = document.getElementById('instanceDropdownLabel');
+            
+            const petaSelected = checkPeta.checked;
+            const gmxSelected = checkGmx.checked;
+            
+            selectedInstances = [];
+            if (petaSelected) selectedInstances.push('Peta');
+            if (gmxSelected) selectedInstances.push('GMX');
+            
+            if (petaSelected && gmxSelected) {
+                label.textContent = 'Todas as instâncias';
+            } else if (petaSelected) {
+                label.textContent = 'Peta';
+            } else if (gmxSelected) {
+                label.textContent = 'GMX';
+            } else {
+                label.textContent = 'Nenhuma selecionada';
+                selectedInstances = ['Peta', 'GMX'];
+                checkPeta.checked = true;
+                checkGmx.checked = true;
+            }
+            
+            if (tickets.length > 0) {
+                applyFilters();
+            }
+        }
+
+        function initInstanceDropdown() {
+            const checkPeta = document.getElementById('checkPeta');
+            const checkGmx = document.getElementById('checkGmx');
+            
+            if (checkPeta && checkGmx) {
+                checkPeta.checked = selectedInstances.includes('Peta');
+                checkGmx.checked = selectedInstances.includes('GMX');
+                updateInstanceSelection();
+            }
+        }
+
+        // Old toggleInstance - keep for compatibility
+        function toggleInstanceOriginal(instance) {
+            const btn = document.getElementById('btn' + instance);
+            
+            if (selectedInstances.includes(instance)) {
+                if (selectedInstances.length > 1) {
+                    selectedInstances = selectedInstances.filter(i => i !== instance);
+                    btn.classList.remove('active');
+                }
+            } else {
+                selectedInstances.push(instance);
+                btn.classList.add('active');
+            }
+            
+            console.log('Instâncias selecionadas:', selectedInstances);
+            applyFilters();
+        }
+
+        function toggleEntityDropdown() {
+            const container = document.getElementById('entityDropdownContainer');
+            const isOpen = container.classList.contains('open');
+            closeAllDropdowns();
+            if (!isOpen) {
+                container.classList.add('open');
+            }
+        }
+
+        function toggleCategoryDropdown() {
+            const container = document.getElementById('categoryDropdownContainer');
+            const isOpen = container.classList.contains('open');
+            closeAllDropdowns();
+            if (!isOpen) {
+                container.classList.add('open');
+            }
+        }
+
+        function toggleGroupDropdown() {
+            const container = document.getElementById('groupDropdownContainer');
+            const isOpen = container.classList.contains('open');
+            closeAllDropdowns();
+            if (!isOpen) {
+                container.classList.add('open');
+            }
+        }
+
+        function closeAllDropdowns() {
+            document.getElementById('entityDropdownContainer')?.classList.remove('open');
+            document.getElementById('categoryDropdownContainer')?.classList.remove('open');
+            document.getElementById('groupDropdownContainer')?.classList.remove('open');
+            document.getElementById('instanceDropdownContainer')?.classList.remove('open');
+        }
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.instance-dropdown')) {
+                closeAllDropdowns();
+            }
+        });
+
+        function populateEntityFilter() {
+            allEntities = [...new Set(tickets.map(t => t.entity))].sort();
+            const container = document.getElementById('entityOptions');
+            container.innerHTML = '';
+            
+            allEntities.forEach(entity => {
+                const label = document.createElement('label');
+                label.className = 'multi-select-option';
+                label.style.display = 'flex';
+                label.style.alignItems = 'center';
+                label.style.gap = '8px';
+                label.style.padding = '8px 12px';
+                label.style.cursor = 'pointer';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = entity;
+                checkbox.checked = selectedEntities.length === 0 || selectedEntities.includes(entity);
+                checkbox.style.cursor = 'pointer';
+                checkbox.onchange = () => updateEntitySelection();
+                
+                label.appendChild(checkbox);
+                label.appendChild(document.createTextNode(entity));
+                container.appendChild(label);
+            });
+
+            if (selectedEntities.length === 0) {
+                document.getElementById('entityAll').checked = true;
+            }
+            updateEntityLabel();
+        }
+
+        function populateCategoryFilter() {
+            allCategories = [...new Set(tickets.map(t => t.category))].sort();
+            const container = document.getElementById('categoryOptions');
+            container.innerHTML = '';
+            
+            allCategories.forEach(category => {
+                const label = document.createElement('label');
+                label.className = 'multi-select-option';
+                label.style.display = 'flex';
+                label.style.alignItems = 'center';
+                label.style.gap = '8px';
+                label.style.padding = '8px 12px';
+                label.style.cursor = 'pointer';
+                label.style.fontSize = '0.8rem';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = category;
+                checkbox.checked = selectedCategories.length === 0 || selectedCategories.includes(category);
+                checkbox.style.cursor = 'pointer';
+                checkbox.onchange = () => updateCategorySelection();
+                
+                label.appendChild(checkbox);
+                label.appendChild(document.createTextNode(category.length > 40 ? category.substring(0, 40) + '...' : category));
+                label.title = category;
+                container.appendChild(label);
+            });
+
+            if (selectedCategories.length === 0) {
+                document.getElementById('categoryAll').checked = true;
+            }
+            updateCategoryLabel();
+        }
+
+        function populateGroupFilter() {
+            allGroups = [...new Set(tickets.map(t => t.group))].sort();
+            const container = document.getElementById('groupOptions');
+            container.innerHTML = '';
+            
+            allGroups.forEach(group => {
+                const label = document.createElement('label');
+                label.className = 'multi-select-option';
+                label.style.display = 'flex';
+                label.style.alignItems = 'center';
+                label.style.gap = '8px';
+                label.style.padding = '8px 12px';
+                label.style.cursor = 'pointer';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = group;
+                checkbox.checked = selectedGroups.length === 0 || selectedGroups.includes(group);
+                checkbox.style.cursor = 'pointer';
+                checkbox.onchange = () => updateGroupSelection();
+                
+                label.appendChild(checkbox);
+                label.appendChild(document.createTextNode(group));
+                container.appendChild(label);
+            });
+
+            if (selectedGroups.length === 0) {
+                document.getElementById('groupAll').checked = true;
+            }
+            updateGroupLabel();
+        }
+
+        function toggleAllEntities(checkbox) {
+            const options = document.querySelectorAll('#entityOptions input[type="checkbox"]');
+            options.forEach(opt => {
+                opt.checked = checkbox.checked;
+            });
+            
+            if (checkbox.checked) {
+                selectedEntities = [];
+            } else {
+                selectedEntities = [...allEntities];
+                options.forEach(opt => opt.checked = true);
+            }
+            
+            updateEntityLabel();
+            applyFilters();
+        }
+
+        function updateEntitySelection() {
+            const allCheckbox = document.getElementById('entityAll');
+            const options = document.querySelectorAll('#entityOptions input[type="checkbox"]');
+            
+            selectedEntities = [];
+            let allSelected = true;
+            
+            options.forEach(opt => {
+                if (opt.checked) {
+                    selectedEntities.push(opt.value);
+                } else {
+                    allSelected = false;
+                }
+            });
+
+            allCheckbox.checked = allSelected;
+            updateEntityLabel();
+            applyFilters();
+        }
+
+        function updateEntityLabel() {
+            const label = document.getElementById('entitySelectLabel');
+            
+            if (selectedEntities.length === 0 || selectedEntities.length === allEntities.length) {
+                label.textContent = 'Todas entidades';
+            } else if (selectedEntities.length === 1) {
+                label.textContent = selectedEntities[0].length > 15 
+                    ? selectedEntities[0].substring(0, 15) + '...' 
+                    : selectedEntities[0];
+            } else {
+                label.textContent = `${selectedEntities.length} entidades`;
+            }
+        }
+
+        function toggleAllCategories(checkbox) {
+            const options = document.querySelectorAll('#categoryOptions input[type="checkbox"]');
+            options.forEach(opt => {
+                opt.checked = checkbox.checked;
+            });
+            
+            if (checkbox.checked) {
+                selectedCategories = [];
+            } else {
+                selectedCategories = [...allCategories];
+                options.forEach(opt => opt.checked = true);
+            }
+            
+            updateCategoryLabel();
+            applyFilters();
+        }
+
+        function updateCategorySelection() {
+            const allCheckbox = document.getElementById('categoryAll');
+            const options = document.querySelectorAll('#categoryOptions input[type="checkbox"]');
+            
+            selectedCategories = [];
+            let allSelected = true;
+            
+            options.forEach(opt => {
+                if (opt.checked) {
+                    selectedCategories.push(opt.value);
+                } else {
+                    allSelected = false;
+                }
+            });
+
+            allCheckbox.checked = allSelected;
+            updateCategoryLabel();
+            applyFilters();
+        }
+
+        function updateCategoryLabel() {
+            const label = document.getElementById('categorySelectLabel');
+            
+            if (selectedCategories.length === 0 || selectedCategories.length === allCategories.length) {
+                label.textContent = 'Categorias';
+            } else if (selectedCategories.length === 1) {
+                const cat = selectedCategories[0];
+                label.textContent = cat.length > 12 ? cat.substring(0, 12) + '...' : cat;
+            } else {
+                label.textContent = `${selectedCategories.length} categorias`;
+            }
+        }
+
+        function toggleAllGroups(checkbox) {
+            const options = document.querySelectorAll('#groupOptions input[type="checkbox"]');
+            options.forEach(opt => {
+                opt.checked = checkbox.checked;
+            });
+            
+            if (checkbox.checked) {
+                selectedGroups = [];
+            } else {
+                selectedGroups = [...allGroups];
+                options.forEach(opt => opt.checked = true);
+            }
+            
+            updateGroupLabel();
+            applyFilters();
+        }
+
+        function updateGroupSelection() {
+            const allCheckbox = document.getElementById('groupAll');
+            const options = document.querySelectorAll('#groupOptions input[type="checkbox"]');
+            
+            selectedGroups = [];
+            let allSelected = true;
+            
+            options.forEach(opt => {
+                if (opt.checked) {
+                    selectedGroups.push(opt.value);
+                } else {
+                    allSelected = false;
+                }
+            });
+
+            allCheckbox.checked = allSelected;
+            updateGroupLabel();
+            applyFilters();
+        }
+
+        function updateGroupLabel() {
+            const label = document.getElementById('groupSelectLabel');
+            
+            if (selectedGroups.length === 0 || selectedGroups.length === allGroups.length) {
+                label.textContent = 'Responsáveis';
+            } else if (selectedGroups.length === 1) {
+                const grp = selectedGroups[0];
+                label.textContent = grp.length > 12 ? grp.substring(0, 12) + '...' : grp;
+            } else {
+                label.textContent = `${selectedGroups.length} responsáveis`;
+            }
+        }
+
+        function toggleQuickFilter(filter) {
+            quickFilters[filter] = !quickFilters[filter];
+            
+            const btnSla = document.getElementById('btnSlaLate');
+            const btnPending = document.getElementById('btnPending');
+            
+            if (filter === 'slaLate') {
+                btnSla.classList.toggle('active', quickFilters.slaLate);
+            } else if (filter === 'pending') {
+                btnPending.classList.toggle('active', quickFilters.pending);
+                btnPending.classList.toggle('pending-btn', quickFilters.pending);
+            }
+            
+            applyFilters();
+        }
+
+        function clearAllFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('statusFilter').value = '';
+            document.getElementById('slaFilter').value = '';
+            
+            selectedEntities = [];
+            selectedCategories = [];
+            selectedGroups = [];
+            selectedInstances = ['Peta', 'GMX'];
+            quickFilters = { slaLate: false, pending: false };
+            
+            document.getElementById('btnPeta').classList.add('active');
+            document.getElementById('btnGmx').classList.add('active');
+            document.getElementById('btnSlaLate').classList.remove('active');
+            document.getElementById('btnPending').classList.remove('active', 'pending-btn');
+            
+            document.getElementById('entityAll').checked = true;
+            document.getElementById('categoryAll').checked = true;
+            document.getElementById('groupAll').checked = true;
+            
+            const entityOptions = document.querySelectorAll('#entityOptions input[type="checkbox"]');
+            entityOptions.forEach(opt => opt.checked = true);
+            
+            const categoryOptions = document.querySelectorAll('#categoryOptions input[type="checkbox"]');
+            categoryOptions.forEach(opt => opt.checked = true);
+            
+            const groupOptions = document.querySelectorAll('#groupOptions input[type="checkbox"]');
+            groupOptions.forEach(opt => opt.checked = true);
+            
+            updateEntityLabel();
+            updateCategoryLabel();
+            updateGroupLabel();
+            
+            applyFilters();
+        }
+
+        // Função para aplicar filtros e renderizar resultados parciais (durante carregamento incremental)
+        function applyFiltersToPartialResults(currentTickets) {
+            // Show partial count
+            console.log(`applyFiltersToPartialResults: rendering ${currentTickets.length} tickets`);
+            
+            // Update loading indicator to show partial progress
+            const mainContent = document.getElementById('mainContent');
+            if (mainContent) {
+                const loadingEl = mainContent.querySelector('.loading-text');
+                if (loadingEl) {
+                    loadingEl.textContent = `Carregando tickets... ${currentTickets.length} carregados`;
+                }
+            }
+            
+            // Apply filters and render
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+            const statusFilter = document.getElementById('statusFilter').value;
+            const slaFilter = document.getElementById('slaFilter').value;
+
+            const filtered = currentTickets.filter(ticket => {
+                if (searchTerm) {
+                    const searchableText = `${ticket.id} ${ticket.title} ${ticket.entity} ${ticket.category} ${ticket.group}`.toLowerCase();
+                    if (!searchableText.includes(searchTerm)) return false;
+                }
+                
+                if (statusFilter && ticket.status !== statusFilter) return false;
+                if (slaFilter === 'ok' && ticket.isSlaLate) return false;
+                if (slaFilter === 'late' && !ticket.isSlaLate) return false;
+                if (selectedEntities.length > 0 && !selectedEntities.includes(ticket.entity)) return false;
+                if (selectedCategories.length > 0 && !selectedCategories.includes(ticket.category)) return false;
+                if (selectedGroups.length > 0 && !selectedGroups.includes(ticket.group)) return false;
+                
+                const ticketInstance = ticket.instance || ticket._source || '';
+                if (ticketInstance && !selectedInstances.includes(ticketInstance)) return false;
+                
+                if (quickFilters.slaLate && !ticket.isSlaLate) return false;
+                if (quickFilters.pending && ticket.status !== 'pending') return false;
+
+                return true;
+            });
+
+            renderTable(filtered);
+        }
+
+        function applyFilters() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+            const statusFilter = document.getElementById('statusFilter').value;
+            const slaFilter = document.getElementById('slaFilter').value;
+
+            console.log(`applyFilters: tickets=${tickets.length}, selectedInstances=${JSON.stringify(selectedInstances)}`);
+
+            filteredTickets = tickets.filter(ticket => {
+                if (searchTerm) {
+                    const searchableText = `${ticket.id} ${ticket.title} ${ticket.entity} ${ticket.category} ${ticket.group}`.toLowerCase();
+                    if (!searchableText.includes(searchTerm)) return false;
+                }
+                
+                if (statusFilter && ticket.status !== statusFilter) return false;
+                if (slaFilter === 'ok' && ticket.isSlaLate) return false;
+                if (slaFilter === 'late' && !ticket.isSlaLate) return false;
+                if (selectedEntities.length > 0 && !selectedEntities.includes(ticket.entity)) return false;
+                if (selectedCategories.length > 0 && !selectedCategories.includes(ticket.category)) return false;
+                if (selectedGroups.length > 0 && !selectedGroups.includes(ticket.group)) return false;
+                
+                // Fix: include check with fallback for empty instance
+                const ticketInstance = ticket.instance || ticket._source || '';
+                if (ticketInstance && !selectedInstances.includes(ticketInstance)) return false;
+                
+                if (quickFilters.slaLate && !ticket.isSlaLate) return false;
+                if (quickFilters.pending && ticket.status !== 'pending') return false;
+
+                return true;
+            });
+
+            console.log(`applyFilters result: filtered=${filteredTickets.length}`);
+
+            renderTable(filteredTickets);
+        }
+
+        function sortTable(field) {
+            if (currentSort.field === field) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.field = field;
+                currentSort.direction = 'asc';
+            }
+            
+            filteredTickets.sort((a, b) => {
+                let valA, valB;
+                
+                switch(field) {
+                    case 'id':
+                        valA = a.id;
+                        valB = b.id;
+                        break;
+                    case 'entity':
+                        valA = a.entity.toLowerCase();
+                        valB = b.entity.toLowerCase();
+                        break;
+                    case 'category':
+                        valA = a.category.toLowerCase();
+                        valB = b.category.toLowerCase();
+                        break;
+                    case 'status':
+                        valA = a.status;
+                        valB = b.status;
+                        break;
+                    case 'group':
+                        valA = a.group.toLowerCase();
+                        valB = b.group.toLowerCase();
+                        break;
+                    case 'dateCreated':
+                        valA = new Date(a.dateCreated);
+                        valB = new Date(b.dateCreated);
+                        break;
+                    case 'dueDate':
+                        valA = new Date(a.dueDate);
+                        valB = new Date(b.dueDate);
+                        break;
+                    case 'sla':
+                        valA = a.isSlaLate ? 1 : 0;
+                        valB = b.isSlaLate ? 1 : 0;
+                        break;
+                    case 'instance':
+                        valA = a.instance.toLowerCase();
+                        valB = b.instance.toLowerCase();
+                        break;
+                    default:
+                        return 0;
+                }
+
+                if (valA < valB) return currentSort.direction === 'asc' ? -1 : 1;
+                if (valA > valB) return currentSort.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            renderTable(filteredTickets);
+        }
+
+        function getSortIcon(field) {
+            if (currentSort.field !== field) return '';
+            return currentSort.direction === 'asc' ? ' &#9650;' : ' &#9660;';
+        }
+
+        async function initSession(instanceName) {
+            const instance = INSTANCES[instanceName];
+            try {
+                const response = await fetch(`${instance.BASE_URL}/initSession`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `user_token ${instance.USER_TOKEN}`,
+                        'App-Token': instance.APP_TOKEN,
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Erro ao iniciar sessão em ${instanceName}: ${response.status}`);
+                }
+
+                const data = await response.json();
+                sessionTokens[instanceName] = data.session_token;
+                return data.session_token;
+            } catch (error) {
+                console.error(`Erro na autenticação ${instanceName}:`, error);
+                throw error;
+            }
+        }
+
+        async function getTicketsFromInstance(instanceName) {
+            const instance = INSTANCES[instanceName];
+            
+            if (!sessionTokens[instanceName]) {
+                await initSession(instanceName);
+            }
+
+            try {
+                const allTickets = [];
+                let page = 0;
+                const pageSize = 100;
+                let hasMore = true;
+
+                while (hasMore) {
+                    const start = page * pageSize;
+                    const end = start + pageSize - 1;
+
+                    const searchParams = new URLSearchParams({
+                        'range': `${start}-${end}`,
+                        'expand_dropdowns': 'true',
+                        'get_hateoas': 'false',
+                    });
+
+                    const response = await fetch(
+                        `${instance.BASE_URL}/search/Ticket?${searchParams.toString()}`,
+                        {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Session-Token': sessionTokens[instanceName],
+                                'App-Token': instance.APP_TOKEN,
+                            },
+                        }
+                    );
+
+                    if (!response.ok) {
+                        if (response.status === 401) {
+                            await initSession(instanceName);
+                            continue;
+                        }
+                        throw new Error(`Erro ao buscar tickets de ${instanceName}: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    
+                    if (!data.data || data.data.length === 0) {
+                        hasMore = false;
+                        break;
+                    }
+
+                    allTickets.push(...data.data);
+                    page++;
+                    
+                    if (page >= 100 || allTickets.length >= data.totalcount) {
+                        hasMore = false;
+                    }
+                }
+
+                console.log(`${instanceName}: ${allTickets.length} tickets carregados`);
+                return processTickets(allTickets, instanceName);
+            } catch (error) {
+                console.error(`Erro ao buscar tickets de ${instanceName}:`, error);
+                throw error;
+            }
+        }
+
+        async function getAllTickets() {
+            console.log('getAllTickets called with incremental rendering');
+            const BATCH_SIZE = 50; // Process tickets in batches for incremental rendering
+            const allTickets = [];
+            
+            // Process each instance separately to show progress
+            for (const instanceName of selectedInstances) {
+                try {
+                    const instanceTickets = await getTicketsFromInstance(instanceName);
+                    console.log(`${instanceName}: ${instanceTickets.length} tickets brutos carregados`);
+                    
+                    // Process tickets in batches for incremental rendering
+                    for (let i = 0; i < instanceTickets.length; i += BATCH_SIZE) {
+                        const batch = instanceTickets.slice(i, i + BATCH_SIZE);
+                        const resolvedBatch = await resolveTechnicianNamesForPage(batch, instanceName);
+                        allTickets.push(...resolvedBatch);
+                        
+                    // Update UI incrementally
+                    console.log(`Processing batch for ${instanceName}, current tickets: ${allTickets.length}`);
+                    if (window.renderTable && typeof window.renderTable === 'function') {
+                        // Apply current filters to show partial results
+                        window.applyFiltersToPartialResults(allTickets);
+                    }
+                    }
+                } catch (error) {
+                    console.error(`Falha ao carregar tickets de ${instanceName}:`, error);
+                }
+            }
+            
+            console.log(`Total de tickets carregados: ${allTickets.length}`);
+            return allTickets;
+        }
+
+        // Função para extrair técnico do ticket
+        // Campo 4 = assignee (atribuído)
+        // Campo 5 = requester (solicitante)
+        
+        // Cache de nomes de usuários para evitar múltiplas chamadas
+        const userNameCache = {};
+
+        // Função para buscar nome de usuário pelo ID usando a API de busca
+        async function getUserName(userId, instanceName) {
+            if (!userId) return '';
+            
+            const cacheKey = `${instanceName}_${userId}`;
+            // In-memory cache
+            if (userNameCache[cacheKey]) {
+                return userNameCache[cacheKey];
+            }
+            // Persistent cache (localStorage) with TTL through new helpers
+            const cachedPersist = window.loadUserNameFromCache?.(instanceName, userId);
+            if (cachedPersist) {
+                userNameCache[cacheKey] = cachedPersist;
+                return cachedPersist;
+            }
+
+            try {
+                const instance = INSTANCES[instanceName];
+                
+                // Verificar se sessão ainda é válida
+                if (!sessionTokens[instanceName]) {
+                    await initSession(instanceName);
+                }
+                
+                // Usar a API de busca para buscar usuário por ID
+                const searchParams = new URLSearchParams({
+                    'criteria[0][link]': 'AND',
+                    'criteria[0][field]': '1', // ID field
+                    'criteria[0][searchtype]': 'equals',
+                    'criteria[0][value]': userId.toString(),
+                    'range': '0-0',
+                    'uid_cols': 'true',
+                });
+
+                const response = await fetch(
+                    `${instance.BASE_URL}/search/User?${searchParams.toString()}`,
+                    {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Session-Token': sessionTokens[instanceName],
+                            'App-Token': instance.APP_TOKEN,
+                        },
+                    }
+                );
+
+                if (!response.ok) {
+                    const cachedPersist2 = window.loadUserNameFromCache?.(instanceName, userId);
+                    if (cachedPersist2) {
+                        userNameCache[cacheKey] = cachedPersist2;
+                        return cachedPersist2;
+                    }
+                    return userId.toString();
+                }
+
+                const data = await response.json();
+                
+                // O resultado vem com chaves como "User.name" ou "2" (id)
+                // Campo 2 = Name, Campo 5 = Realname, Campo 1 = ID
+                let userName = userId.toString();
+                
+                if (data.data && data.data[0]) {
+                    const userData = data.data[0];
+                    if (userData['2']) {
+                        userName = userData['2'].toString();
+                    } else if (userData['User.name']) {
+                        userName = userData['User.name'].toString();
+                    } else if (userData['5']) {
+                        userName = userData['5'].toString();
+                    }
+                }
+                
+                userNameCache[cacheKey] = userName;
+                // Persist for future use
+                window.cacheUserNameForInstance?.(instanceName, userId, userName);
+                return userName;
+            } catch (error) {
+                console.error(`Erro ao buscar usuário ${userId}:`, error);
+                return userId.toString();
+            }
+        }
+
+        // Função para buscar nomes de técnicos de uma lista de tickets
+        async function resolveTechnicianNamesForPage(tickets, instanceName) {
+            const userIds = new Set();
+            
+            tickets.forEach(ticket => {
+                const assigned = ticket[4];
+                if (assigned) {
+                    if (Array.isArray(assigned)) {
+                        assigned.forEach(id => userIds.add(id));
+                    } else {
+                        userIds.add(assigned);
+                    }
+                }
+            });
+
+            await Promise.all(Array.from(userIds).map(userId => 
+                getUserName(userId, instanceName)
+            ));
+
+            return tickets.map(ticket => {
+                const assigned = ticket[4];
+                let technicianName = '';
+                
+                if (assigned) {
+                    if (Array.isArray(assigned) && assigned.length > 0) {
+                        technicianName = userNameCache[`${instanceName}_${assigned[0]}`] || assigned[0].toString();
+                    } else {
+                        technicianName = userNameCache[`${instanceName}_${assigned}`] || assigned.toString();
+                    }
+                }
+
+                return {
+                    ...ticket,
+                    _technicianName: technicianName
+                };
+            });
+        }
+
+        function getTechnicianFromTicket(ticket) {
+            const assigned = ticket[4];
+            if (assigned) {
+                if (Array.isArray(assigned) && assigned.length > 0) {
+                    return assigned[0].toString();
+                }
+                return assigned.toString();
+            }
+            return ticket[5] ? ticket[5].toString() : '';
+        }
+
+        function processTickets(rawTickets, instanceName) {
+            return rawTickets.map(ticket => {
+                const statusId = parseInt(ticket[12]) || 2;
+                // Exclui itens com status Novo (1) e já finalizados (5,6) para a página de ativos
+                if (statusId === 1 || statusId === 5 || statusId === 6) return null;
+                
+                // Filtrar apenas tickets ativos (status 1=new, 2=processing, 3=processing, 4=pending)
+                // Remover status 5 (solved) e 6 (closed)
+                if (statusId === 5 || statusId === 6) return null;
+                
+                const statusInfo = STATUS_CONFIG[statusId] || STATUS_CONFIG[2];
+                
+                const entityFull = ticket[80] || '';
+                let entityShort = entityFull;
+                
+                if (instanceName === 'Peta') {
+                    entityShort = entityFull.replace(/^PETA GRUPO\s*>\s*/i, '').trim();
+                } else if (instanceName === 'GMX') {
+                    entityShort = entityFull.replace(/^GMX\s*TECNOLOGIA\s*>\s*/i, '').trim();
+                }
+                
+                entityShort = entityShort || entityFull;
+                
+                // Tempo para concluir excedido (campo 151 = due_date)
+                const dueDate = ticket[151];
+                const isSlaLate = isSlaExceeded(dueDate);
+                
+                // data de atualização da tarefa
+                const lastUpdate = ticket.date_mod || ticket[19] || ticket[91] || ticket[15];
+                
+                // Técnico: usar função para buscar campo 4 (atribuído) ou 5 (solicitante)
+                const technician = ticket._technicianName || getTechnicianFromTicket(ticket);
+                
+                return {
+                    id: ticket[2],
+                    title: ticket[1],
+                    entity: entityShort,
+                    entityFull: entityFull,
+                    category: ticket[7] || 'Não categorizado',
+                    statusId: statusId,
+                    status: statusInfo.key,
+                    statusName: statusInfo.name,
+                    group: lastGroupLabel(ticket[8] || 'Não atribuído'),
+                    technician: technician,
+                    dateCreated: ticket[15],
+                    dueDate: dueDate,
+                    isSlaLate: isSlaLate,
+                    // timePending foi removido deste relatório
+                    pendingReason: ticket[400] || '',
+                    instance: instanceName,
+                    instanceUrl: INSTANCES[instanceName].TICKET_URL,
+                };
+            }).filter(t => t !== null);
+        }
+
+        function isSlaExceeded(dueDateStr) {
+            if (!dueDateStr) return false;
+            const dueDate = new Date(dueDateStr);
+            const now = new Date();
+            return dueDate < now;
+        }
+
+        function calculatePendingTime(dateCreatedStr) {
+            if (!dateCreatedStr) return null;
+            const date = new Date(dateCreatedStr);
+            const now = new Date();
+            const diffMs = now - date;
+            return formatDuration(diffMs);
+        }
+
+        function formatDuration(ms) {
+            const seconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            const days = Math.floor(hours / 24);
+
+            if (days > 0) {
+                const remainingHours = hours % 24;
+                if (remainingHours > 0) {
+                    return `${days}d ${remainingHours}h`;
+                }
+                return `${days}d`;
+            }
+            if (hours > 0) {
+                return `${hours}h ${minutes % 60}m`;
+            }
+            return `${minutes}m`;
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            try {
+                const date = new Date(dateStr);
+                return date.toLocaleDateString('pt-BR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                });
+            } catch {
+                return '-';
+            }
+        }
+
+        function showLoading() {
+            document.getElementById('mainContent').innerHTML = `
+                <div class="loading-container">
+                    <div class="spinner"></div>
+                    <p class="loading-text">Carregando tickets ativos...</p>
+                </div>
+            `;
+        }
+
+        function showError(message, details) {
+            document.getElementById('mainContent').innerHTML = `
+                <div class="error-container">
+                    <svg class="error-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <h2 class="error-title">${message}</h2>
+                    <p class="error-message">${details}</p>
+                    <button class="btn btn-primary" onclick="refreshTickets()">
+                        Tentar novamente
+                    </button>
+                </div>
+            `;
+        }
+
+        function renderTable(ticketsToRender) {
+            const totalProcessing = tickets.filter(t => t.status === 'processing').length;
+            const totalPending = tickets.filter(t => t.status === 'pending').length;
+            const totalSlaLate = tickets.filter(t => t.isSlaLate).length;
+
+            const countProcessingEl = document.getElementById('countProcessing');
+            const countPendingEl = document.getElementById('countPending');
+            const countSlaLateEl = document.getElementById('countSlaLate');
+            const resultsCountEl = document.getElementById('resultsCount');
+
+            if (countProcessingEl) countProcessingEl.textContent = totalProcessing;
+            if (countPendingEl) countPendingEl.textContent = totalPending;
+            if (countSlaLateEl) countSlaLateEl.textContent = totalSlaLate;
+            if (resultsCountEl) resultsCountEl.textContent = `${ticketsToRender.length} de ${tickets.length} tickets`;
+
+            const rowsHTML = ticketsToRender.map(ticket => {
+                const rowClass = ticket.isSlaLate ? 'row-sla-late' : '';
+                const slaClass = ticket.isSlaLate ? 'late' : 'ok';
+                const slaText = ticket.isSlaLate ? 'Fora do prazo' : 'No prazo';
+                const instanceClass = (ticket.instance || '').toLowerCase();
+                
+                return `
+                    <tr class="${rowClass}">
+                        <td class="ticket-id">
+                            <a href="${ticket.instanceUrl}${ticket.id}" target="_blank" title="${ticket.title}">
+                                #${ticket.id}
+                            </a>
+                        </td>
+                        <td class="col-instance">
+                            <span class="instance-badge ${instanceClass}">${ticket.instance}</span>
+                        </td>
+                        <td class="entity col-entity" title="${ticket.entityFull}">${ticket.entity}</td>
+                        <td class="col-status">
+                            <span class="status-badge ${ticket.status}">
+                                <span class="status-dot"></span>
+                                ${ticket.statusName}
+                            </span>
+                        </td>
+                        <td class="col-group">${ticket.group}</td>
+                        <td>${ticket.technician || '-'}</td>
+                        <td class="date col-date">${formatDate(ticket.dateCreated)}</td>
+                        <td class="date col-date">${formatDate(ticket.dueDate)}</td>
+                        
+                        <td class="col-sla">
+                            <span class="sla-badge ${slaClass}">
+                                ${slaText}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            document.getElementById('mainContent').innerHTML = `
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th onclick="sortTable('id')" class="col-id ${currentSort.field === 'id' ? 'sorted' : ''}">ID<span class="sort-icon">${getSortIcon('id')}</span></th>
+                                <th onclick="sortTable('instance')" class="col-instance ${currentSort.field === 'instance' ? 'sorted' : ''}">Instância<span class="sort-icon">${getSortIcon('instance')}</span></th>
+                                <th onclick="sortTable('entity')" class="col-entity ${currentSort.field === 'entity' ? 'sorted' : ''}">Entidade<span class="sort-icon">${getSortIcon('entity')}</span></th>
+                                <th onclick="sortTable('status')" class="col-status ${currentSort.field === 'status' ? 'sorted' : ''}">Status<span class="sort-icon">${getSortIcon('status')}</span></th>
+                                <th onclick="sortTable('group')" class="col-group ${currentSort.field === 'group' ? 'sorted' : ''}">Grupo Responsável<span class="sort-icon">${getSortIcon('group')}</span></th>
+                                <th>Técnico</th>
+                                <th onclick="sortTable('dateCreated')" class="col-date ${currentSort.field === 'dateCreated' ? 'sorted' : ''}">Abertura<span class="sort-icon">${getSortIcon('dateCreated')}</span></th>
+                                <th onclick="sortTable('dueDate')" class="col-date ${currentSort.field === 'dueDate' ? 'sorted' : ''}">Previsto<span class="sort-icon">${getSortIcon('dueDate')}</span></th>
+                                
+                                <th onclick="sortTable('sla')" class="col-sla ${currentSort.field === 'sla' ? 'sorted' : ''}">SLA<span class="sort-icon">${getSortIcon('sla')}</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rowsHTML || '<tr><td colspan="11" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum ticket encontrado</td></tr>'}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function getCurrentTimeFormatted() {
+            return new Date().toLocaleTimeString('pt-BR', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+            });
+        }
+
+        // Incremental loader for active tickets (Peta/GMX)
+        async function fetchFromInstancePaged(instanceName, page, batchSize) {
+            // Build GLPI request for a single page of tickets for an instance
+            const inst = INSTANCES[instanceName];
+            if (!inst) return [];
+            if (!sessionTokens[instanceName]) {
+                await initSession(instanceName);
+            }
+            const start = page * batchSize;
+            const end = start + batchSize - 1;
+            const searchParams = new URLSearchParams({
+                range: `${start}-${end}`,
+                expand_dropdowns: 'true',
+                get_hateoas: 'false',
+            });
+            try {
+                const resp = await fetch(
+                    `${inst.BASE_URL}/search/Ticket?${searchParams.toString()}`,
+                    {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Session-Token': sessionTokens[instanceName],
+                            'App-Token': inst.APP_TOKEN
+                        }
+                    }
+                );
+                if (!resp.ok) { return []; }
+                const data = await resp.json();
+                const rows = data?.data ?? [];
+                const mapped = rows.map(t => {
+                    const id = t.ticket_id ?? t.id;
+                    const title = t.title ?? t.name ?? '';
+                    const entity = t.entity ?? '';
+                    const entityFull = t.entity_full ?? t.entity ?? '';
+                    const category = t.category ?? t[7] ?? 'Não categorizado';
+                    const statusId = t.status_id ?? parseInt(t[12]) ?? 2;
+                    const status = t.status_key ?? t.status ?? 'processing';
+                    const statusName = t.status_name ?? t.statusName ?? 'Em atendimento';
+                    const gp = t.group_name ?? t.group ?? t[8] ?? 'Não atribuído';
+                    const dateCreated = t.date_created ?? t.date_creation ?? '';
+                    const dueDate = t.due_date ?? t[151] ?? '';
+                    const isSlaLate = t.is_sla_late ?? false;
+                    return {
+                        id, title, entity, entityFull, category, statusId, status, statusName,
+                        group: gp, dateCreated, dueDate, isSlaLate, instance: instanceName,
+                        instanceUrl: INSTANCES[instanceName]?.TICKET_URL ?? '', _source: t
+                    };
+                });
+                return mapped;
+            } catch (e) {
+                console.error('incremental load error', instanceName, e);
+                return [];
+            }
+        }
+
+        async function loadActiveTicketsIncremental() {
+            const sources = [
+              { name: 'Peta', fetcher: (p, batch) => fetchFromInstancePaged('Peta', p, batch) },
+              { name: 'GMX', fetcher: (p, batch) => fetchFromInstancePaged('GMX', p, batch) }
+            ];
+            const batchSize = 50;
+            if (typeof IncrementalLoader === 'undefined') {
+                console.log('IncrementalLoader not found. Skipping incremental load.');
+                return;
+            }
+            await IncrementalLoader.loadInBatches({
+              sources,
+              batchSize,
+              onBatch: (ctx, batchAll) => {
+                // batchAll contains all accumulated tickets so far, but we keep only the latest subset for render
+                tickets = batchAll;
+                filteredTickets = [...tickets];
+                renderTable(filteredTickets);
+                const tally = window.DashboardUtils?.tallyTickets ? window.DashboardUtils.tallyTickets(batchAll) : null;
+                if (tally) window.dispatchEvent(new CustomEvent('tickets-updated', { detail: tally }));
+              },
+              onDone: (all) => {
+                tickets = all;
+                filteredTickets = [...tickets];
+                renderTable(filteredTickets);
+                const tally = window.DashboardUtils?.tallyTickets ? window.DashboardUtils.tallyTickets(all) : null;
+                if (tally) window.dispatchEvent(new CustomEvent('tickets-updated', { detail: tally }));
+              }
+            });
+        }
+
+        // Trigger incremental load after DOM ready
+        document.addEventListener('DOMContentLoaded', () => {
+            // Start incremental loading for active tickets
+            if (typeof IncrementalLoader !== 'undefined') {
+                loadActiveTicketsIncremental();
+            }
+        });
+
+        async function refreshTickets() {
+            if (isLoading) return;
+            
+            isLoading = true;
+            const refreshBtn = document.getElementById('refreshBtn');
+            if (refreshBtn) refreshBtn.disabled = true;
+            showLoading();
+
+            try {
+                // Buscar todos os tickets do GLPI usando getAllTickets (incremental)
+                console.log('Starting getAllTickets (incremental loading)...');
+                tickets = await getAllTickets();
+                console.log('getAllTickets completed, tickets:', tickets.length);
+
+                filteredTickets = [...tickets];
+                console.log('Tickets loaded:', tickets.length, 'Filtered:', filteredTickets.length);
+                populateEntityFilter();
+                populateCategoryFilter();
+                populateGroupFilter();
+                populateInstanceStats();
+                applyFilters();
+                const lastUpdateEl = document.getElementById('lastUpdate');
+                if (lastUpdateEl) {
+                    lastUpdateEl.textContent = `Atualizado: ${getCurrentTimeFormatted()}`;
+                }
+                
+                // Reiniciar contador regressivo
+                startCountdown();
+            } catch (error) {
+                console.error('Erro ao carregar tickets:', error);
+                showError('Erro ao carregar tickets', 'Verifique sua conexão ou tente novamente.');
+            } finally {
+                isLoading = false;
+                if (refreshBtn) refreshBtn.disabled = false;
+            }
+        }
+
+        function populateInstanceStats() {
+            const petaCount = tickets.filter(t => t.instance === 'Peta').length;
+            const gmxCount = tickets.filter(t => t.instance === 'GMX').length;
+            const petaLateCount = tickets.filter(t => t.instance === 'Peta' && t.isSlaLate).length;
+            const gmxLateCount = tickets.filter(t => t.instance === 'GMX' && t.isSlaLate).length;
+            
+            console.log(`Peta: ${petaCount} tickets (${petaLateCount} SLA fora)`);
+            console.log(`GMX: ${gmxCount} tickets (${gmxLateCount} SLA fora)`);
+        }
+
+        function formatCountdown(dueDateStr) {
+            if (!dueDateStr) return null;
+            
+            const dueDate = new Date(dueDateStr);
+            const now = new Date();
+            const diff = dueDate - now;
+            
+            if (diff <= 0) {
+                return { text: 'SLA Expirado', class: 'critical' };
+            }
+            
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+            
+            if (days > 0) {
+                return { text: `${days}d ${hours}h`, class: diff < 24 * 60 * 60 * 1000 ? 'warning' : '' };
+            }
+            
+            if (hours > 0) {
+                return { text: `${hours}h ${minutes}m`, class: diff < 60 * 60 * 1000 ? 'warning' : '' };
+            }
+            
+            return { text: `${minutes}m ${seconds}s`, class: 'critical' };
+        }
+
+        function updateSlaCountdowns() {
+            const countdowns = document.querySelectorAll('.sla-countdown');
+            countdowns.forEach(el => {
+                const dueDate = el.getAttribute('data-due');
+                if (dueDate) {
+                    const result = formatCountdown(dueDate);
+                    if (result) {
+                        el.textContent = result.text;
+                        el.className = 'sla-countdown' + (result.class ? ' ' + result.class : '');
+                    }
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOMContentLoaded fired - starting initialization');
+            initTheme();
+            initInstanceButtons();
+            initInstanceDropdown();
+            console.log('Before SupabaseCache.init');
+            if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+                SupabaseCache.init(SUPABASE_URL, SUPABASE_ANON_KEY);
+            }
+            console.log('Calling refreshTickets()');
+            refreshTickets().then(() => {
+                console.log('refreshTickets completed');
+            }).catch(err => {
+                console.error('refreshTickets error:', err);
+            });
+            refreshTimer = setInterval(refreshTickets, REFRESH_INTERVAL);
+            countdownTimer = setInterval(updateSlaCountdowns, 1000);
+            startCountdown();
+        });
+
+        window.addEventListener('beforeunload', () => {
+            if (refreshTimer) clearInterval(refreshTimer);
+            if (countdownTimer) clearInterval(countdownTimer);
+        });
+    </script>
+</body>
+</html>
