@@ -3525,14 +3525,9 @@ ${JSON.stringify(error, null, 2)}
                         : (window.APP_CONFIG?.GLPI_GMX_TICKET_URL || ''),
                 }));
 
-                // Fetch technician names from GLPI API for tickets without technician
-                console.log('Fetching technicians from GLPI...');
-                try {
-                    tickets = await fetchTechniciansFromGLPI(tickets);
-                    console.log('Technicians fetched, ticket count:', tickets.length);
-                } catch (techError) {
-                    console.warn('Error fetching technicians:', techError);
-                }
+                // Skip GLPI technician fetch for now (too slow with 3000+ tickets)
+                // tickets = await fetchTechniciansFromGLPI(tickets);
+                console.log('Skipping GLPI technician fetch for performance');
 
                 loadedCounts = { processing: INITIAL_LOAD, pending: INITIAL_LOAD, solved: INITIAL_LOAD, closed: INITIAL_LOAD };
                 console.log('Calling renderKanban...');
