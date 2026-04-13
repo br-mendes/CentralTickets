@@ -2067,65 +2067,22 @@ function lastGroupLabel(name) {
         }
 
         async function getTicketsFromInstance(instanceName) {
-            const instance = INSTANCES[instanceName];
-            
-            if (!sessionTokens[instanceName]) {
-                await initSession(instanceName);
-            }
-
             try {
-                const allTickets = [];
-                let page = 0;
-                const pageSize = 100;
-                let hasMore = true;
+                const { data, error } = await window._sb
+                    .from('tickets_cache')
+                    .select('*')
+                    .eq('instance', instanceName)
+                    .not('status_key', 'in', '("solved","closed")')
+                    .order('date_mod', { ascending: false })
+                    .limit(500);
 
-                while (hasMore) {
-                    const start = page * pageSize;
-                    const end = start + pageSize - 1;
-
-                    const searchParams = new URLSearchParams({
-                        'range': `${start}-${end}`,
-                        'expand_dropdowns': 'true',
-                        'get_hateoas': 'false',
-                    });
-
-                    const response = await fetch(
-                        `${instance.BASE_URL}/search/Ticket?${searchParams.toString()}`,
-                        {
-                            method: 'GET',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Session-Token': sessionTokens[instanceName],
-                                'App-Token': instance.APP_TOKEN,
-                            },
-                        }
-                    );
-
-                    if (!response.ok) {
-                        if (response.status === 401) {
-                            await initSession(instanceName);
-                            continue;
-                        }
-                        throw new Error(`Erro ao buscar tickets de ${instanceName}: ${response.status}`);
-                    }
-
-                    const data = await response.json();
-                    
-                    if (!data.data || data.data.length === 0) {
-                        hasMore = false;
-                        break;
-                    }
-
-                    allTickets.push(...data.data);
-                    page++;
-                    
-                    if (page >= 100 || allTickets.length >= data.totalcount) {
-                        hasMore = false;
-                    }
+                if (error) {
+                    console.error(`Erro ao buscar tickets de ${instanceName} do Supabase:`, error);
+                    return [];
                 }
 
-                console.log(`${instanceName}: ${allTickets.length} tickets carregados`);
-                return processTickets(allTickets, instanceName);
+                console.log(`${instanceName}: ${(data || []).length} tickets carregados do Supabase`);
+                return processTickets(data || [], instanceName);
             } catch (error) {
                 console.error(`Erro ao buscar tickets de ${instanceName}:`, error);
                 throw error;
@@ -2133,17 +2090,15 @@ function lastGroupLabel(name) {
         }
 
         async function getAllTickets() {
-            console.log('getAllTickets called with incremental rendering');
-            const BATCH_SIZE = 50; // Process tickets in batches for incremental rendering
+            console.log('getAllTickets called with incremental rendering - Supabase mode');
+            const BATCH_SIZE = 50;
             const allTickets = [];
             
-            // Process each instance separately to show progress
             for (const instanceName of selectedInstances) {
                 try {
                     const instanceTickets = await getTicketsFromInstance(instanceName);
-                    console.log(`${instanceName}: ${instanceTickets.length} tickets brutos carregados`);
+                    console.log(`${instanceName}: ${instanceTickets.length} tickets processados`);
                     
-                    // Process tickets in batches for incremental rendering
                     for (let i = 0; i < instanceTickets.length; i += BATCH_SIZE) {
                         const batch = instanceTickets.slice(i, i + BATCH_SIZE);
                         const resolvedBatch = await resolveTechnicianNamesForPage(batch, instanceName);
@@ -2305,17 +2260,11 @@ function lastGroupLabel(name) {
 
         function processTickets(rawTickets, instanceName) {
             return rawTickets.map(ticket => {
-                const statusId = parseInt(ticket[12]) || 2;
-                // Exclui itens com status Novo (1) e já finalizados (5,6) para a página de ativos
-                if (statusId === 1 || statusId === 5 || statusId === 6) return null;
-                
-                // Filtrar apenas tickets ativos (status 1=new, 2=processing, 3=processing, 4=pending)
-                // Remover status 5 (solved) e 6 (closed)
-                if (statusId === 5 || statusId === 6) return null;
+                const statusId = ticket.status_id || 2;
                 
                 const statusInfo = STATUS_CONFIG[statusId] || STATUS_CONFIG[2];
                 
-                const entityFull = ticket[80] || '';
+                const entityFull = ticket.entity || '';
                 let entityShort = entityFull;
                 
                 if (instanceName === 'Peta') {
@@ -2326,43 +2275,42 @@ function lastGroupLabel(name) {
                 
                 entityShort = entityShort || entityFull;
                 
-                // Tempo para concluir excedido (campo 151 = due_date)
-                const dueDate = ticket[151];
+                // Tempo para concluir excedido
+                const dueDate = ticket.due_date;
                 const isSlaLate = isSlaExceeded(dueDate);
                 
-                // data de atualização da tarefa
-                const lastUpdate = ticket.date_mod || ticket[19] || ticket[91] || ticket[15];
-                
-                // Técnico: usar função para buscar campo 4 (atribuído) ou 5 (solicitante)
-                const technician = ticket._technicianName || getTechnicianFromTicket(ticket);
+                // Última atualização
+                const lastUpdate = ticket.date_mod || ticket.date_created;
                 
                 return {
-                    id: ticket[2],
-                    title: ticket[1],
+                    id: ticket.ticket_id,
+                    title: ticket.title,
                     entity: entityShort,
                     entityFull: entityFull,
-                    category: ticket[7] || 'Não categorizado',
+                    category: ticket.category || 'Não categorizado',
                     statusId: statusId,
-                    status: statusInfo.key,
-                    statusName: statusInfo.name,
-                    group: lastGroupLabel(ticket[8] || 'Não atribuído'),
-                    technician: technician,
-                    dateCreated: ticket[15],
+                    status: ticket.status_key || statusInfo.key,
+                    statusName: ticket.status_name || statusInfo.name,
+                    group: lastGroupLabel(ticket.group_name || ''),
+                    technician: ticket._technicianName || '',
+                    dateCreated: ticket.date_created,
+                    lastUpdate: lastUpdate,
                     dueDate: dueDate,
-                    isSlaLate: isSlaLate,
-                    // timePending foi removido deste relatório
-                    pendingReason: ticket[400] || '',
+                    isSlaLate: isSlaLate || ticket.is_sla_late || false,
+                    pendingReason: ticket.pending_reason || '',
                     instance: instanceName,
-                    instanceUrl: INSTANCES[instanceName].TICKET_URL,
+                    instanceUrl: ticket.instance === 'Peta' 
+                        ? (window.APP_CONFIG?.GLPI_PETA_TICKET_URL || '')
+                        : (window.APP_CONFIG?.GLPI_GMX_TICKET_URL || ''),
                 };
-            }).filter(t => t !== null);
+            });
         }
 
-        function isSlaExceeded(dueDateStr) {
-            if (!dueDateStr) return false;
-            const dueDate = new Date(dueDateStr);
+        function isSlaExceeded(dueDate) {
+            if (!dueDate) return false;
+            const dueDateObj = new Date(dueDate);
             const now = new Date();
-            return dueDate < now;
+            return dueDateObj < now;
         }
 
         function calculatePendingTime(dateCreatedStr) {

@@ -1239,85 +1239,42 @@
         }
 
         async function getTicketsFromInstance(instanceName) {
-            const instance = INSTANCES[instanceName];
-            
-            if (!sessionTokens[instanceName]) {
-                await initSession(instanceName);
-            }
-
-            const allTickets = [];
-            let page = 0;
-            const pageSize = 100;
-            let hasMore = true;
-
-            while (hasMore) {
-                const start = page * pageSize;
-                const end = start + pageSize - 1;
-
-                const searchParams = new URLSearchParams({
-                    'range': `${start}-${end}`,
-                    'expand_dropdowns': 'true',
-                    'get_hateoas': 'false',
-                });
-
-                const response = await fetch(
-                    `${instance.BASE_URL}/search/Ticket?${searchParams.toString()}`,
-                    {
-                        method: 'GET',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Session-Token': sessionTokens[instanceName],
-                            'App-Token': instance.APP_TOKEN,
-                        },
-                    }
-                );
-
-                if (!response.ok) {
-                    if (response.status === 401) {
-                        sessionTokens[instanceName] = null;
-                        await initSession(instanceName);
-                        continue;
-                    }
-                    throw new Error(`Erro ao buscar tickets de ${instanceName}: ${response.status}`);
-                }
-
-                const data = await response.json();
+            try {
+                const threshold = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
                 
-                if (data.data) {
-                    const ticketsArray = Array.isArray(data.data) ? data.data : Object.values(data.data);
-                    
-                    if (ticketsArray.length === 0) {
-                        hasMore = false;
-                    } else {
-                        allTickets.push(...ticketsArray);
-                        page++;
-                        
-                        if (ticketsArray.length < pageSize || page >= 50) {
-                            hasMore = false;
-                        }
-                    }
-                } else {
-                    hasMore = false;
-                }
-            }
+                const { data, error } = await window._sb
+                    .from('tickets_cache')
+                    .select('*')
+                    .eq('instance', instanceName)
+                    .not('status_key', 'in', '("solved","closed")')
+                    .lt('date_mod', threshold)
+                    .order('date_mod', { ascending: true })
+                    .limit(500);
 
-            return processTickets(allTickets, instanceName);
+                if (error) {
+                    console.error(`Erro ao buscar tickets de ${instanceName} do Supabase:`, error);
+                    return [];
+                }
+
+                console.log(`${instanceName}: ${(data || []).length} tickets carregados do Supabase`);
+                return processTickets(data || [], instanceName);
+            } catch (error) {
+                console.error(`Erro ao buscar tickets de ${instanceName}:`, error);
+                return [];
+            }
         }
 
         async function getAllTickets() {
-            const BATCH_SIZE = 50; // Process tickets in batches for incremental rendering
+            const BATCH_SIZE = 50;
             const allTickets = [];
             
-            // Process each instance separately to show progress
             for (const instanceName of selectedInstances) {
                 try {
                     const instanceTickets = await getTicketsFromInstance(instanceName);
-                    console.log(`${instanceName}: ${instanceTickets.length} tickets brutos carregados`);
+                    console.log(`${instanceName}: ${instanceTickets.length} tickets processados`);
                     
-                    // Process tickets in batches for incremental rendering
                     for (let i = 0; i < instanceTickets.length; i += BATCH_SIZE) {
                         const batch = instanceTickets.slice(i, i + BATCH_SIZE);
-                        const resolvedBatch = await resolveTechnicianNamesForPage(batch, instanceName);
                         allTickets.push(...resolvedBatch);
                         
                         // Update UI incrementally
@@ -1338,10 +1295,10 @@
 
         function processTickets(rawTickets, instanceName) {
             return rawTickets.map(ticket => {
-                const statusId = parseInt(ticket[12]) || 1;
+                const statusId = ticket.status_id || 1;
                 const statusInfo = STATUS_CONFIG[statusId] || STATUS_CONFIG[1];
                 
-                const entityFull = ticket[80] || '';
+                const entityFull = ticket.entity || '';
                 let entityShort = entityFull;
                 
                 if (instanceName === 'Peta') {
@@ -1352,25 +1309,25 @@
                 
                 entityShort = entityShort || entityFull;
 
-                let category = ticket[7] || 'Não categorizado';
-
-                const lastUpdate = ticket.date_mod || ticket[19] || ticket[91] || ticket.date_creation || ticket[15];
-
-                const statusName = (statusId === 7 && statusInfo.waitText) ? statusInfo.waitText : (statusInfo.name || '');
+                const lastUpdate = ticket.date_mod || ticket.date_created;
+                
+                const statusName = ticket.status_name || statusInfo.name || '';
                 return {
-                    id: ticket[2] || ticket.id,
-                    title: ticket[1] || 'Sem título',
+                    id: ticket.ticket_id,
+                    title: ticket.title || 'Sem título',
                     entity: entityShort,
                     entityFull: entityFull,
-                    category: category,
+                    category: ticket.category || 'Não categorizado',
                     statusId: statusId,
-                    status: statusInfo.key,
+                    status: ticket.status_key || statusInfo.key,
                     statusName: statusName,
-                    group: lastGroupLabel(ticket[8] || 'Não atribuído'),
-                    dateCreated: ticket.date_creation || ticket[15] || ticket.date,
+                    group: lastGroupLabel(ticket.group_name || ''),
+                    dateCreated: ticket.date_created,
                     lastUpdate: lastUpdate,
                     instance: instanceName,
-                    instanceUrl: INSTANCES[instanceName].TICKET_URL,
+                    instanceUrl: ticket.instance === 'Peta' 
+                        ? (window.APP_CONFIG?.GLPI_PETA_TICKET_URL || '')
+                        : (window.APP_CONFIG?.GLPI_GMX_TICKET_URL || ''),
                 };
             });
         }

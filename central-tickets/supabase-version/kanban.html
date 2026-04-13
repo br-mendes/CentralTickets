@@ -1519,11 +1519,103 @@
 
         // Função para buscar tickets de uma instância
         async function getTicketsFromInstance(instanceName) {
-            const instance = INSTANCES[instanceName];
-            
-            if (!sessionTokens[instanceName]) {
-                await initSession(instanceName);
+            try {
+                const { data, error } = await window._sb
+                    .from('tickets_cache')
+                    .select('*')
+                    .eq('instance', instanceName)
+                    .not('status_key', 'in', '("solved","closed")')
+                    .order('date_mod', { ascending: false })
+                    .limit(500);
+
+                if (error) {
+                    console.error(`Erro ao buscar tickets de ${instanceName} do Supabase:`, error);
+                    return [];
+                }
+
+                return data || [];
+            } catch (error) {
+                console.error(`Erro na busca de tickets de ${instanceName}:`, error);
+                return [];
             }
+        }
+
+        // Função para buscar tickets de todas as instâncias com renderização incremental
+        async function getAllTickets() {
+            const BATCH_SIZE = 50;
+            const allTickets = [];
+            
+            for (const instanceName of selectedInstances) {
+                try {
+                    const instanceTickets = await getTicketsFromInstance(instanceName);
+                    console.log(`${instanceName}: ${instanceTickets.length} tickets carregados do Supabase`);
+                    
+                    const processedTickets = processTickets(instanceTickets, instanceName);
+                    
+                    for (let i = 0; i < processedTickets.length; i += BATCH_SIZE) {
+                        const batch = processedTickets.slice(i, i + BATCH_SIZE);
+                        allTickets.push(...batch);
+                        
+                        if (window.renderKanban && typeof window.renderKanban === 'function') {
+                            window.renderKanbanIncremental(allTickets);
+                        }
+                    }
+                } catch (error) {
+                    console.error(`Falha ao carregar tickets de ${instanceName}:`, error);
+                }
+            }
+            
+            console.log(`Total de tickets carregados: ${allTickets.length}`);
+            return allTickets;
+        }
+
+        // Função para processar tickets do Supabase
+        function processTickets(rawTickets, instanceName) {
+            return rawTickets.map(ticket => {
+                const statusId = ticket.status_id || 1;
+                const statusInfo = TICKET_STATUS[statusId] || TICKET_STATUS[1];
+                
+                return {
+                    id: ticket.ticket_id,
+                    title: ticket.title,
+                    entity: ticket.entity || 'Entidade não definida',
+                    category: ticket.category || 'Não categorizado',
+                    statusId: statusId,
+                    status: ticket.status_key || statusInfo.key,
+                    statusName: ticket.status_name || statusInfo.name,
+                    statusColor: statusInfo.color,
+                    dateCreated: ticket.date_created,
+                    lastUpdate: ticket.date_mod,
+                    dueDate: ticket.due_date,
+                    timePending: ticket.status_key === 'pending' ? calculatePendingTime(ticket) : null,
+                    isSlaLate: ticket.is_sla_late || false,
+                    group: lastGroupLabel(ticket.group_name || ''),
+                    instance: instanceName,
+                    instanceUrl: ticket.instance === 'Peta' 
+                        ? (window.APP_CONFIG?.GLPI_PETA_TICKET_URL || '')
+                        : (window.APP_CONFIG?.GLPI_GMX_TICKET_URL || ''),
+                };
+            });
+        }
+
+        function isSlaExceeded(dueDate) {
+            if (!dueDate) return false;
+            const dueDateObj = new Date(dueDate);
+            const now = new Date();
+            return dueDateObj < now;
+        }
+
+        // Função para calcular tempo em pendência
+        function calculatePendingTime(ticket) {
+            const lastUpdate = ticket.date_mod || ticket.date_created;
+            if (!lastUpdate) return null;
+
+            const updateDate = new Date(lastUpdate);
+            const now = new Date();
+            const diffMs = now - updateDate;
+
+            return formatDuration(diffMs);
+        }
 
             try {
                 const allTickets = [];
