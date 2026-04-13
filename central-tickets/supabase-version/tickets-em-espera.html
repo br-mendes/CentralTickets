@@ -1246,7 +1246,7 @@
                     .from('tickets_cache')
                     .select('*')
                     .eq('instance', instanceName)
-                    .not('status_key', 'in', '("solved","closed")')
+                    .eq('status_id', 4) // Pendente
                     .lt('date_mod', threshold)
                     .order('date_mod', { ascending: true })
                     .limit(500);

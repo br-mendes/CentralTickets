@@ -2072,7 +2072,7 @@ function lastGroupLabel(name) {
                     .from('tickets_cache')
                     .select('*')
                     .eq('instance', instanceName)
-                    .not('status_key', 'in', '("solved","closed")')
+                    .in('status_id', [2, 3, 4]) // Em atendimento (2), Processando (3), Pendente (4)
                     .order('date_mod', { ascending: false })
                     .limit(500);
 
