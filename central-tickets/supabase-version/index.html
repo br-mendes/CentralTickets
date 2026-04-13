@@ -2913,7 +2913,7 @@ ${JSON.stringify(error, null, 2)}
                         Tickets por Grupo Responsável
                     </h2>
                     <div class="space-y-3">
-                        \${Object.entries(ticketsByGroup)
+                        ${Object.entries(ticketsByGroup)
                             .sort((a, b) => b[1].total - a[1].total)
                             .slice(0, 15)
                             .map(([group, stats]) => {
@@ -2929,6 +2929,15 @@ ${JSON.stringify(error, null, 2)}
                                             <div class="${barColor} h-full rounded-full flex items-center justify-end pr-2" style="width: ${pct}%">
                                                 <span class="text-xs font-bold text-white">${stats.total}</span>
                                             </div>
+                                        </div>
+                                        <div class="w-16 text-xs text-gray-500 text-right">
+                                            <span class="text-blue-600">${stats.peta}</span> · <span class="text-orange-600">${stats.gmx}</span>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                    </div>
+                </div>
                                         </div>
                                         <div class="w-16 text-xs text-gray-500 text-right">
                                             <span class="text-blue-600">${stats.peta}</span> · <span class="text-orange-600">${stats.gmx}</span>
@@ -3037,7 +3046,7 @@ ${JSON.stringify(error, null, 2)}
                         </a>
                     </div>
                 </div>
-            \`;
+            `;
         }
 
         function renderTailwindInstanceSummary(instanceName, stats, avgPending, color) {
@@ -3054,29 +3063,29 @@ ${JSON.stringify(error, null, 2)}
                     </div>
                     <div class="grid grid-cols-5 gap-2 mb-4">
                         <div class="text-center">
-                            <div class="text-xl font-bold \${c.text}">\${stats.new}</div>
+                            <div class="text-xl font-bold ${c.text}">${stats.new}</div>
                             <div class="text-xs text-gray-600">Novos</div>
                         </div>
                         <div class="text-center">
-                            <div class="text-xl font-bold \${c.text}">\${stats.processing}</div>
+                            <div class="text-xl font-bold ${c.text}">${stats.processing}</div>
                             <div class="text-xs text-gray-600">Em Att</div>
                         </div>
                         <div class="text-center">
-                            <div class="text-xl font-bold \${c.text}">\${stats.pending}</div>
+                            <div class="text-xl font-bold ${c.text}">${stats.pending}</div>
                             <div class="text-xs text-gray-600">Pendente</div>
                         </div>
                         <div class="text-center">
-                            <div class="text-xl font-bold \${c.text}">\${stats.solved}</div>
+                            <div class="text-xl font-bold ${c.text}">${stats.solved}</div>
                             <div class="text-xs text-gray-600">Solucionado</div>
                         </div>
                         <div class="text-center">
-                            <div class="text-xl font-bold \${c.text}">\${stats.closed}</div>
+                            <div class="text-xl font-bold ${c.text}">${stats.closed}</div>
                             <div class="text-xs text-gray-600">Fechado</div>
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-3 pt-3 border-t border-\${color}-200">
+                    <div class="grid grid-cols-2 gap-3 pt-3 border-t border-${color}-200">
                         <div class="text-center">
-                            <div class="text-2xl font-bold \${c.dark}">\${stats.total}</div>
+                            <div class="text-2xl font-bold ${c.dark}">${stats.total}</div>
                             <div class="text-xs text-gray-500">Total</div>
                         </div>
                         <div class="text-center">
