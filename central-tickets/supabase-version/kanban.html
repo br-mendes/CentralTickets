@@ -1699,6 +1699,67 @@
         }
 
         async function getTicketsFromInstance(instanceName) {
+            // This function would fetch from Supabase or GLPI
+            const instance = INSTANCES[instanceName];
+            const allTickets = [];
+            let page = 0;
+            const pageSize = 100;
+            let hasMore = true;
+
+            while (hasMore) {
+                const start = page * pageSize;
+                const end = start + pageSize - 1;
+
+                const searchParams = new URLSearchParams({
+                    'range': `${start}-${end}`,
+                    'expand_dropdowns': 'true',
+                    'get_hateoas': 'false',
+                });
+
+                try {
+                    const response = await fetch(
+                        `${instance.BASE_URL}/search/Ticket?${searchParams.toString()}`,
+                        {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Session-Token': sessionTokens[instanceName],
+                                'App-Token': instance.APP_TOKEN,
+                            },
+                        }
+                    );
+
+                    if (!response.ok) {
+                        throw new Error(`Erro ao buscar tickets de ${instanceName}: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+
+                    if (data.data) {
+                        const ticketsArray = Array.isArray(data.data) ? data.data : Object.values(data.data);
+                        
+                        if (ticketsArray.length === 0) {
+                            hasMore = false;
+                        } else {
+                            allTickets.push(...ticketsArray);
+                            page++;
+                            
+                            if (ticketsArray.length < pageSize || page >= 20) {
+                                hasMore = false;
+                            }
+                        }
+                    } else {
+                        hasMore = false;
+                    }
+                } catch (error) {
+                    console.error(`Erro ao buscar tickets de ${instanceName}:`, error);
+                    break;
+                }
+            }
+
+            return processTickets(allTickets, instanceName);
+        }
+
         async function getAllTickets() {
             const BATCH_SIZE = 50; // Process tickets in batches for incremental rendering
             const allTickets = [];
