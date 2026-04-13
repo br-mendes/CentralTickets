@@ -1707,7 +1707,31 @@
                 
             startCountdown();
             
-            console.log(`Render: filtered=${filtered.length}, rows=${rowsArray.length}`);
+            // Render the table
+            const tableHTML = `
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="col-id" onclick="sortTable('id')">ID ${getSortIcon('id')}</th>
+                                <th class="col-instance">Instância</th>
+                                <th class="col-entity" onclick="sortTable('entity')">Entidade ${getSortIcon('entity')}</th>
+                                <th class="col-status">Status</th>
+                                <th class="col-group" onclick="sortTable('group')">Grupo ${getSortIcon('group')}</th>
+                                <th class="col-category" onclick="sortTable('category')">Categoria ${getSortIcon('category')}</th>
+                                <th class="col-date" onclick="sortTable('dateCreated')">Data Abertura ${getSortIcon('dateCreated')}</th>
+                                <th class="col-last-update" onclick="sortTable('lastUpdate')">Última Atualização ${getSortIcon('lastUpdate')}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rowsArray.join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            mainContent.innerHTML = tableHTML;
+            console.log(`Render: mainContent.innerHTML definido com ${rowsArray.length} linhas`);
         }
 
         document.addEventListener('DOMContentLoaded', () => {

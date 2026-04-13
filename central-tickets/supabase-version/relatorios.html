@@ -1194,7 +1194,7 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                 return;
             }
 
-            const rows = filteredTickets.map(t => `
+            const rowsArray = filteredTickets.map(t => `
                 <tr>
                     <td class="col-id">#${t.id}</td>
                     <td class="col-instance"><span class="instance-badge ${t.instance.toLowerCase()}">${t.instance}</span></td>
@@ -1208,7 +1208,9 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                     <td>${formatDate(t.dateCreated)}</td>
                     <td>${formatDateTime(t.lastUpdate)}</td>
                 </tr>
-            `).join('');
+            `);
+            
+            const rows = rowsArray.join('');
 
             content.innerHTML = `
                 <div class="table-container">

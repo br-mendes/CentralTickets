@@ -703,6 +703,22 @@
             return processTickets(ticketsWithTechnicians, instanceName);
         }
 
+        // Function to get all tickets from all instances
+        async function getAllTickets() {
+            const allTickets = [];
+            
+            for (const instanceName of selectedInstances) {
+                try {
+                    const instanceTickets = await getTicketsFromInstance(instanceName);
+                    allTickets.push(...instanceTickets);
+                } catch (error) {
+                    console.error(`Falha ao carregar tickets de ${instanceName}:`, error);
+                }
+            }
+            
+            return allTickets;
+        }
+
         // Fetch technician names from GLPI using Ticket_User API (type=2 for assigned)
         async function fetchTechniciansFromGLPI(tickets, instanceName) {
             if (!tickets || tickets.length === 0) return tickets;
