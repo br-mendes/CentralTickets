@@ -801,9 +801,6 @@
             }
         }
 
-        // Cache de nomes de usuários para evitar múltiplas chamadas
-        const userNameCache = {};
-
         // Função para buscar nome de usuário pelo ID usando cache do Supabase
         async function getUserName(userId, instanceName) {
             if (!userId) return '';
