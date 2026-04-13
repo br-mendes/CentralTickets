@@ -1397,22 +1397,16 @@
                     const instanceTickets = await getTicketsFromInstance(instanceName);
                     console.log(`${instanceName}: ${instanceTickets.length} tickets processados`);
                     
-                    for (let i = 0; i < instanceTickets.length; i += BATCH_SIZE) {
-                        const batch = instanceTickets.slice(i, i + BATCH_SIZE);
-                        allTickets.push(...resolvedBatch);
-                        
-                        // Update UI incrementally
-                        if (window.renderTable && typeof window.renderTable === 'function') {
-                            // Apply current filters to show partial results
-                            window.applyFiltersToPartialResults(allTickets);
-                        }
+                    allTickets.push(...instanceTickets);
+                    
+                    if (window.applyFiltersToPartialResults && typeof window.applyFiltersToPartialResults === 'function') {
+                        window.applyFiltersToPartialResults(allTickets);
                     }
                 } catch (error) {
                     console.error(`Falha ao carregar tickets de ${instanceName}:`, error);
                 }
             }
             
-            clearTimeout(timeoutHandle);
             console.log(`Total de tickets carregados: ${allTickets.length}`);
             return allTickets;
         }
