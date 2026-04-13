@@ -1588,8 +1588,13 @@
                     lastUpdate: ticket.date_mod,
                     dueDate: ticket.due_date,
                     timePending: ticket.status_key === 'pending' ? calculatePendingTime(ticket) : null,
-                    isSlaLate: ticket.is_sla_late || false,
+                    isSlaLate: ticket.is_sla_late || ticket.is_overdue_resolve || false,
+                    isOverdueFirst: ticket.is_overdue_first || false,
+                    isOverdueResolve: ticket.is_overdue_resolve || false,
+                    timeToOwn: ticket.time_to_own,
+                    timeToResolve: ticket.time_to_resolve,
                     group: lastGroupLabel(ticket.group_name || ''),
+                    technician: ticket.technician || '',
                     instance: instanceName,
                     instanceUrl: ticket.instance === 'Peta' 
                         ? (window.APP_CONFIG?.GLPI_PETA_TICKET_URL || '')

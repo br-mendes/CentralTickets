@@ -930,10 +930,10 @@
 
         function processTickets(rawTickets, instanceName) {
             return rawTickets.map(ticket => {
-                const statusId = parseInt(ticket[12]) || 7;
+                const statusId = ticket.status_id || 7;
                 const statusInfo = STATUS_CONFIG[statusId] || STATUS_CONFIG[7];
                 
-                const entityFull = ticket[80] || '';
+                const entityFull = ticket.entity || '';
                 let entityShort = entityFull;
                 
                 if (instanceName === 'Peta') {
@@ -944,24 +944,30 @@
                 
                 entityShort = entityShort || entityFull;
 
-                let category = ticket[7] || 'Não categorizado';
-                const lastUpdate = ticket.date_mod || ticket[19] || ticket[91] || ticket.date_creation || ticket[15];
+                const lastUpdate = ticket.date_mod || ticket.date_created;
 
                 return {
-                    id: ticket[2] || ticket.id,
-                    title: ticket[1] || 'Sem título',
+                    id: ticket.ticket_id,
+                    title: ticket.title || 'Sem título',
                     entity: entityShort,
                     entityFull: entityFull,
-                    category: category,
+                    category: ticket.category || 'Não categorizado',
                     statusId: statusId,
-                    status: statusInfo.key,
+                    status: ticket.status_key || statusInfo.key,
                     statusName: statusInfo.waitText || statusInfo.name,
-                    group: lastGroupLabel(ticket[8] || 'Não atribuído'),
-                    technician: ticket._technicianName || '',
-                    dateCreated: ticket.date_creation || ticket[15] || ticket.date,
+                    group: lastGroupLabel(ticket.group_name || ''),
+                    technician: ticket.technician || ticket._technicianName || '',
+                    isSlaLate: ticket.is_sla_late || ticket.is_overdue_resolve || false,
+                    isOverdueFirst: ticket.is_overdue_first || false,
+                    isOverdueResolve: ticket.is_overdue_resolve || false,
+                    timeToOwn: ticket.time_to_own,
+                    timeToResolve: ticket.time_to_resolve,
+                    dateCreated: ticket.date_created,
                     lastUpdate: lastUpdate,
                     instance: instanceName,
-                    instanceUrl: INSTANCES[instanceName].TICKET_URL,
+                    instanceUrl: ticket.instance === 'Peta' 
+                        ? (window.APP_CONFIG?.GLPI_PETA_TICKET_URL || '')
+                        : (window.APP_CONFIG?.GLPI_GMX_TICKET_URL || ''),
                 };
             });
         }

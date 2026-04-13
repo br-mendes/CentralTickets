@@ -907,7 +907,7 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                 const lastUpdate = ticket.date_mod || dateCreated;
 
                 // SLA
-                const isSlaLate = ticket.is_sla_late || false;
+                const isSlaLate = ticket.is_sla_late || ticket.is_overdue_resolve || false;
                 
                 return {
                     id: ticket.ticket_id,
@@ -916,9 +916,14 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                     status: ticket.status_key || statusInfo.key,
                     statusName: statusName,
                     group: lastGroupLabel(ticket.group_name || ''),
-                    technician: ticket._technicianName || '',
-                    slaAtendimento: isSlaLate ? 'Fora do prazo' : 'No prazo',
+                    technician: ticket.technician || ticket._technicianName || '',
+                    slaAtendimento: (ticket.is_overdue_first || false) ? 'Fora do prazo' : 'No prazo',
                     slaSolucao: isSlaLate ? 'Fora do prazo' : 'No prazo',
+                    isSlaLate: isSlaLate,
+                    isOverdueFirst: ticket.is_overdue_first || false,
+                    isOverdueResolve: ticket.is_overdue_resolve || false,
+                    timeToOwn: ticket.time_to_own,
+                    timeToResolve: ticket.time_to_resolve,
                     dateCreated: dateCreated,
                     lastUpdate: lastUpdate,
                     instance: instanceName,
