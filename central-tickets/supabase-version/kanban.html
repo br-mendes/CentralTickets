@@ -1265,9 +1265,9 @@
             const checkPeta = document.getElementById('checkPeta');
             const checkGmx = document.getElementById('checkGmx');
             
-            checkPeta.checked = selectedInstances.includes('Peta');
-            checkGmx.checked = selectedInstances.includes('GMX');
-            updateInstanceSelection();
+            if (checkPeta) checkPeta.checked = selectedInstances.includes('Peta');
+            if (checkGmx) checkGmx.checked = selectedInstances.includes('GMX');
+            if (checkPeta || checkGmx) updateInstanceSelection();
         }
 
         // Estado da aplicação
@@ -1276,6 +1276,7 @@
         let ticketsByStatus = {};
         let isLoading = false;
         let selectedInstances = ['Peta', 'GMX'];
+        let isFiltered = false;
         let loadedCounts = { processing: 100, pending: 100, solved: 100, closed: 100 };
         const INITIAL_LOAD = 100;
         const LOAD_MORE = 50;
