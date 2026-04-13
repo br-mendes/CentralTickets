@@ -2135,14 +2135,6 @@ function lastGroupLabel(name) {
             return sessionTokens[instanceName];
         }
 
-                console.log(`${instanceName}: ${(data || []).length} tickets carregados do Supabase`);
-                return processTickets(data || [], instanceName);
-            } catch (error) {
-                console.error(`Erro ao buscar tickets de ${instanceName}:`, error);
-                throw error;
-            }
-        }
-
         async function getAllTickets() {
             console.log('getAllTickets called with incremental rendering - Supabase mode');
             const BATCH_SIZE = 50;
