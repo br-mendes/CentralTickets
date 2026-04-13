@@ -1698,66 +1698,7 @@
             return formatDuration(diffMs);
         }
 
-            try {
-                const allTickets = [];
-                let page = 0;
-                const pageSize = 100;
-                let hasMore = true;
-
-                while (hasMore) {
-                    const start = page * pageSize;
-                    const end = start + pageSize - 1;
-
-                    const searchParams = new URLSearchParams({
-                        'range': `${start}-${end}`,
-                        'expand_dropdowns': 'true',
-                        'get_hateoas': 'false',
-                    });
-
-                    const response = await fetch(
-                        `${instance.BASE_URL}/search/Ticket?${searchParams.toString()}`,
-                        {
-                            method: 'GET',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Session-Token': sessionTokens[instanceName],
-                                'App-Token': instance.APP_TOKEN,
-                            },
-                        }
-                    );
-
-                    if (!response.ok) {
-                        throw new Error(`Erro ao buscar tickets de ${instanceName}: ${response.status}`);
-                    }
-
-                    const data = await response.json();
-                    
-                    if (data.data) {
-                        const ticketsArray = Array.isArray(data.data) ? data.data : Object.values(data.data);
-                        
-                        if (ticketsArray.length === 0) {
-                            hasMore = false;
-                        } else {
-                            allTickets.push(...ticketsArray);
-                            page++;
-                            
-                            if (data.data.length < pageSize || page >= 20) {
-                                hasMore = false;
-                            }
-                        }
-                    } else {
-                        hasMore = false;
-                    }
-                }
-
-                return processTickets(allTickets, instanceName);
-            } catch (error) {
-                console.error(`Erro ao buscar tickets de ${instanceName}:`, error);
-                throw error;
-            }
-        }
-
-        // Função para buscar tickets de todas as instâncias com renderização incremental
+        async function getTicketsFromInstance(instanceName) {
         async function getAllTickets() {
             const BATCH_SIZE = 50; // Process tickets in batches for incremental rendering
             const allTickets = [];

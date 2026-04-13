@@ -859,58 +859,6 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
             return userId.toString();
         }
-                
-                // Usar a API de busca para buscar usuário por ID
-                const searchParams = new URLSearchParams({
-                    'criteria[0][link]': 'AND',
-                    'criteria[0][field]': '1', // ID field
-                    'criteria[0][searchtype]': 'equals',
-                    'criteria[0][value]': userId.toString(),
-                    'range': '0-0',
-                    'uid_cols': 'true',
-                });
-
-                const response = await fetch(
-                    `${instance.BASE_URL}/search/User?${searchParams.toString()}`,
-                    {
-                        method: 'GET',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Session-Token': sessionTokens[instanceName],
-                            'App-Token': instance.APP_TOKEN,
-                        },
-                    }
-                );
-
-                if (!response.ok) return userId.toString();
-
-                const data = await response.json();
-                
-                // O resultado vem com chaves como "User.name" ou "2" (id)
-                // Primeiro tenta buscar pelo nome completo (campo 2 = name)
-                // Campo 2 = Name, Campo 5 = Realname, Campo 1 = ID
-                let userName = userId.toString();
-                
-                if (data.data && data.data[0]) {
-                    // Tentar diferentes campos de nome
-                    const userData = data.data[0];
-                    if (userData['2']) {
-                        userName = userData['2'].toString();
-                    } else if (userData['User.name']) {
-                        userName = userData['User.name'].toString();
-                    } else if (userData['5']) {
-                        // Tentar campo 5 (realname)
-                        userName = userData['5'].toString();
-                    }
-                }
-                
-                userNameCache[cacheKey] = userName;
-                return userName;
-            } catch (error) {
-                console.error(`Erro ao buscar usuário ${userId}:`, error);
-                return userId.toString();
-            }
-        }
 
         // Função para buscar nomes de técnicos de uma lista de tickets
         async function resolveTechnicianNames(tickets, instanceName) {

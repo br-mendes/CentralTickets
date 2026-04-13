@@ -999,6 +999,32 @@
         let countdownTimer = null;
         let nextRefreshTime = null;
 
+        async function refreshTickets() {
+            if (isLoading) return;
+            
+            isLoading = true;
+            const refreshBtn = document.getElementById('refreshBtn');
+            if (refreshBtn) refreshBtn.disabled = true;
+            showLoading();
+
+            try {
+                tickets = await getAllTickets();
+                renderTable(tickets);
+                console.log(`Total de tickets: ${tickets.length}`);
+            } catch (error) {
+                console.error('Erro na atualização:', error);
+                document.getElementById('mainContent').innerHTML = `
+                    <div class="loading-container">
+                        <p style="color: #ef4444;">Erro ao carregar tickets: ${error.message}</p>
+                        <button class="btn btn-primary" onclick="refreshTickets()">Tentar novamente</button>
+                    </div>
+                `;
+            } finally {
+                isLoading = false;
+                if (refreshBtn) refreshBtn.disabled = false;
+            }
+        }
+
         // Função para atualizar o contador regressivo
         function updateCountdown() {
             if (!nextRefreshTime) return;
