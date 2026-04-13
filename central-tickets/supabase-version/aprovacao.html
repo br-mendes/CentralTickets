@@ -546,6 +546,7 @@
     </div>
 
     <script src="config.js"></script>
+    <script src="glpi-technician.js"></script>
     <script src="shared-header.js"></script>
     <script src="incremental-loader.js"></script>
     <script src="dashboard-utils.js"></script>
@@ -690,11 +691,86 @@
 
             if (error) {
                 console.error(`Erro ao buscar tickets de ${instanceName} do Supabase:`, error);
-                // Fallback to empty array if Supabase fails
                 return [];
             }
 
-            return processTickets(data || [], instanceName);
+            // Fetch technician names from GLPI API
+            const ticketsWithTechnicians = await fetchTechniciansFromGLPI(data || [], instanceName);
+            
+            return processTickets(ticketsWithTechnicians, instanceName);
+        }
+
+        // Fetch technician names from GLPI using Ticket_User API (type=2 for assigned)
+        async function fetchTechniciansFromGLPI(tickets, instanceName) {
+            if (!tickets || tickets.length === 0) return tickets;
+            
+            const ticketsWithCache = tickets.map(ticket => ({
+                ...ticket,
+                technician: ticket.technician || ''
+            }));
+            
+            try {
+                const sessionToken = await initGLPISessionAprov(instanceName);
+                const instance = INSTANCES[instanceName];
+                
+                for (let i = 0; i < ticketsWithCache.length; i++) {
+                    const ticket = ticketsWithCache[i];
+                    
+                    if (ticket.technician) continue;
+                    
+                    try {
+                        const response = await fetch(
+                            `${instance.BASE_URL}/Ticket/${ticket.ticket_id}/Ticket_User`,
+                            {
+                                method: 'GET',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Session-Token': sessionToken,
+                                    'App-Token': instance.APP_TOKEN,
+                                },
+                            }
+                        );
+                        
+                        if (response.ok) {
+                            const actors = await response.json();
+                            const technician = actors?.find(a => a.type === 2);
+                            
+                            if (technician?.users_id) {
+                                const userResponse = await fetch(
+                                    `${instance.BASE_URL}/User/${technician.users_id}`,
+                                    {
+                                        method: 'GET',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'Session-Token': sessionToken,
+                                            'App-Token': instance.APP_TOKEN,
+                                        },
+                                    }
+                                );
+                                
+                                if (userResponse.ok) {
+                                    const user = await userResponse.json();
+                                    const name = [user.firstname, user.realname].filter(Boolean).join(' ') || user.name || technician.users_id.toString();
+                                    ticketsWithCache[i].technician = name;
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.warn(`Failed to fetch technician for ticket ${ticket.ticket_id}:`, e);
+                    }
+                }
+            } catch (e) {
+                console.error('Error fetching technicians from GLPI:', e);
+            }
+            
+            return ticketsWithCache;
+        }
+        
+        async function initGLPISessionAprov(instanceName) {
+            if (!sessionTokens[instanceName]) {
+                await initSession(instanceName);
+            }
+            return sessionTokens[instanceName];
         }
             const cachedPersist = window.loadUserNameFromCache?.(instanceName, userId);
             if (cachedPersist) {

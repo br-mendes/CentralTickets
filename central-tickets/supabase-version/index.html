@@ -1978,6 +1978,7 @@
     </div>
 
     <script src="config.js"></script>
+    <script src="glpi-technician.js"></script>
     <script src="shared-header.js"></script>
     <script src="cache-manager.js"></script>
     <script src="supabase-cache.js"></script>
@@ -3479,6 +3480,9 @@ ${JSON.stringify(error, null, 2)}
                         : (window.APP_CONFIG?.GLPI_GMX_TICKET_URL || ''),
                 }));
 
+                // Fetch technician names from GLPI API for tickets without technician
+                tickets = await fetchTechniciansFromGLPI(tickets);
+
                 loadedCounts = { processing: INITIAL_LOAD, pending: INITIAL_LOAD, solved: INITIAL_LOAD, closed: INITIAL_LOAD };
                 renderKanban(tickets);
                 
@@ -3602,6 +3606,69 @@ ${JSON.stringify(error, null, 2)}
             if (!name) return '';
             const parts = String(name).split('>');
             return parts[parts.length - 1].trim();
+        }
+
+        // Fetch technician names from GLPI using Ticket_User API (type=2 for assigned)
+        async function fetchTechniciansFromGLPI(tickets) {
+            if (!tickets || tickets.length === 0) return tickets;
+            
+            const config = window.APP_CONFIG;
+            
+            for (let i = 0; i < tickets.length; i++) {
+                const ticket = tickets[i];
+                if (ticket.technician) continue;
+                
+                const instance = ticket.instance === 'Peta'
+                    ? { BASE_URL: config.GLPI_PETA_URL, USER_TOKEN: config.GLPI_PETA_USER_TOKEN, APP_TOKEN: config.GLPI_PETA_APP_TOKEN }
+                    : { BASE_URL: config.GLPI_GMX_URL, USER_TOKEN: config.GLPI_GMX_USER_TOKEN, APP_TOKEN: config.GLPI_GMX_APP_TOKEN };
+                
+                try {
+                    if (!window.sessionTokens?.[ticket.instance]) {
+                        await window.initSessionGLPI(ticket.instance);
+                    }
+                    
+                    const response = await fetch(
+                        `${instance.BASE_URL}/Ticket/${ticket.id}/Ticket_User`,
+                        {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Session-Token': window.sessionTokens[ticket.instance],
+                                'App-Token': instance.APP_TOKEN,
+                            },
+                        }
+                    );
+                    
+                    if (response.ok) {
+                        const actors = await response.json();
+                        const technician = actors?.find(a => a.type === 2);
+                        
+                        if (technician?.users_id) {
+                            const userResponse = await fetch(
+                                `${instance.BASE_URL}/User/${technician.users_id}`,
+                                {
+                                    method: 'GET',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Session-Token': window.sessionTokens[ticket.instance],
+                                        'App-Token': instance.APP_TOKEN,
+                                    },
+                                }
+                            );
+                            
+                            if (userResponse.ok) {
+                                const user = await userResponse.json();
+                                const name = [user.firstname, user.realname].filter(Boolean).join(' ') || user.name || technician.users_id.toString();
+                                tickets[i].technician = name;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.warn(`Failed to fetch technician for ticket ${ticket.id}:`, e);
+                }
+            }
+            
+            return tickets;
         }
     </script>
 </body>

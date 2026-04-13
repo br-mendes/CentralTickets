@@ -1195,48 +1195,11 @@
     </main>
 
     <script src="config.js"></script>
+    <script src="glpi-technician.js"></script>
     <script src="incremental-loader.js"></script>
     <script src="dashboard-utils.js"></script>
     <script src="cache-manager.js"></script>
     <script src="shared-header.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function(){ if (typeof renderSharedHeader === 'function') renderSharedHeader(); });
-    </script>
-  <script>
-    // Incremental loader for active tickets (Peta/GMX)
-    async function loadActiveTicketsIncremental() {
-      const batchSize = 50;
-      const sources = [
-        { name: 'Peta', fetcher: (page, size) => fetchFromInstancePaged('Peta', page, size) },
-        { name: 'GMX', fetcher: (page, size) => fetchFromInstancePaged('GMX', page, size) }
-      ];
-      if (typeof IncrementalLoader === 'undefined') {
-        console.log('IncrementalLoader not found');
-        return;
-      }
-      await IncrementalLoader.loadInBatches({
-        sources,
-        batchSize,
-        onBatch: (ctx, all) => {
-          tickets = all;
-          filteredTickets = [...tickets];
-          renderTable(filteredTickets);
-          const tally = window.DashboardUtils?.tallyTickets ? window.DashboardUtils.tallyTickets(all) : null;
-          if (tally) window.dispatchEvent(new CustomEvent('tickets-updated', { detail: tally }));
-        },
-        onDone: (all) => {
-          tickets = all;
-          filteredTickets = [...tickets];
-          renderTable(filteredTickets);
-          const tally = window.DashboardUtils?.tallyTickets ? window.DashboardUtils.tallyTickets(all) : null;
-          if (tally) window.dispatchEvent(new CustomEvent('tickets-updated', { detail: tally }));
-        }
-      });
-    }
-    document.addEventListener('DOMContentLoaded', () => {
-      if (typeof IncrementalLoader !== 'undefined') loadActiveTicketsIncremental();
-    });
-  </script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-cache.js"></script>
     <script>
@@ -2072,7 +2035,7 @@ function lastGroupLabel(name) {
                     .from('tickets_cache')
                     .select('*')
                     .eq('instance', instanceName)
-                    .in('status_id', [2, 3, 4]) // Em atendimento (2), Processando (3), Pendente (4)
+                    .in('status_id', [2, 3, 4])
                     .order('date_mod', { ascending: false })
                     .limit(500);
 
@@ -2080,6 +2043,97 @@ function lastGroupLabel(name) {
                     console.error(`Erro ao buscar tickets de ${instanceName} do Supabase:`, error);
                     return [];
                 }
+
+                console.log(`${instanceName}: ${(data || []).length} tickets carregados do Supabase`);
+                
+                // Fetch technician names from GLPI API for each ticket
+                const ticketsWithTechnicians = await fetchTechniciansFromGLPI(data || [], instanceName);
+                
+                return processTickets(ticketsWithTechnicians, instanceName);
+            } catch (error) {
+                console.error(`Erro ao buscar tickets de ${instanceName}:`, error);
+                throw error;
+            }
+        }
+        
+        // Fetch technician names from GLPI using Ticket_User API
+        async function fetchTechniciansFromGLPI(tickets, instanceName) {
+            if (!tickets || tickets.length === 0) return tickets;
+            
+            // First try to get cached technician from Supabase
+            const ticketsWithCache = tickets.map(ticket => ({
+                ...ticket,
+                technician: ticket.technician || ''
+            }));
+            
+            // Then fetch missing ones from GLPI
+            try {
+                const sessionToken = await initGLPISession(instanceName);
+                const instance = INSTANCES[instanceName];
+                
+                for (let i = 0; i < ticketsWithCache.length; i++) {
+                    const ticket = ticketsWithCache[i];
+                    
+                    // Skip if already has technician from cache
+                    if (ticket.technician) continue;
+                    
+                    try {
+                        const response = await fetch(
+                            `${instance.BASE_URL}/Ticket/${ticket.ticket_id}/Ticket_User`,
+                            {
+                                method: 'GET',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Session-Token': sessionToken,
+                                    'App-Token': instance.APP_TOKEN,
+                                },
+                            }
+                        );
+                        
+                        if (response.ok) {
+                            const actors = await response.json();
+                            // Find assigned technician (type = 2)
+                            const technician = actors?.find(a => a.type === 2);
+                            
+                            if (technician?.users_id) {
+                                // Get user name
+                                const userResponse = await fetch(
+                                    `${instance.BASE_URL}/User/${technician.users_id}`,
+                                    {
+                                        method: 'GET',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'Session-Token': sessionToken,
+                                            'App-Token': instance.APP_TOKEN,
+                                        },
+                                    }
+                                );
+                                
+                                if (userResponse.ok) {
+                                    const user = await userResponse.json();
+                                    const name = [user.firstname, user.realname].filter(Boolean).join(' ') || user.name || technician.users_id.toString();
+                                    ticketsWithCache[i].technician = name;
+                                    ticketsWithCache[i].technicianId = technician.users_id;
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.warn(`Failed to fetch technician for ticket ${ticket.ticket_id}:`, e);
+                    }
+                }
+            } catch (e) {
+                console.error('Error fetching technicians from GLPI:', e);
+            }
+            
+            return ticketsWithCache;
+        }
+        
+        async function initGLPISession(instanceName) {
+            if (!sessionTokens[instanceName]) {
+                await initSession(instanceName);
+            }
+            return sessionTokens[instanceName];
+        }
 
                 console.log(`${instanceName}: ${(data || []).length} tickets carregados do Supabase`);
                 return processTickets(data || [], instanceName);
