@@ -3294,6 +3294,7 @@ ${JSON.stringify(error, null, 2)}
         function renderKanban(tickets) {
             const mainContent = document.getElementById('mainContent');
             mainContent.innerHTML = renderFullDashboard(tickets);
+            console.log(`Dashboard rendered, innerHTML length: ${mainContent.innerHTML.length}`);
         }
 
         // Função para renderizar card de ticket
@@ -3491,6 +3492,8 @@ ${JSON.stringify(error, null, 2)}
 
                 const { data, error } = await query;
 
+                console.log(`Raw Supabase data: ${data?.length || 0} tickets, error: ${error?.message || 'none'}`);
+
                 if (error) {
                     throw new Error(`Erro ao buscar tickets do Supabase: ${error.message}`);
                 }
@@ -3544,6 +3547,7 @@ ${JSON.stringify(error, null, 2)}
                 startCountdown();
                 
                 console.log(`✅ Atualização concluída: ${tickets.length} tickets carregados do Supabase`);
+                console.log(`✅ Dashboard rendered successfully`);
             } catch (error) {
                 console.error('❌ Erro na atualização:', error);
                 
