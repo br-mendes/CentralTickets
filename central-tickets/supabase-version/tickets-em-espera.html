@@ -1572,10 +1572,11 @@
 
         function renderTable(allTickets) {
             const mainContent = document.getElementById('mainContent');
+            if (!mainContent) return;
             
-            const searchText = document.getElementById('searchInput').value.toLowerCase();
-            const statusFilter = document.getElementById('statusFilter').value;
-            const waitingFilter = document.getElementById('waitingFilter').value;
+            const searchText = document.getElementById('searchInput')?.value.toLowerCase() || '';
+            const statusFilter = document.getElementById('statusFilter')?.value || '';
+            const waitingFilter = document.getElementById('waitingFilter')?.value || '';
             
             let filtered = allTickets.filter(t => {
                 if (!selectedInstances.includes(t.instance)) return false;
