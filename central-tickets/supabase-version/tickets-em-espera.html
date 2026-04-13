@@ -1624,68 +1624,77 @@
             let warningCount = 0;
             let dangerCount = 0;
             
-            const rowsHTML = filtered.map(ticket => {
-                const hours = getHoursSinceUpdate(ticket.lastUpdate);
-                const blinkClass = getWaitingClass(hours);
-                const waitingBadge = getWaitingBadge(hours);
-                const dateTime = formatDateTime(ticket.lastUpdate);
-                const hoursClass = hours >= 72 ? 'danger' : (hours >= 24 ? 'warning' : 'ok');
-                const hoursText = hours >= 24 
-                    ? (hours >= 72 ? `${Math.floor(hours/24)}d ${Math.floor(hours%24)}h` : `${Math.floor(hours)}h`)
-                    : `${Math.floor(hours * 60)}min`;
-                
-                if (hours >= 72) dangerCount++;
-                else if (hours >= 24) warningCount++;
-                
-                const statusIcon = {
-                    'new': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>',
-                    'processing': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>',
-                    'pending': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>',
-                    'solved': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>',
-                    'closed': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line></svg>'
-                };
-                
-                return `
-                    <tr class="${blinkClass}">
-                        <td class="col-id">
-                            <a href="${ticket.instanceUrl}${ticket.id}" target="_blank">#${ticket.id}</a>
-                        </td>
-                        <td class="col-instance">
-                            <span class="instance-badge ${ticket.instance.toLowerCase()}">${ticket.instance}</span>
-                        </td>
-                        <td class="col-entity" title="${ticket.entity}">${ticket.entity}</td>
-                        <td class="col-status">
-                            <span class="status-badge ${ticket.status}">${statusIcon[ticket.status] || ''}${ticket.statusName}</span>
-                        </td>
-                        <td class="col-group" title="${ticket.group}">
-                            <div class="group-info">
-                                <div class="group-icon">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            // Generate HTML rows
+            const rowsArray = [];
+            for (const ticket of filtered) {
+                try {
+                    const hours = getHoursSinceUpdate(ticket.lastUpdate);
+                    const blinkClass = getWaitingClass(hours);
+                    const waitingBadge = getWaitingBadge(hours);
+                    const dateTime = formatDateTime(ticket.lastUpdate);
+                    const hoursClass = hours >= 72 ? 'danger' : (hours >= 24 ? 'warning' : 'ok');
+                    const hoursText = hours >= 24 
+                        ? (hours >= 72 ? `${Math.floor(hours/24)}d ${Math.floor(hours%24)}h` : `${Math.floor(hours)}h`)
+                        : `${Math.floor(hours * 60)}min`;
+                    
+                    if (hours >= 72) dangerCount++;
+                    else if (hours >= 24) warningCount++;
+                    
+                    const statusIcon = {
+                        'new': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>',
+                        'processing': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>',
+                        'pending': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>',
+                        'solved': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>',
+                        'closed': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line></svg>'
+                    };
+                    
+                    rowsArray.push(`
+                        <tr class="${blinkClass}">
+                            <td class="col-id">
+                                <a href="${ticket.instanceUrl}${ticket.id}" target="_blank">#${ticket.id}</a>
+                            </td>
+                            <td class="col-instance">
+                                <span class="instance-badge ${ticket.instance.toLowerCase()}">${ticket.instance}</span>
+                            </td>
+                            <td class="col-entity" title="${ticket.entity}">${ticket.entity}</td>
+                            <td class="col-status">
+                                <span class="status-badge ${ticket.status}">${statusIcon[ticket.status] || ''}${ticket.statusName}</span>
+                            </td>
+                            <td class="col-group" title="${ticket.group}">
+                                <div class="group-info">
+                                    <div class="group-icon">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4-4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                                    </div>
+                                    <span class="group-name">${ticket.group}</span>
                                 </div>
-                                <span class="group-name">${ticket.group}</span>
-                            </div>
-                        </td>
-                        <td class="col-category" title="${ticket.category}">
-                            <div class="category-info">
-                                <div class="category-icon">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                            </td>
+                            <td class="col-category" title="${ticket.category}">
+                                <div class="category-info">
+                                    <div class="category-icon">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2 2V5a2 2 0 0 1-2 2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                                    </div>
+                                    <span class="category">${ticket.category}</span>
                                 </div>
-                                <span class="category">${ticket.category}</span>
-                            </div>
-                        </td>
-                        <td class="col-date">${formatDate(ticket.dateCreated)}</td>
-                        <td class="col-last-update">
-                            <div class="last-update-cell">
-                                <div class="waiting-indicator">
-                                    <span class="last-update-date">${dateTime.date} ${dateTime.time}</span>
-                                    ${waitingBadge}
+                            </td>
+                            <td class="col-date">${formatDate(ticket.dateCreated)}</td>
+                            <td class="col-last-update">
+                                <div class="last-update-cell">
+                                    <div class="waiting-indicator">
+                                        <span class="last-update-date">${dateTime.date} ${dateTime.time}</span>
+                                        ${waitingBadge}
+                                    </div>
                                 </div>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-
+                            </td>
+                        </tr>
+                    `);
+                } catch (ticketError) {
+                    console.error('Error rendering ticket:', ticketError, ticket);
+                    // Skip problematic ticket
+                }
+            }
+            
+            const rowsHTML = rowsArray.join('');
+            
             const totalCountEl = document.getElementById('totalCount');
             const warningCountEl = document.getElementById('warningCount');
             const dangerCountEl = document.getElementById('dangerCount');
@@ -1698,7 +1707,7 @@
                 
             startCountdown();
             
-            console.log(`Render: filtered=${filtered.length}, rows=${rowsHTML.length}`);
+            console.log(`Render: filtered=${filtered.length}, rows=${rowsArray.length}`);
         }
 
         document.addEventListener('DOMContentLoaded', () => {
