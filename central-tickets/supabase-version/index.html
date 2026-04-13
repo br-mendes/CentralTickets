@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Central de Tickets - Dashboard de Tickets GLPI">
     <title>Central de Tickets</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <script src="incremental-loader.js"></script>
     <script src="dashboard-utils.js"></script>
     <link rel="icon" href="favicon-peta.png" type="image/png">
@@ -1786,7 +1785,8 @@
     </style>
 </head>
 <body>
-  <!-- Dashboard (Tailwind-styled) - positioned at top of page -->
+  <!-- Dashboard (Tailwind-styled) - Tailwind loaded only here -->
+  <script src="https://cdn.tailwindcss.com"></script>
   <section id="dashboard" class="py-6 px-6 bg-white rounded-lg shadow m-4" style="max-width: 1400px; margin: 20px auto;">
     <!-- Main Stats Row -->
     <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
