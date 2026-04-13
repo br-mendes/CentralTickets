@@ -775,13 +775,6 @@
             }
             return sessionTokens[instanceName];
         }
-        
-        async function initGLPISessionAprov(instanceName) {
-            if (!sessionTokens[instanceName]) {
-                await initSession(instanceName);
-            }
-            return sessionTokens[instanceName];
-        }
 
         async function initSession(instanceName) {
             const instance = INSTANCES[instanceName];
