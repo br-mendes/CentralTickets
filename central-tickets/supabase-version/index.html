@@ -2745,6 +2745,7 @@ ${JSON.stringify(error, null, 2)}
             const petaAvgPending = getAvgPendingTime(petaStats.tickets);
             const gmxAvgPending = getAvgPendingTime(gmxStats.tickets);
             const slaOverdue = tickets.filter(t => t.isSlaLate);
+            const slaOverdueSorted = [...slaOverdue].sort((a, b) => new Date(a.dueDate || 0) - new Date(b.dueDate || 0));
 
             const ticketsByEntity = {};
             tickets.forEach(t => {
@@ -2974,16 +2975,6 @@ ${JSON.stringify(error, null, 2)}
                 '</div>';
             }).join('');
         }
-                <!-- Resumo por Instância -->
-                <div class="bg-white rounded-lg shadow p-6 mb-6">
-                    <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
-                        Resumo por Instância
-                    </h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        ${renderTailwindInstanceSummary('Peta', petaStats, petaAvgPending, 'blue')}
-                        ${renderTailwindInstanceSummary('GMX', gmxStats, gmxAvgPending, 'orange')}
-                    </div>
                 </div>
 
                 <!-- Tickets com SLA Fora do Prazo -->
@@ -3170,7 +3161,7 @@ ${JSON.stringify(error, null, 2)}
                         <button class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors" data-period="60">Últimos 60 dias</button>
                         <button class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors" data-period="90">Últimos 90 dias</button>
                     </div>
-                    \${renderTailwindPeriodContent(tickets, 30)}
+                    ${renderTailwindPeriodContent(tickets, 30)}
                 </div>
 
                 <!-- Ações Rápidas -->
