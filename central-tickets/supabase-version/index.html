@@ -6,7 +6,6 @@
     <meta name="description" content="Central de Tickets - Dashboard de Tickets GLPI">
     <title>Central de Tickets</title>
     <script src="incremental-loader.js"></script>
-    <script src="dashboard-utils.js"></script>
     <link rel="icon" href="favicon-peta.png" type="image/png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1786,94 +1785,8 @@
     </style>
 </head>
 <body>
-  <!-- Dashboard (Tailwind-styled) - Tailwind loaded only here -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <section id="dashboard" class="py-6 px-6 bg-white rounded-lg shadow m-4" style="max-width: 1400px; margin: 20px auto;">
-    <!-- Main Stats Row -->
-    <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-      <div class="p-4 border rounded shadow text-center bg-blue-50">
-        <div class="text-xs text-gray-500 uppercase font-medium">Total</div>
-        <div id="dash-total" class="text-3xl font-bold text-blue-600">0</div>
-      </div>
-      <div class="p-4 border rounded shadow text-center bg-amber-50">
-        <div class="text-xs text-gray-500 uppercase font-medium">Em atendimento</div>
-        <div id="dash-processing" class="text-3xl font-bold text-amber-600">0</div>
-      </div>
-      <div class="p-4 border rounded shadow text-center bg-purple-50">
-        <div class="text-xs text-gray-500 uppercase font-medium">Pendente</div>
-        <div id="dash-pending" class="text-3xl font-bold text-purple-600">0</div>
-      </div>
-      <div class="p-4 border rounded shadow text-center bg-green-50">
-        <div class="text-xs text-gray-500 uppercase font-medium">Aprovação</div>
-        <div id="dash-approval" class="text-3xl font-bold text-green-600">0</div>
-      </div>
-      <div class="p-4 border rounded shadow text-center bg-red-50">
-        <div class="text-xs text-gray-500 uppercase font-medium">SLA Atrasado</div>
-        <div id="dash-sla-late" class="text-3xl font-bold text-red-600">0</div>
-      </div>
-    </div>
-    
-    <!-- Instance Breakdown -->
-    <div class="grid grid-cols-2 gap-4 mb-6">
-      <div class="p-4 border rounded shadow">
-        <h3 class="text-sm font-semibold text-gray-700 mb-3">Por Instância</h3>
-        <div class="flex justify-between items-center mb-2">
-          <span class="text-sm text-gray-600">Peta</span>
-          <span id="dash-peta" class="text-lg font-bold text-blue-600">0</span>
-        </div>
-        <div class="flex justify-between items-center">
-          <span class="text-sm text-gray-600">GMX</span>
-          <span id="dash-gmx" class="text-lg font-bold text-green-600">0</span>
-        </div>
-      </div>
-      <div class="p-4 border rounded shadow">
-        <h3 class="text-sm font-semibold text-gray-700 mb-3">Por Status</h3>
-        <div class="flex justify-between items-center mb-2">
-          <span class="text-sm text-gray-600">Novo</span>
-          <span id="dash-new" class="text-lg font-bold text-blue-500">0</span>
-        </div>
-        <div class="flex justify-between items-center mb-2">
-          <span class="text-sm text-gray-600">Solucionado</span>
-          <span id="dash-solved" class="text-lg font-bold text-emerald-500">0</span>
-        </div>
-        <div class="flex justify-between items-center">
-          <span class="text-sm text-gray-600">Fechado</span>
-          <span id="dash-closed" class="text-lg font-bold text-gray-500">0</span>
-        </div>
-      </div>
-    </div>
-  </section>
-  <script>
-    window.addEventListener('tickets-updated', (e) => {
-      const d = e.detail || {};
-      const el = document.getElementById('dash-total');
-      if (el) el.textContent = d.total ?? 0;
-      const el2 = document.getElementById('dash-processing');
-      if (el2) el2.textContent = d.processing ?? 0;
-      const el3 = document.getElementById('dash-pending');
-      if (el3) el3.textContent = d.pending ?? 0;
-      const el4 = document.getElementById('dash-approval');
-      if (el4) el4.textContent = d.approval ?? 0;
-      const el5 = document.getElementById('dash-sla-late');
-      if (el5) el5.textContent = d.slaLate ?? 0;
-      
-      // Instance breakdown
-      const el6 = document.getElementById('dash-peta');
-      if (el6) el6.textContent = d.petaCount ?? 0;
-      const el7 = document.getElementById('dash-gmx');
-      if (el7) el7.textContent = d.gmxCount ?? 0;
-      
-      // Status breakdown
-      const el8 = document.getElementById('dash-new');
-      if (el8) el8.textContent = d.new ?? 0;
-      const el9 = document.getElementById('dash-solved');
-      if (el9) el9.textContent = d.solved ?? 0;
-      const el10 = document.getElementById('dash-closed');
-      if (el10) el10.textContent = d.closed ?? 0;
-    });
-  </script>
-    <div class="app">
-        <header class="header">
+  <div class="app">
+      <header class="header">
             <div class="header-content">
                 <div class="header-left">
                     <h1>
