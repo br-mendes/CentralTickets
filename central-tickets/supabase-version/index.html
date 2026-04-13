@@ -2955,7 +2955,7 @@ ${JSON.stringify(error, null, 2)}
                         Tickets por Solução (Raiz ITIL)
                     </h2>
                     <div class="space-y-3">
-                        \${Object.entries(ticketsBySolution)
+                        ${Object.entries(ticketsBySolution)
                             .sort((a, b) => b[1].total - a[1].total)
                             .slice(0, 15)
                             .map(([rootCat, stats]) => {
@@ -2988,10 +2988,10 @@ ${JSON.stringify(error, null, 2)}
                         Tickets por Categoria (ITIL Completa)
                     </h2>
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        \${Object.entries(ticketsByCategory)
+                        ${Object.entries(ticketsByCategory)
                             .sort((a, b) => b[1].total - a[1].total)
                             .slice(0, 18)
-                        .map(([cat, stats]) => `
+                            .map(([cat, stats]) => `
                                 <div class="border rounded-lg p-3 hover:shadow-md transition-shadow">
                                     <div class="text-sm font-medium text-gray-700 truncate" title="${cat}">${cat.length > 45 ? cat.substring(0, 45) + '...' : cat}</div>
                                     <div class="flex items-center justify-between mt-2">
