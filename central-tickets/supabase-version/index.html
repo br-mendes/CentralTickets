@@ -3565,25 +3565,8 @@ ${JSON.stringify(error, null, 2)}
             initTheme();
             initInstanceDropdown();
             
-            // Tentar carregar do cache primeiro para carregamento rápido
-            const cachedTickets = loadCache();
-            if (cachedTickets && cachedTickets.length > 0) {
-                tickets = cachedTickets;
-                loadedCounts = { processing: INITIAL_LOAD, pending: INITIAL_LOAD, solved: INITIAL_LOAD, closed: INITIAL_LOAD };
-                renderKanban(tickets);
-                
-                const lastUpdateEl = document.getElementById('lastUpdate');
-                if (lastUpdateEl) {
-                    const cacheTime = getCacheTimestamp();
-                    lastUpdateEl.textContent = `Cache: ${cacheTime ? new Date(cacheTime).toLocaleString('pt-BR') : 'desconhecido'}`;
-                }
-                
-                // Atualizar em background
-                console.log('📂 Dados carregados do cache. Atualizando em background...');
-                refreshTickets();
-            } else {
-                refreshTickets();
-            }
+            // Always load from Supabase directly (no localStorage cache)
+            refreshTickets();
 
             // Configurar atualização automática (recarrega a página)
             refreshTimer = setInterval(() => {
