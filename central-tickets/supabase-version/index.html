@@ -3526,9 +3526,16 @@ ${JSON.stringify(error, null, 2)}
                 }));
 
                 // Fetch technician names from GLPI API for tickets without technician
-                tickets = await fetchTechniciansFromGLPI(tickets);
+                console.log('Fetching technicians from GLPI...');
+                try {
+                    tickets = await fetchTechniciansFromGLPI(tickets);
+                    console.log('Technicians fetched, ticket count:', tickets.length);
+                } catch (techError) {
+                    console.warn('Error fetching technicians:', techError);
+                }
 
                 loadedCounts = { processing: INITIAL_LOAD, pending: INITIAL_LOAD, solved: INITIAL_LOAD, closed: INITIAL_LOAD };
+                console.log('Calling renderKanban...');
                 renderKanban(tickets);
                 
                 // Dispatch event for Tailwind dashboard
