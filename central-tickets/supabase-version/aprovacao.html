@@ -18,8 +18,11 @@
             --text-primary: #1e293b;
             --text-secondary: #64748b;
             --text-muted: #94a3b8;
-            --status-processing: #f59e0b;
-            --status-pending: #8b5cf6;
+            --status-processing: #22c55e;
+            --status-pending: #f97316;
+            --status-approval: #8b5cf6;
+            --status-solved: #6b7280;
+            --status-closed: #1f2937;
             --sla-ok: #10b981;
             --sla-late: #ef4444;
             --radius-sm: 6px;
@@ -351,11 +354,11 @@
         }
 
         .status-new { background: #dbeafe; color: #1e40af; }
-        .status-processing { background: #fef3c7; color: #92400e; }
-        .status-pending { background: #ede9fe; color: #6d28d9; }
-        .status-pending-approval { background: #fef3c7; color: #92400e; }
-        .status-solved { background: #d1fae5; color: #065f46; }
-        .status-closed { background: #f3f4f6; color: #6b7280; }
+        .status-processing, .status-em-atendimento { background: #dcfce7; color: #16a34a; }
+        .status-pending { background: #ffedd5; color: #ea580c; }
+        .status-pending-approval, .status-aprovacao { background: #ede9fe; color: #7c3aed; }
+        .status-solved { background: #e5e7eb; color: #6b7280; }
+        .status-closed { background: #000000; color: #000000; }
 
         .instance-badge {
             display: inline-flex;
@@ -681,12 +684,12 @@
         }
 
         async function getTicketsFromInstance(instanceName) {
-            // Try to get from Supabase cache first
+            // Buscar tickets com status aprovação (7) ou pendente (4)
             const { data, error } = await window._sb
                 .from('tickets_cache')
                 .select('*')
                 .eq('instance', instanceName)
-                .eq('status_id', 7) // Aprovação status
+                .in('status_id', [4, 7])
                 .order('date_mod', { ascending: false });
 
             if (error) {

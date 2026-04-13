@@ -19,8 +19,11 @@
             --text-primary: #1e293b;
             --text-secondary: #64748b;
             --text-muted: #94a3b8;
-            --status-processing: #f59e0b;
-            --status-pending: #8b5cf6;
+            --status-processing: #22c55e;
+            --status-pending: #f97316;
+            --status-approval: #8b5cf6;
+            --status-solved: #6b7280;
+            --status-closed: #1f2937;
             --status-new: #3b82f6;
             --sla-ok: #10b981;
             --sla-late: #ef4444;
@@ -382,11 +385,11 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         }
 
         .status-badge.new { background: rgba(59, 130, 246, 0.12); color: #2563eb; }
-        .status-badge.processing { background: rgba(59, 130, 246, 0.12); color: #1e3a8a; }
-        .status-badge.pending { background: rgba(245, 158, 11, 0.12); color: #d97706; }
-        .status-badge.solved { background: rgba(107, 114, 128, 0.20); color: #374151; }
-        .status-badge.closed { background: rgba(0, 0, 0, 0.12); color: #000; }
-        .status-badge.pending-approval { background: rgba(139, 92, 246, 0.25); color: #6b21a8; }
+        .status-badge.processing, .status-badge.em-atendimento { background: rgba(34, 197, 94, 0.12); color: #16a34a; }
+        .status-badge.pending { background: rgba(249, 115, 22, 0.12); color: #f97316; }
+        .status-badge.pending-approval, .status-badge.aprovacao { background: rgba(139, 92, 246, 0.25); color: #7c3aed; }
+        .status-badge.solved { background: rgba(107, 114, 128, 0.20); color: #6b7280; }
+        .status-badge.closed { background: rgba(0, 0, 0, 0.12); color: #000000; }
 
         .sla-badge {
             padding: 2px 8px;
@@ -663,10 +666,11 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         const STATUS_CONFIG = {
             1: { name: 'Novo', key: 'new' },
             2: { name: 'Em atendimento', key: 'processing' },
-            3: { name: 'Em atendimento', key: 'processing' },
+            3: { name: 'Processando', key: 'processing' },
             4: { name: 'Pendente', key: 'pending' },
             5: { name: 'Solucionado', key: 'solved' },
             6: { name: 'Fechado', key: 'closed' },
+            7: { name: 'Aguardando aprovação', key: 'approval' },
         };
 
         const MONTHS = [

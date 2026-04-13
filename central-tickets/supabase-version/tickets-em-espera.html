@@ -18,8 +18,11 @@
             --text-primary: #1e293b;
             --text-secondary: #64748b;
             --text-muted: #94a3b8;
-            --status-processing: #f59e0b;
-            --status-pending: #8b5cf6;
+            --status-processing: #22c55e;
+            --status-pending: #f97316;
+            --status-approval: #8b5cf6;
+            --status-solved: #6b7280;
+            --status-closed: #1f2937;
             --status-new: #3b82f6;
             --sla-ok: #10b981;
             --sla-late: #ef4444;
@@ -566,24 +569,29 @@
             color: #2563eb;
         }
 
-        .status-badge.processing {
-            background: rgba(245, 158, 11, 0.12);
-            color: #d97706;
+        .status-badge.processing, .status-badge.em-atendimento {
+            background: rgba(34, 197, 94, 0.12);
+            color: #16a34a;
         }
 
         .status-badge.pending {
+            background: rgba(249, 115, 22, 0.12);
+            color: #f97316;
+        }
+
+        .status-badge.pending-approval, .status-badge.aprovacao {
             background: rgba(139, 92, 246, 0.12);
             color: #7c3aed;
         }
 
         .status-badge.solved {
-            background: rgba(16, 185, 129, 0.12);
-            color: #059669;
+            background: rgba(107, 114, 128, 0.12);
+            color: #6b7280;
         }
 
         .status-badge.closed {
-            background: rgba(107, 114, 128, 0.12);
-            color: #6b7280;
+            background: rgba(0, 0, 0, 0.12);
+            color: #000000;
         }
 
         .col-group {
@@ -1239,16 +1247,28 @@
             });
         }
 
+        // Get time since last update tag
+        function getUpdateTimeTag(dateMod) {
+            if (!dateMod) return { tag: '', hours: 0 };
+            
+            const now = new Date();
+            const update = new Date(dateMod);
+            const hoursDiff = (now - update) / (1000 * 60 * 60);
+            
+            if (hoursDiff > 72) return { tag: '> 72h', hours: hoursDiff };
+            if (hoursDiff > 48) return { tag: '> 48h', hours: hoursDiff };
+            if (hoursDiff > 24) return { tag: '> 24h', hours: hoursDiff };
+            return { tag: '', hours: hoursDiff };
+        }
+
         async function getTicketsFromInstance(instanceName) {
             try {
-                const threshold = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-                
+                // Buscar tickets com status em atendimento (2,3) ou pendente (4)
                 const { data, error } = await window._sb
                     .from('tickets_cache')
                     .select('*')
                     .eq('instance', instanceName)
-                    .eq('status_id', 4) // Pendente
-                    .lt('date_mod', threshold)
+                    .in('status_id', [2, 3, 4])
                     .order('date_mod', { ascending: true })
                     .limit(500);
 
@@ -1388,6 +1408,7 @@
                 entityShort = entityShort || entityFull;
 
                 const lastUpdate = ticket.date_mod || ticket.date_created;
+                const updateTimeTag = getUpdateTimeTag(lastUpdate);
                 
                 const statusName = ticket.status_name || statusInfo.name || '';
                 return {
@@ -1408,9 +1429,11 @@
                     timeToResolve: ticket.time_to_resolve,
                     dateCreated: ticket.date_created,
                     lastUpdate: lastUpdate,
+                    updateTimeTag: updateTimeTag.tag,
+                    updateHours: updateTimeTag.hours,
                     instance: instanceName,
                     instanceUrl: ticket.instance === 'Peta' 
-                        ? (window.APP_CONFIG?.GLPI_PETA_TICKET_URL || '')
+                        ? (window.APP_CONFIG?.GLPI_PETA_TICKET_URL || '') 
                         : (window.APP_CONFIG?.GLPI_GMX_TICKET_URL || ''),
                 };
             });

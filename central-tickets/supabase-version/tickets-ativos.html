@@ -18,8 +18,11 @@
             --text-primary: #1e293b;
             --text-secondary: #64748b;
             --text-muted: #94a3b8;
-            --status-processing: #f59e0b;
-            --status-pending: #8b5cf6;
+            --status-processing: #22c55e;
+            --status-pending: #f97316;
+            --status-approval: #8b5cf6;
+            --status-solved: #6b7280;
+            --status-closed: #1f2937;
             --sla-ok: #10b981;
             --sla-late: #ef4444;
             --radius-sm: 6px;
@@ -653,13 +656,28 @@
         }
 
         .status-badge.processing {
-            background: rgba(245, 158, 11, 0.15);
+            background: rgba(34, 197, 94, 0.15);
             color: var(--status-processing);
         }
 
         .status-badge.pending {
-            background: rgba(139, 92, 246, 0.15);
+            background: rgba(249, 115, 22, 0.15);
             color: var(--status-pending);
+        }
+
+        .status-badge.approval {
+            background: rgba(139, 92, 246, 0.15);
+            color: var(--status-approval);
+        }
+
+        .status-badge.solved {
+            background: rgba(107, 114, 128, 0.15);
+            color: var(--status-solved);
+        }
+
+        .status-badge.closed {
+            background: rgba(31, 41, 55, 0.15);
+            color: var(--status-closed);
         }
 
         .status-dot {
@@ -670,6 +688,9 @@
 
         .status-badge.processing .status-dot { background: var(--status-processing); }
         .status-badge.pending .status-dot { background: var(--status-pending); }
+        .status-badge.approval .status-dot { background: var(--status-approval); }
+        .status-badge.solved .status-dot { background: var(--status-solved); }
+        .status-badge.closed .status-dot { background: var(--status-closed); }
 
         .date {
             white-space: nowrap;
@@ -1349,8 +1370,11 @@
         const STATUS_CONFIG = {
             1: { name: 'Novo', key: 'new' },
             2: { name: 'Em atendimento', key: 'processing' },
-            3: { name: 'Em atendimento', key: 'processing' },
+            3: { name: 'Processando', key: 'processing' },
             4: { name: 'Pendente', key: 'pending' },
+            5: { name: 'Solucionado', key: 'solved' },
+            6: { name: 'Fechado', key: 'closed' },
+            7: { name: 'Aguardando aprovação', key: 'approval' },
         };
 
         let sessionTokens = {};
