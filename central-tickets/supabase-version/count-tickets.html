@@ -37,7 +37,7 @@
         .instance {
             background: #f8fafc;
             border-radius: 8px;
-            padding: 20px;
+            padding: 16px 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -52,6 +52,17 @@
             font-size: 1.5rem;
             font-weight: 700;
             color: #1e293b;
+        }
+        .sub {
+            background: #fff;
+            border-radius: 8px;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: #64748b;
+            gap: 8px;
+            flex-wrap: wrap;
         }
         .total {
             margin-top: 16px;
@@ -102,33 +113,46 @@
             const sb = window.supabase.createClient(supabaseUrl, supabaseKey);
 
             try {
-                // Count PETA
-                const { count: petaCount, error: petaError } = await sb
+                // Get all data
+                const { data, error } = await sb
                     .from('tickets_cache')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('instance', 'PETA');
+                    .select('instance, status_id');
 
-                // Count GMX
-                const { count: gmxCount, error: gmxError } = await sb
-                    .from('tickets_cache')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('instance', 'GMX');
+                if (error) throw error;
 
-                if (petaError || gmxError) {
-                    throw new Error(petaError?.message || gmxError?.message);
-                }
+                const peta = data.filter(t => t.instance === 'PETA');
+                const gmx = data.filter(t => t.instance === 'GMX');
 
-                const total = (petaCount || 0) + (gmxCount || 0);
+                const petaCount = peta.length;
+                const gmxCount = gmx.length;
+                const total = petaCount + gmxCount;
+
+                // Status counts
+                const getStatus = (arr, id) => arr.filter(t => t.status_id === id).length;
 
                 document.getElementById('content').innerHTML = `
                     <div class="instances">
                         <div class="instance">
                             <span class="instance-name peta">🟦 PETA</span>
-                            <span class="count">${petaCount || 0}</span>
+                            <span class="count">${petaCount}</span>
+                        </div>
+                        <div class="sub">
+                            <span>Novos: ${getStatus(peta, 1)}</span>
+                            <span>Andamento: ${getStatus(peta, 2) + getStatus(peta, 3)}</span>
+                            <span>Pendentes: ${getStatus(peta, 4)}</span>
+                            <span>Solucionados: ${getStatus(peta, 5)}</span>
+                            <span>Fechados: ${getStatus(peta, 6)}</span>
                         </div>
                         <div class="instance">
                             <span class="instance-name gmx">🟪 GMX</span>
-                            <span class="count">${gmxCount || 0}</span>
+                            <span class="count">${gmxCount}</span>
+                        </div>
+                        <div class="sub">
+                            <span>Novos: ${getStatus(gmx, 1)}</span>
+                            <span>Andamento: ${getStatus(gmx, 2) + getStatus(gmx, 3)}</span>
+                            <span>Pendentes: ${getStatus(gmx, 4)}</span>
+                            <span>Solucionados: ${getStatus(gmx, 5)}</span>
+                            <span>Fechados: ${getStatus(gmx, 6)}</span>
                         </div>
                         <div class="total">
                             <span>Total</span>
