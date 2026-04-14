@@ -20,7 +20,7 @@
             --text-muted: #94a3b8;
             --status-processing: #22c55e;
             --status-pending: #f97316;
-            --status-approval: #8b5cf6;
+            --status-approval: #f97316;
             --status-solved: #6b7280;
             --status-closed: #1f2937;
             --status-new: #3b82f6;
@@ -540,6 +540,13 @@
             text-decoration: underline;
         }
 
+        .results-count {
+            display: block;
+            margin-bottom: 12px;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
         .col-status {
             width: 130px;
         }
@@ -648,6 +655,31 @@
         .instance-badge.gmx {
             background: rgba(234, 88, 12, 0.12);
             color: #c2410c;
+        }
+
+        .sla-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .sla-badge.ok {
+            background: rgba(34, 197, 94, 0.15);
+            color: #22c55e;
+        }
+
+        .sla-badge.late {
+            background: rgba(239, 68, 68, 0.15);
+            color: #dc2626;
+        }
+
+        .sla-badge svg {
+            width: 12px;
+            height: 12px;
         }
 
         .col-entity {
@@ -956,6 +988,8 @@
             </select>
         </div>
 
+        <span class="results-count" id="resultsCount"></span>
+
         <main class="main" id="mainContent">
             <div class="loading-container" id="loadingState">
                 <div class="spinner"></div>
@@ -1071,7 +1105,8 @@
             for (const instanceName of selectedInstances) {
                 try {
                     const instanceTickets = await getTicketsFromInstance(instanceName);
-                    allTickets.push(...instanceTickets);
+                    const processed = instanceTickets.map(t => processTicket(t, instanceName));
+                    allTickets.push(...processed);
                 } catch (error) {
                     console.error(`Falha ao carregar tickets de ${instanceName}:`, error);
                 }
@@ -1079,6 +1114,140 @@
             
             console.log(`Total de tickets carregados: ${allTickets.length}`);
             return allTickets;
+        }
+
+        function getStatusIcon(status) {
+            const icons = {
+                'new': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle></svg>',
+                'processing': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path></svg>',
+                'pending': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>',
+                'pending-approval': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>',
+                'solved': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>',
+                'closed': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line></svg>'
+            };
+            return icons[status] || '';
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            try {
+                const date = new Date(dateStr);
+                if (isNaN(date.getTime())) return '';
+                return date.toLocaleDateString('pt-BR');
+            } catch {
+                return '';
+            }
+        }
+
+        function formatDateTime(dateStr) {
+            if (!dateStr) return '';
+            try {
+                const date = new Date(dateStr);
+                if (isNaN(date.getTime())) return '';
+                return date.toLocaleString('pt-BR');
+            } catch {
+                return '';
+            }
+        }
+
+        function lastGroupLabel(name) {
+            if (!name) return '';
+            const parts = String(name).split('>');
+            return parts[parts.length - 1].trim();
+        }
+
+        function processTicket(ticket, instanceName) {
+            const statusId = ticket.status_id || 1;
+            const statusKey = ticket.status_key || 'new';
+            const statusInfo = STATUS_CONFIG[statusId] || STATUS_CONFIG[1];
+            
+            let finalStatus = statusKey;
+            if (statusId === 7) finalStatus = 'pending-approval';
+            else if (!['processing', 'pending', 'solved', 'closed', 'pending-approval'].includes(finalStatus)) {
+                finalStatus = statusInfo.key;
+            }
+            
+            return {
+                id: ticket.ticket_id,
+                title: ticket.title,
+                entity: ticket.entity || 'Entidade não definida',
+                entityFull: ticket.entity || '',
+                category: ticket.category || 'Não categorizado',
+                statusId: statusId,
+                status: finalStatus,
+                statusName: ticket.status_name || statusInfo.name,
+                statusColor: statusInfo.color,
+                dateCreated: ticket.date_created,
+                lastUpdate: ticket.date_mod,
+                dueDate: ticket.due_date,
+                isSlaLate: ticket.is_sla_late || false,
+                isOverdueFirst: ticket.is_overdue_first || false,
+                isOverdueResolve: ticket.is_overdue_resolve || false,
+                group: lastGroupLabel(ticket.group_name || ''),
+                technician: ticket.technician || '',
+                group_name: ticket.group_name || '',
+                instance: instanceName.toUpperCase(),
+                instanceUrl: ticket.instance === 'PETA' 
+                    ? (window.APP_CONFIG?.GLPI_PETA_TICKET_URL || '')
+                    : (window.APP_CONFIG?.GLPI_GMX_TICKET_URL || ''),
+            };
+        }
+
+        function renderTable(ticketsToRender) {
+            const rowsHTML = ticketsToRender.map(ticket => {
+                const statusIcon = getStatusIcon(ticket.status);
+                const slaClass = ticket.isSlaLate ? 'late' : 'ok';
+                const slaText = ticket.isSlaLate ? 'SLA Excedido' : 'No Prazo';
+                
+                return `
+                    <tr>
+                        <td class="col-id">
+                            <a href="${ticket.instanceUrl}${ticket.id}" target="_blank" title="${ticket.title}">#${ticket.id}</a>
+                        </td>
+                        <td class="col-instance">
+                            <span class="instance-badge ${ticket.instance.toLowerCase()}">${ticket.instance}</span>
+                        </td>
+                        <td class="col-entity" title="${ticket.entityFull}">${ticket.entity}</td>
+                        <td class="col-status">
+                            <span class="status-badge ${ticket.status}">${statusIcon}${ticket.statusName}</span>
+                        </td>
+                        <td class="col-group">${ticket.group}</td>
+                        <td>${ticket.technician || '-'}</td>
+                        <td class="date col-date">${formatDate(ticket.dateCreated)}</td>
+                        <td class="date col-date">${formatDateTime(ticket.lastUpdate)}</td>
+                        <td class="date col-date">${formatDate(ticket.dueDate)}</td>
+                        <td class="col-sla">
+                            <span class="sla-badge ${slaClass}">${slaText}</span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            document.getElementById('mainContent').innerHTML = `
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="col-id">ID</th>
+                                <th class="col-instance">Instância</th>
+                                <th class="col-entity">Entidade</th>
+                                <th class="col-status">Status</th>
+                                <th class="col-group">Grupo Responsável</th>
+                                <th>Técnico</th>
+                                <th class="col-date">Abertura</th>
+                                <th class="col-date">Última Atualização</th>
+                                <th class="col-date">Previsto</th>
+                                <th class="col-sla">SLA</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rowsHTML || '<tr><td colspan="10" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum ticket encontrado</td></tr>'}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            document.getElementById('resultsCount').textContent = `(${ticketsToRender.length} tickets)`;
         }
 
         async function refreshTickets() {
@@ -1128,6 +1297,13 @@
             
             if (remaining <= 0) {
                 refreshTickets();
+            }
+        }
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
             }
         }
 

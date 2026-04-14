@@ -517,12 +517,12 @@ body {
 
 .sla-badge.ok {
     background: rgba(34, 197, 94, 0.15);
-    color: var(--status-processing);
+    color: #22c55e;
 }
 
 .sla-badge.late {
     background: rgba(239, 68, 68, 0.15);
-    color: #ef4444;
+    color: #dc2626;
     animation: alertPulse 1.5s ease-in-out infinite;
 }
 
