@@ -1683,11 +1683,14 @@
         // Função para processar tickets do Supabase
         function processTickets(rawTickets, instanceName) {
             if (rawTickets.length > 0) {
-                console.log(`processTickets: sample ticket status_key=${rawTickets[0].status_key}, status_id=${rawTickets[0].status_id}`);
+                console.log(`processTickets: sample raw ticket:`, JSON.stringify(rawTickets[0], null, 2));
             }
             return rawTickets.map(ticket => {
                 const statusId = ticket.status_id || 1;
                 const statusInfo = TICKET_STATUS[statusId] || TICKET_STATUS[1];
+                
+                const finalStatus = ticket.status_key || statusInfo.key;
+                console.log(`ticket ${ticket.ticket_id}: status_id=${statusId}, status_key=${ticket.status_key}, finalStatus=${finalStatus}`);
                 
                 return {
                     id: ticket.ticket_id,
@@ -1695,7 +1698,7 @@
                     entity: ticket.entity || 'Entidade não definida',
                     category: ticket.category || 'Não categorizado',
                     statusId: statusId,
-                    status: ticket.status_key || statusInfo.key,
+                    status: finalStatus,
                     statusName: ticket.status_name || statusInfo.name,
                     statusColor: statusInfo.color,
                     dateCreated: ticket.date_created,
