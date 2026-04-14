@@ -1682,6 +1682,9 @@
 
         // Função para processar tickets do Supabase
         function processTickets(rawTickets, instanceName) {
+            if (rawTickets.length > 0) {
+                console.log(`processTickets: sample ticket status_key=${rawTickets[0].status_key}, status_id=${rawTickets[0].status_id}`);
+            }
             return rawTickets.map(ticket => {
                 const statusId = ticket.status_id || 1;
                 const statusInfo = TICKET_STATUS[statusId] || TICKET_STATUS[1];
@@ -1706,8 +1709,8 @@
                     timeToResolve: ticket.time_to_resolve,
                     group: lastGroupLabel(ticket.group_name || ''),
                     technician: ticket.technician || '',
-                    instance: instanceName,
-                    instanceUrl: ticket.instance === 'Peta' 
+                    instance: instanceName.toUpperCase(),
+                    instanceUrl: ticket.instance === 'PETA' 
                         ? (window.APP_CONFIG?.GLPI_PETA_TICKET_URL || '')
                         : (window.APP_CONFIG?.GLPI_GMX_TICKET_URL || ''),
                 };
@@ -1738,7 +1741,8 @@
                 const { data, error } = await window._sb
                     .from('tickets_cache')
                     .select('*')
-                    .eq('instance', instanceName)
+                    .eq('instance', instanceName.toUpperCase())
+                    .not('status_key', 'in', '("solved","closed")')
                     .order('date_mod', { ascending: false })
                     .limit(500);
 
@@ -1927,11 +1931,8 @@ ${JSON.stringify(error, null, 2)}
         function renderKanban(tickets) {
             const mainContent = document.getElementById('mainContent');
             
-            console.log('renderKanban called with', tickets.length, 'tickets');
-            
             ticketsByStatus = STATUS_ORDER.reduce((acc, status) => {
                 acc[status] = tickets.filter(t => t.status === status);
-                console.log(`renderKanban: status=${status}, count=${acc[status].length}, sampleStatus=${tickets.length > 0 ? tickets[0].status : 'none'}`);
                 return acc;
             }, {});
             
