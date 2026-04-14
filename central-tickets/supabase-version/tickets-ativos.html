@@ -2472,6 +2472,10 @@ function lastGroupLabel(name) {
             }
         }
 
+        function formatDateTime(dateStr) {
+            return formatDate(dateStr);
+        }
+
         function showLoading() {
             document.getElementById('mainContent').innerHTML = `
                 <div class="loading-container">
