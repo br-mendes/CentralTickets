@@ -1748,6 +1748,8 @@
                     .not('status_key', 'in', '("solved","closed")')
                     .order('date_mod', { ascending: false })
                     .limit(500);
+                
+                console.log(`getTicketsFromInstance ${instanceName}: raw data sample:`, data?.[0]);
 
                 if (error) {
                     console.error(`Erro ao buscar tickets de ${instanceName} do Supabase:`, error);
