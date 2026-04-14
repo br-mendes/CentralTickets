@@ -2739,6 +2739,7 @@ ${JSON.stringify(error, null, 2)}
         }
 
         function renderFullDashboard(tickets) {
+            console.log(`renderFullDashboard received: ${tickets?.length || 0} tickets`);
             window.ticketsBySolution = null;
             const petaStats = getInstanceStats(tickets, 'Peta');
             const gmxStats = getInstanceStats(tickets, 'GMX');
@@ -3089,6 +3090,7 @@ ${JSON.stringify(error, null, 2)}
 
         function renderKanban(tickets) {
             const mainContent = document.getElementById('mainContent');
+            console.log(`renderKanban received: ${tickets.length} tickets`);
             mainContent.innerHTML = renderFullDashboard(tickets);
             console.log(`Dashboard rendered, innerHTML length: ${mainContent.innerHTML.length}`);
         }
