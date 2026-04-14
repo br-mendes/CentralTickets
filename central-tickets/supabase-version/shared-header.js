@@ -17,35 +17,99 @@ Injects standardized CSS for status badges, ticket meta, tables, etc.
 
   // Standardized CSS to inject
   const STANDARDIZED_CSS = `
-    /* Status Badges - Padronizado */
+    /* === STATUS BADGES PADRONIZADOS === */
     .status-badge {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 4px 10px;
+      padding: 5px 11px;
       border-radius: 9999px;
       font-size: 0.75rem;
       font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.025em;
+      letter-spacing: 0.4px;
+      white-space: nowrap;
     }
-    .status-badge.new { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
-    .status-badge.processing { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
-    .status-badge.pending { background: rgba(249, 115, 22, 0.15); color: #f97316; }
-    .status-badge.pending-approval, .status-badge.approval { background: rgba(249, 115, 22, 0.15); color: #f97316; }
-    .status-badge.solved { background: rgba(107, 114, 128, 0.15); color: #6b7280; }
-    .status-badge.closed { background: rgba(31, 41, 55, 0.25); color: #1f2937; }
-    
-    /* Dark mode status badges - cores mais visíveis */
-    [data-theme="dark"] .status-badge.new { background: rgba(59, 130, 246, 0.30); color: #60a5fa; }
-    [data-theme="dark"] .status-badge.processing { background: rgba(34, 197, 94, 0.30); color: #4ade80; }
-    [data-theme="dark"] .status-badge.pending,
-    [data-theme="dark"] .status-badge.pending-approval,
-    [data-theme="dark"] .status-badge.approval { background: rgba(249, 115, 22, 0.30); color: #fb923c; }
-    [data-theme="dark"] .status-badge.solved { background: rgba(107, 114, 128, 0.30); color: #9ca3af; }
-    [data-theme="dark"] .status-badge.closed { background: rgba(31, 41, 55, 0.40); color: #d1d5db; }
 
-    /* Ticket Meta - Entidade, Técnico, Grupo */
+    .status-badge.new        { background: rgba(59, 130, 246, 0.15); color: #2563eb; }
+    .status-badge.processing { background: rgba(34, 197, 94, 0.15); color: #16a34a; }
+    .status-badge.pending    { background: rgba(249, 115, 22, 0.15); color: #ea580c; }
+    .status-badge.solved     { background: rgba(107, 114, 128, 0.15); color: #52525b; }
+    .status-badge.closed     { background: rgba(31, 41, 55, 0.25); color: #1f2937; }
+
+    /* Dark Mode - cores mais visíveis e com bom contraste */
+    [data-theme="dark"] .status-badge.new        { background: rgba(59, 130, 246, 0.30); color: #60a5fa; }
+    [data-theme="dark"] .status-badge.processing { background: rgba(34, 197, 94, 0.30); color: #4ade80; }
+    [data-theme="dark"] .status-badge.pending    { background: rgba(249, 115, 22, 0.30); color: #fb923c; }
+    [data-theme="dark"] .status-badge.solved     { background: rgba(107, 114, 128, 0.30); color: #a1a1aa; }
+    [data-theme="dark"] .status-badge.closed     { background: rgba(31, 41, 55, 0.45); color: #e2e8f0; }
+
+    /* Para bordas nos cards (ticket-card) */
+    .ticket-card.new        { border-left-color: #2563eb; }
+    .ticket-card.processing { border-left-color: #16a34a; }
+    .ticket-card.pending    { border-left-color: #ea580c; }
+    .ticket-card.solved     { border-left-color: #52525b; }
+    .ticket-card.closed     { border-left-color: #1f2937; }
+
+    /* === TABELAS RESPONSIVAS COM ELLIPSIS === */
+    .table-responsive {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+    }
+
+    .table-responsive table {
+      width: 100%;
+      table-layout: fixed;
+      border-collapse: collapse;
+    }
+
+    .table-responsive th, .table-responsive td {
+      padding: 12px 10px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+
+    /* Larguras dinâmicas */
+    .table-responsive .col-id          { width: 70px; }
+    .table-responsive .col-title       { width: 38%; min-width: 260px; }
+    .table-responsive .col-entity      { width: 18%; min-width: 160px; }
+    .table-responsive .col-technician { width: 16%; min-width: 140px; }
+    .table-responsive .col-group       { width: 16%; min-width: 140px; }
+    .table-responsive .col-status      { width: 120px; }
+    .table-responsive .col-date        { width: 110px; }
+    .table-responsive .col-sla         { width: 100px; }
+
+    /* Tooltip no hover para textos truncados */
+    .table-responsive td[title] {
+      cursor: help;
+    }
+
+    /* === ALERTAS PISCANDO PADRONIZADOS === */
+    .sla-late, .alert-red {
+      animation: flash-red 1200ms ease-in-out 4;
+      border-color: #ef4444 !important;
+    }
+
+    .alert-yellow {
+      animation: flash-yellow 1400ms ease-in-out 3;
+      border-color: #f59e0b !important;
+    }
+
+    @keyframes flash-red {
+      0%, 100% { background-color: rgba(239, 68, 68, 0.08); }
+      50%      { background-color: rgba(239, 68, 68, 0.25); }
+    }
+
+    @keyframes flash-yellow {
+      0%, 100% { background-color: rgba(245, 158, 11, 0.08); }
+      50%      { background-color: rgba(245, 158, 11, 0.22); }
+    }
+
+    /* === OUTROS === */
     .ticket-meta {
       font-size: 0.8125rem;
       color: var(--text-secondary);
@@ -68,7 +132,6 @@ Injects standardized CSS for status badges, ticket meta, tables, etc.
     }
     .ticket-meta-label { color: var(--text-muted); font-size: 0.75rem; }
 
-    /* Result Container */
     .result-container {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -84,47 +147,18 @@ Injects standardized CSS for status badges, ticket meta, tables, etc.
       color: var(--text-primary);
     }
 
-    /* Table Responsive */
-    .table-responsive {
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-    }
-    .table-responsive table {
-      width: 100%;
-      table-layout: fixed;
-      border-collapse: collapse;
-    }
-    .table-responsive td, .table-responsive th {
-      padding: 12px 10px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .table-responsive .col-id { width: 80px; min-width: 60px; }
-    .table-responsive .col-title { width: 35%; min-width: 280px; }
-    .table-responsive .col-entity { width: 18%; min-width: 160px; }
-    .table-responsive .col-technician { width: 16%; min-width: 140px; }
-    .table-responsive .col-group { width: 16%; min-width: 140px; }
-    .table-responsive .col-status { width: 110px; min-width: 100px; }
-    .table-responsive .col-date { width: 110px; min-width: 100px; }
-    .table-responsive .col-priority { width: 100px; min-width: 80px; }
-    .table-responsive .col-sla { width: 90px; min-width: 80px; }
-    .table-responsive .col-instance { width: 80px; min-width: 70px; }
-
-    /* Alert Flash */
-    .alert-flash { animation: flash 800ms ease-in-out 2; }
-    @keyframes flash {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
-    }
-
-    /* Refresh Countdown */
     .refresh-countdown {
       font-size: 0.75rem;
       color: var(--text-muted);
       padding: 4px 10px;
       background: var(--background);
       border-radius: var(--radius-sm);
+    }
+
+    .last-update {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      padding: 4px 10px;
     }
   `;
 
