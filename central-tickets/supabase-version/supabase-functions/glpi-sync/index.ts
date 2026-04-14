@@ -117,26 +117,14 @@ async function syncInstance(instanceName: 'PETA' | 'GMX'): Promise<SyncResult> {
   let sessionToken: string | null = null
   
   try {
-    // Get current progress
-    const { data: syncState } = await supabase
-      .from('sync_control')
-      .select('last_page, total_pages')
-      .eq('instance', instanceName)
-      .single()
+    // First, check total count from page 0
+    const searchUrl = `${config.url}/search/Ticket?range=0-${PAGE_SIZE-1}&expand_dropdowns=true&get_hateoas=false`
     
-    const startPage = (syncState?.last_page || 0) + 1
-    console.log(`${instanceName}: Starting from page ${startPage}`)
-    
+    // No session needed for initial count check (optional, but we'll do it after init)
     sessionToken = await initSession(config)
     console.log(`${instanceName}: Session initialized`)
     
-    // Fetch first page to get total count
-    const start = startPage * PAGE_SIZE
-    const end = start + PAGE_SIZE - 1
-    
-    const searchUrl = `${config.url}/search/Ticket?range=${start}-${end}&expand_dropdowns=true&get_hateoas=false`
-    
-    const response = await fetch(searchUrl, {
+    const countResponse = await fetch(searchUrl, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -145,36 +133,76 @@ async function syncInstance(instanceName: 'PETA' | 'GMX'): Promise<SyncResult> {
       },
     })
     
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`GLPI search failed: ${response.status} - ${errorText.substring(0, 100)}`)
+    if (!countResponse.ok) {
+      const errorText = await countResponse.text()
+      throw new Error(`GLPI count failed: ${countResponse.status} - ${errorText.substring(0, 100)}`)
     }
     
-    const data = await response.json()
-    const totalCount = data.totalcount || 0
+    const countData = await countResponse.json()
+    const totalCount = countData.totalcount || 0
     const totalPages = Math.ceil(totalCount / PAGE_SIZE)
     
-    console.log(`${instanceName}: ${totalCount} tickets, ${totalPages} pages`)
+    console.log(`${instanceName}: ${totalCount} tickets, ${totalPages} pages total`)
     
-    if (!data.data || data.data.length === 0) {
-      // Update sync state
+    // Get current progress to determine next page
+    const { data: syncState } = await supabase
+      .from('sync_control')
+      .select('last_page')
+      .eq('instance', instanceName)
+      .single()
+    
+    let startPage = 0
+    if (syncState?.last_page !== null && syncState.last_page !== undefined) {
+      if (syncState.last_page < totalPages - 1) {
+        startPage = syncState.last_page + 1
+      } else {
+        // Already at end - reset to 0 for full sync
+        console.log(`${instanceName}: Previous sync completed, resetting for full sync`)
+        startPage = 0
+      }
+    }
+    
+    console.log(`${instanceName}: Starting from page ${startPage}`)
+    
+    // Fetch the data page
+    const start = startPage * PAGE_SIZE
+    const end = start + PAGE_SIZE - 1
+    
+    const pageUrl = `${config.url}/search/Ticket?range=${start}-${end}&expand_dropdowns=true&get_hateoas=false`
+    
+    const pageResponse = await fetch(pageUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Session-Token': sessionToken,
+        'App-Token': config.appToken,
+      },
+    })
+    
+    if (!pageResponse.ok) {
+      const errorText = await pageResponse.text()
+      throw new Error(`GLPI page failed: ${pageResponse.status} - ${errorText.substring(0, 100)}`)
+    }
+    
+    const pageData = await pageResponse.json()
+    
+    if (!pageData.data || pageData.data.length === 0) {
       await supabase.from('sync_control').upsert({
         instance: instanceName,
         last_sync: new Date().toISOString(),
         status: 'success',
-        last_page: totalPages,
+        last_page: totalPages - 1,
         total_pages: totalPages,
+        tickets_count: totalCount,
         updated_at: new Date().toISOString()
       }, { onConflict: 'instance' })
       
       return { success: true, instance: instanceName, count: 0, completed: true }
     }
     
-    // Process tickets
-    const tickets = data.data.map((t: any) => processTicket(t, instanceName))
+    const tickets = pageData.data.map((t: any) => processTicket(t, instanceName))
     console.log(`${instanceName}: Processing ${tickets.length} tickets`)
     
-    // Upsert to Supabase
     const { error: upsertError } = await supabase
       .from('tickets_cache')
       .upsert(tickets, { onConflict: 'ticket_id,instance' })
@@ -184,7 +212,6 @@ async function syncInstance(instanceName: 'PETA' | 'GMX'): Promise<SyncResult> {
       throw upsertError
     }
     
-    // Update sync state
     const completed = startPage >= totalPages - 1
     await supabase.from('sync_control').upsert({
       instance: instanceName,
