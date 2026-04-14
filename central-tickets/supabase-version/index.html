@@ -3314,6 +3314,10 @@ ${JSON.stringify(error, null, 2)}
         function renderKanban(tickets) {
             const mainContent = document.getElementById('mainContent');
             console.log(`renderKanban received: ${tickets.length} tickets`);
+            
+            // Store tickets globally for filter functions
+            window.currentTickets = tickets;
+            
             mainContent.innerHTML = renderFullDashboard(tickets);
             console.log(`Dashboard rendered, innerHTML length: ${mainContent.innerHTML.length}`);
         }
