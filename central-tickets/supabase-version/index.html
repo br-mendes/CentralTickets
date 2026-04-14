@@ -2613,7 +2613,8 @@ ${JSON.stringify(error, null, 2)}
         }
 
         function getInstanceStats(tickets, instanceName) {
-            const instanceTickets = tickets.filter(t => t.instance === instanceName);
+            // Filter case-insensitive to handle 'Peta' and 'PETA'
+            const instanceTickets = tickets.filter(t => t.instance?.toLowerCase() === instanceName.toLowerCase());
             return {
                 total: instanceTickets.length,
                 new: instanceTickets.filter(t => t.status === 'new').length,
@@ -2745,8 +2746,8 @@ ${JSON.stringify(error, null, 2)}
             const uniqueInstances = [...new Set(tickets.map(t => t.instance))];
             console.log('Unique instances:', uniqueInstances);
             
-            const petaCount = tickets.filter(t => t.instance === 'Peta').length;
-            const gmxCount = tickets.filter(t => t.instance === 'GMX').length;
+            const petaCount = tickets.filter(t => t.instance?.toLowerCase() === 'peta').length;
+            const gmxCount = tickets.filter(t => t.instance?.toLowerCase() === 'gmx').length;
             console.log(`Peta: ${petaCount}, GMX: ${gmxCount}, Total: ${petaCount + gmxCount}`);
             
             window.ticketsBySolution = null;
@@ -2762,8 +2763,8 @@ ${JSON.stringify(error, null, 2)}
                 const entity = t.entity || 'Sem Entidade';
                 if (!ticketsByEntity[entity]) ticketsByEntity[entity] = { total: 0, peta: 0, gmx: 0 };
                 ticketsByEntity[entity].total++;
-                if (t.instance === 'Peta') ticketsByEntity[entity].peta++;
-                if (t.instance === 'GMX') ticketsByEntity[entity].gmx++;
+                if (t.instance?.toLowerCase() === 'peta') ticketsByEntity[entity].peta++;
+                if (t.instance?.toLowerCase() === 'gmx') ticketsByEntity[entity].gmx++;
             });
 
             window.ticketsByGroup = {};
@@ -2771,8 +2772,8 @@ ${JSON.stringify(error, null, 2)}
                 const group = t.group || 'Não atribuído';
                 if (!window.ticketsByGroup[group]) window.ticketsByGroup[group] = { total: 0, peta: 0, gmx: 0 };
                 window.ticketsByGroup[group].total++;
-                if (t.instance === 'Peta') window.ticketsByGroup[group].peta++;
-                if (t.instance === 'GMX') window.ticketsByGroup[group].gmx++;
+                if (t.instance?.toLowerCase() === 'peta') window.ticketsByGroup[group].peta++;
+                if (t.instance?.toLowerCase() === 'gmx') window.ticketsByGroup[group].gmx++;
             });
             const ticketsByGroup = window.ticketsByGroup;
 
@@ -2781,8 +2782,8 @@ ${JSON.stringify(error, null, 2)}
                 const cat = t.category || 'Sem Categoria';
                 if (!ticketsByCategory[cat]) ticketsByCategory[cat] = { total: 0, peta: 0, gmx: 0 };
                 ticketsByCategory[cat].total++;
-                if (t.instance === 'Peta') ticketsByCategory[cat].peta++;
-                if (t.instance === 'GMX') ticketsByCategory[cat].gmx++;
+                if (t.instance?.toLowerCase() === 'peta') ticketsByCategory[cat].peta++;
+                if (t.instance?.toLowerCase() === 'gmx') ticketsByCategory[cat].gmx++;
             });
 
             window.ticketsBySolution = {};
@@ -2790,8 +2791,8 @@ ${JSON.stringify(error, null, 2)}
                 const rootCat = getRootCategory(t.category) || 'Sem Categoria';
                 if (!window.ticketsBySolution[rootCat]) window.ticketsBySolution[rootCat] = { total: 0, peta: 0, gmx: 0 };
                 window.ticketsBySolution[rootCat].total++;
-                if (t.instance === 'Peta') window.ticketsBySolution[rootCat].peta++;
-                if (t.instance === 'GMX') window.ticketsBySolution[rootCat].gmx++;
+                if (t.instance?.toLowerCase() === 'peta') window.ticketsBySolution[rootCat].peta++;
+                if (t.instance?.toLowerCase() === 'gmx') window.ticketsBySolution[rootCat].gmx++;
             });
             const ticketsBySolution = window.ticketsBySolution;
 
@@ -2868,8 +2869,8 @@ ${JSON.stringify(error, null, 2)}
         }
 
         function renderSlaSection(slaOverdue) {
-            const petaCount = slaOverdue.filter(t => t.instance === 'Peta').length;
-            const gmxCount = slaOverdue.filter(t => t.instance === 'GMX').length;
+            const petaCount = slaOverdue.filter(t => t.instance?.toLowerCase() === 'peta').length;
+            const gmxCount = slaOverdue.filter(t => t.instance?.toLowerCase() === 'gmx').length;
             const pendingCount = slaOverdue.filter(t => t.status === 'pending').length;
             const processingCount = slaOverdue.filter(t => t.status === 'processing').length;
             
@@ -3037,10 +3038,10 @@ ${JSON.stringify(error, null, 2)}
         function renderTailwindPeriodContent(tickets, days) {
             const periodTickets = getTicketsByPeriod(tickets, days);
             const closedTickets = getTicketsClosedInPeriod(tickets, days);
-            const petaPeriod = periodTickets.filter(t => t.instance === 'Peta');
-            const gmxPeriod = periodTickets.filter(t => t.instance === 'GMX');
-            const petaClosed = closedTickets.filter(t => t.instance === 'Peta');
-            const gmxClosed = closedTickets.filter(t => t.instance === 'GMX');
+            const petaPeriod = periodTickets.filter(t => t.instance?.toLowerCase() === 'peta');
+            const gmxPeriod = periodTickets.filter(t => t.instance?.toLowerCase() === 'gmx');
+            const petaClosed = closedTickets.filter(t => t.instance?.toLowerCase() === 'peta');
+            const gmxClosed = closedTickets.filter(t => t.instance?.toLowerCase() === 'gmx');
             
             const petaClosedCount = petaClosed.length;
             const gmxClosedCount = gmxClosed.length;
@@ -3215,8 +3216,8 @@ ${JSON.stringify(error, null, 2)}
                 exportedAt: new Date().toISOString(),
                 totalTickets: tickets.length,
                 instances: {
-                    peta: tickets.filter(t => t.instance === 'Peta').length,
-                    gmx: tickets.filter(t => t.instance === 'GMX').length
+                    peta: tickets.filter(t => t.instance?.toLowerCase() === 'peta').length,
+                    gmx: tickets.filter(t => t.instance?.toLowerCase() === 'gmx').length
                 },
                 tickets: tickets
             };
@@ -3355,7 +3356,7 @@ ${JSON.stringify(error, null, 2)}
                     timeToOwn: ticket.time_to_own,
                     timeToResolve: ticket.time_to_resolve,
                     instance: ticket.instance,
-                    instanceUrl: ticket.instance === 'Peta' 
+                    instanceUrl: ticket.instance?.toLowerCase() === 'peta' 
                         ? (window.APP_CONFIG?.GLPI_PETA_TICKET_URL || '')
                         : (window.APP_CONFIG?.GLPI_GMX_TICKET_URL || ''),
                 }));
@@ -3484,7 +3485,7 @@ ${JSON.stringify(error, null, 2)}
                 const ticket = tickets[i];
                 if (ticket.technician) continue;
                 
-                const instance = ticket.instance === 'Peta'
+                const instance = ticket.instance?.toLowerCase() === 'peta'
                     ? { BASE_URL: config.GLPI_PETA_URL, USER_TOKEN: config.GLPI_PETA_USER_TOKEN, APP_TOKEN: config.GLPI_PETA_APP_TOKEN }
                     : { BASE_URL: config.GLPI_GMX_URL, USER_TOKEN: config.GLPI_GMX_USER_TOKEN, APP_TOKEN: config.GLPI_GMX_APP_TOKEN };
                 
