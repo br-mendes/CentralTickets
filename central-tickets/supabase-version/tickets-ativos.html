@@ -1266,17 +1266,292 @@
         console.log('[CONFIG] GLPI_PETA_USER_TOKEN:', INSTANCES['Peta'].USER_TOKEN ? 'DEFINIDO' : 'NÃO DEFINIDO');
 
         // ========== SUPABASE SYNC ==========
-        async function syncTicketsToSupabase(glpiTickets, instanceName) {
+        
+        // Função para buscar tickets de uma instância do Supabase
+        async function getTicketsFromInstance(instanceName) {
             try {
-                console.log(`[Supabase] ${glpiTickets.length} tickets sincronizados com sucesso!`);
-                console.log('🔄 Sincronizando com Supabase...');
+                let allTickets = [];
+                let page = 0;
+                const pageSize = 100;
+                const maxTickets = 500;
+                let hasMore = true;
+                
+                console.log(`[${instanceName}] Carregando tickets ativos (max: ${maxTickets})...`);
+
+                while (hasMore && allTickets.length < maxTickets) {
+                    const remainingSlots = maxTickets - allTickets.length;
+                    const currentPageSize = Math.min(pageSize, remainingSlots);
+                    
+                    let query = window._sb
+                        .from('tickets_cache')
+                        .select('*')
+                        .eq('instance', instanceName.toUpperCase())
+                        .in('status_key', ['processing', 'pending'])
+                        .order('date_mod', { ascending: false })
+                        .range(page * pageSize, page * pageSize + currentPageSize - 1);
+
+                    const { data, error } = await query;
+
+                    if (error) {
+                        console.error(`Erro ao buscar tickets de ${instanceName} do Supabase:`, error);
+                        return [];
+                    }
+
+                    if (!data || data.length === 0) {
+                        hasMore = false;
+                    } else {
+                        allTickets = [...allTickets, ...data];
+                        page++;
+                        console.log(`[${instanceName}] Carregados ${allTickets.length} tickets ativos`);
+                        if (data.length < pageSize || allTickets.length >= maxTickets) {
+                            hasMore = false;
+                        }
+                    }
+                }
+
                 console.log(`[${instanceName}] Total carregado: ${allTickets.length} tickets ativos (limite: ${maxTickets})`);
-            }).catch(err => {
-                console.error('refreshTickets error:', err);
+                return allTickets || [];
+            } catch (error) {
+                console.error(`Erro na busca de tickets de ${instanceName}:`, error);
+                return [];
+            }
+        }
+
+        // Function to get all tickets from all instances
+        async function getAllTickets() {
+            const allTickets = [];
+            
+            for (const instanceName of selectedInstances) {
+                try {
+                    const instanceTickets = await getTicketsFromInstance(instanceName);
+                    const processed = processTickets(instanceTickets, instanceName);
+                    console.log(`${instanceName}: ${processed.length} tickets processados`);
+                    allTickets.push(...processed);
+                } catch (error) {
+                    console.error(`Falha ao carregar tickets de ${instanceName}:`, error);
+                }
+            }
+            
+            console.log(`Total de tickets carregados: ${allTickets.length}`);
+            return allTickets;
+        }
+
+        // Função para processar tickets do Supabase
+        function processTickets(rawTickets, instanceName) {
+            return rawTickets.map(ticket => {
+                const statusId = ticket.status_id || 1;
+                const statusKey = ticket.status_key || 'new';
+                const statusInfo = TICKET_STATUS[statusId] || TICKET_STATUS[1];
+                
+                let finalStatus = statusKey;
+                if (statusId === 7) finalStatus = 'pending-approval';
+                else if (!['processing', 'pending', 'solved', 'closed', 'pending-approval'].includes(finalStatus)) {
+                    finalStatus = statusInfo.key;
+                }
+                
+                return {
+                    id: ticket.ticket_id,
+                    title: ticket.title,
+                    entity: ticket.entity || 'Entidade não definida',
+                    entityFull: ticket.entity || '',
+                    category: ticket.category || 'Não categorizado',
+                    statusId: statusId,
+                    status: finalStatus,
+                    statusName: ticket.status_name || statusInfo.name,
+                    statusColor: statusInfo.color,
+                    dateCreated: ticket.date_created,
+                    lastUpdate: ticket.date_mod,
+                    dueDate: ticket.due_date,
+                    timePending: ticket.status_key === 'pending' ? calculatePendingTime(ticket) : null,
+                    isSlaLate: ticket.is_sla_late || ticket.is_overdue_resolve || false,
+                    isOverdueFirst: ticket.is_overdue_first || false,
+                    isOverdueResolve: ticket.is_overdue_resolve || false,
+                    timeToOwn: ticket.time_to_own,
+                    timeToResolve: ticket.time_to_resolve,
+                    group: lastGroupLabel(ticket.group_name || ''),
+                    technician: ticket.technician || '',
+                    group_name: ticket.group_name || '',
+                    instance: instanceName.toUpperCase(),
+                    instanceUrl: ticket.instance === 'PETA' 
+                        ? (window.APP_CONFIG?.GLPI_PETA_TICKET_URL || '')
+                        : (window.APP_CONFIG?.GLPI_GMX_TICKET_URL || ''),
+                };
             });
+        }
+
+        function calculatePendingTime(ticket) {
+            if (!ticket.date_mod) return '';
+            const updateDate = new Date(ticket.date_mod);
+            const now = new Date();
+            const diffMs = now - updateDate;
+            const minutes = Math.floor(diffMs / 60000);
+            const hours = Math.floor(diffMs / 3600000);
+            const days = Math.floor(diffMs / 86400000);
+            if (minutes < 60) return `${minutes}m`;
+            if (hours < 24) return `${hours}h ${minutes % 60}m`;
+            return `${days}d ${hours % 24}h`;
+        }
+
+        function lastGroupLabel(name) {
+            if (!name) return '';
+            const parts = String(name).split('>');
+            return parts[parts.length - 1].trim();
+        }
+
+        // ========== REFRESH TICKETS ==========
+        let isLoading = false;
+        
+        async function refreshTickets() {
+            if (isLoading) return;
+            
+            isLoading = true;
+            const refreshBtn = document.getElementById('refreshBtn');
+            if (refreshBtn) refreshBtn.disabled = true;
+            showLoading();
+
+            try {
+                tickets = await getAllTickets();
+                filteredTickets = [...tickets];
+                applyFilters();
+                startCountdown();
+            } catch (error) {
+                console.error('Erro ao carregar tickets:', error);
+            } finally {
+                isLoading = false;
+                if (refreshBtn) refreshBtn.disabled = false;
+            }
+        }
+
+        function showLoading() {
+            document.getElementById('mainContent').innerHTML = `
+                <div class="loading-container">
+                    <div class="spinner"></div>
+                    <p class="loading-text">Carregando tickets ativos...</p>
+                </div>
+            `;
+        }
+
+        function startCountdown() {
+            if (countdownTimer) clearInterval(countdownTimer);
+            nextRefreshTime = Date.now() + REFRESH_INTERVAL;
+            updateCountdown();
+            countdownTimer = setInterval(updateCountdown, 1000);
+        }
+
+        function updateCountdown() {
+            const countdownEl = document.getElementById('refreshCountdown');
+            if (!countdownEl || !nextRefreshTime) return;
+            
+            const remaining = Math.max(0, nextRefreshTime - Date.now());
+            const minutes = Math.floor(remaining / 60000);
+            const seconds = Math.floor((remaining % 60000) / 1000);
+            countdownEl.textContent = `Próximo refresh: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+            
+            if (remaining <= 0) {
+                refreshTickets();
+            }
+        }
+
+        // Funções de filtro
+        function applyFilters() {
+            const searchTerm = (document.getElementById('searchInput')?.value || '').toLowerCase();
+            const statusFilter = document.getElementById('statusFilter')?.value || '';
+            const entityFilter = document.getElementById('entityFilter')?.value || '';
+            
+            filteredTickets = tickets.filter(ticket => {
+                if (searchTerm && !String(ticket.id).includes(searchTerm) && 
+                    !ticket.title?.toLowerCase().includes(searchTerm) &&
+                    !ticket.entity?.toLowerCase().includes(searchTerm)) {
+                    return false;
+                }
+                if (statusFilter && ticket.status !== statusFilter) return false;
+                if (entityFilter && ticket.entity !== entityFilter) return false;
+                return true;
+            });
+            
+            renderTable(filteredTickets);
+            updateCounts();
+        }
+
+        function renderTable(ticketsToRender) {
+            const rowsHTML = ticketsToRender.map(ticket => {
+                const slaClass = ticket.isSlaLate ? 'late' : 'ok';
+                const slaText = ticket.isSlaLate ? 'SLA Excedido' : 'No Prazo';
+                
+                return `
+                    <tr>
+                        <td class="ticket-id">
+                            <a href="${ticket.instanceUrl}${ticket.id}" target="_blank" title="${ticket.title}">#${ticket.id}</a>
+                        </td>
+                        <td class="col-instance">
+                            <span class="instance-badge ${ticket.instance.toLowerCase()}">${ticket.instance}</span>
+                        </td>
+                        <td class="col-entity" title="${ticket.entityFull}">${ticket.entity}</td>
+                        <td class="col-status">
+                            <span class="status-badge ${ticket.status}">${ticket.statusName}</span>
+                        </td>
+                        <td class="col-group">${ticket.group}</td>
+                        <td>${ticket.technician || '-'}</td>
+                        <td class="date col-date">${formatDate(ticket.dateCreated)}</td>
+                        <td class="date col-date">${formatDateTime(ticket.lastUpdate)}</td>
+                        <td class="date col-date">${formatDate(ticket.dueDate)}</td>
+                        <td class="col-sla">
+                            <span class="sla-badge ${slaClass}">${slaText}</span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            document.getElementById('mainContent').innerHTML = `
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="col-id">ID</th>
+                                <th class="col-instance">Instância</th>
+                                <th class="col-entity">Entidade</th>
+                                <th class="col-status">Status</th>
+                                <th class="col-group">Grupo Responsável</th>
+                                <th>Técnico</th>
+                                <th class="col-date">Abertura</th>
+                                <th class="col-date">Última Atualização</th>
+                                <th class="col-date">Previsto</th>
+                                <th class="col-sla">SLA</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rowsHTML || '<tr><td colspan="10" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum ticket encontrado</td></tr>'}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            document.getElementById('resultsCount').textContent = `(${ticketsToRender.length} tickets)`;
+        }
+
+        function updateCounts() {
+            const petaCount = filteredTickets.filter(t => t.instance === 'PETA').length;
+            const petaLate = filteredTickets.filter(t => t.instance === 'PETA' && t.isSlaLate).length;
+            const gmxCount = filteredTickets.filter(t => t.instance === 'GMX').length;
+            const gmxLate = filteredTickets.filter(t => t.instance === 'GMX' && t.isSlaLate).length;
+            
+            const countEl = document.getElementById('countProcessing');
+            if (countEl) countEl.textContent = filteredTickets.length;
+            
+            console.log(`Peta: ${petaCount} tickets (${petaLate} SLA fora)`);
+            console.log(`GMX: ${gmxCount} tickets (${gmxLate} SLA fora)`);
+        }
+
+        let nextRefreshTime = null;
+        let countdownTimer = null;
+        let refreshTimer = null;
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof renderSharedHeader === 'function') renderSharedHeader();
+            initTheme();
+            refreshTickets();
             refreshTimer = setInterval(refreshTickets, REFRESH_INTERVAL);
-            countdownTimer = setInterval(updateSlaCountdowns, 1000);
-            startCountdown();
         });
 
         window.addEventListener('beforeunload', () => {
