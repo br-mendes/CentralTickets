@@ -1220,6 +1220,7 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                     <td><span class="sla-badge ${t.slaSolucao === 'No prazo' ? 'sla-ok' : 'sla-late'}">${t.slaSolucao}</span></td>
                     <td>${formatDate(t.dateCreated)}</td>
                     <td>${formatDateTime(t.lastUpdate)}</td>
+                    <td>${t.date_solved ? formatDateTime(t.date_solved) : '-'}</td>
                 </tr>
             `);
             
@@ -1240,6 +1241,7 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                                 <th>SLA Solução</th>
                                 <th>Abertura</th>
                                 <th>Última Atualização</th>
+                                <th>Data/Hora Solução</th>
                             </tr>
                         </thead>
                         <tbody>${rows}</tbody>
@@ -1262,7 +1264,8 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                 'SLA Atendimento': t.slaAtendimento || '',
                 'SLA Solução': t.slaSolucao || '',
                 'Data de Abertura': formatDate(t.dateCreated),
-                'Última Atualização': formatDateTime(t.lastUpdate)
+                'Última Atualização': formatDateTime(t.lastUpdate),
+                'Data/Hora Solução': t.date_solved ? formatDateTime(t.date_solved) : '-'
             }));
 
             const ws = XLSX.utils.json_to_sheet(data);
