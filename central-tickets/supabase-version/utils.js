@@ -11,8 +11,6 @@ const ThemeManager = {
         const saved = localStorage.getItem(this.KEY);
         if (saved) {
             document.documentElement.setAttribute('data-theme', saved);
-        } else {
-            this.setDark();
         }
         this.updateToggleIcon();
     },
@@ -28,6 +26,15 @@ const ThemeManager = {
     
     setDark() {
         document.documentElement.setAttribute('data-theme', 'dark');
+        localStorage.setItem(this.KEY, 'dark');
+        this.updateToggleIcon();
+    },
+    
+    setLight() {
+        document.documentElement.removeAttribute('data-theme');
+        localStorage.setItem(this.KEY, 'light');
+        this.updateToggleIcon();
+    },
         localStorage.setItem(this.KEY, 'dark');
         this.updateToggleIcon();
     },
