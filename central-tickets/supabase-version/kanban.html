@@ -1682,10 +1682,9 @@
 
         // Função para processar tickets do Supabase
         function processTickets(rawTickets, instanceName) {
-            if (rawTickets.length > 0) {
-                const sample = rawTickets[0];
-                console.log(`processTickets sample: status_id=${sample.status_id}, status_key=${sample.status_key || 'NULL'}`);
-            }
+            const statusKeys = [...new Set(rawTickets.map(t => t.status_key))];
+            console.log(`processTickets ${instanceName}: statusKeys found:`, statusKeys);
+            
             return rawTickets.map(ticket => {
                 const statusId = ticket.status_id || 1;
                 const statusKey = ticket.status_key || 'new';
@@ -1696,8 +1695,6 @@
                 else if (!['processing', 'pending', 'solved', 'closed', 'pending-approval'].includes(finalStatus)) {
                     finalStatus = statusInfo.key;
                 }
-                
-                console.log(`Mapping ticket ${ticket.ticket_id}: status_id=${statusId}, status_key=${statusKey}, finalStatus=${finalStatus}`);
                 
                 return {
                     id: ticket.ticket_id,
