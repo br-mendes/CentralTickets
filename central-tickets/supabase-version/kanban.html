@@ -1523,19 +1523,23 @@
             try {
                 let allTickets = [];
                 let page = 0;
-                const pageSize = 1000;
+                const pageSize = 100;
+                const maxTickets = 500;
                 let hasMore = true;
                 
-                console.log(`[${instanceName}] Iniciando carregamento de tickets...`);
+                console.log(`[${instanceName}] Carregando tickets para Kanban (max: ${maxTickets})...`);
 
-                while (hasMore) {
+                while (hasMore && allTickets.length < maxTickets) {
+                    const remainingSlots = maxTickets - allTickets.length;
+                    const currentPageSize = Math.min(pageSize, remainingSlots);
+                    
                     let query = window._sb
                         .from('tickets_cache')
                         .select('*')
                         .eq('instance', instanceName)
                         .not('status_key', 'in', '("solved","closed")')
                         .order('date_mod', { ascending: false })
-                        .range(page * pageSize, (page + 1) * pageSize - 1);
+                        .range(page * pageSize, page * pageSize + currentPageSize - 1);
 
                     const { data, error } = await query;
 
@@ -1549,14 +1553,14 @@
                     } else {
                         allTickets = [...allTickets, ...data];
                         page++;
-                        console.log(`[${instanceName}] Carregados ${allTickets.length} tickets (página ${page})`);
-                        if (data.length < pageSize) {
+                        console.log(`[${instanceName}] Carregados ${allTickets.length} tickets`);
+                        if (data.length < pageSize || allTickets.length >= maxTickets) {
                             hasMore = false;
                         }
                     }
                 }
 
-                console.log(`[${instanceName}] Total carregado: ${allTickets.length} tickets`);
+                console.log(`[${instanceName}] Total carregado: ${allTickets.length} tickets (limite: ${maxTickets})`);
                 return allTickets || [];
             } catch (error) {
                 console.error(`Erro na busca de tickets de ${instanceName}:`, error);
@@ -2078,33 +2082,7 @@ ${JSON.stringify(error, null, 2)}
             }
         }
 
-        async function loadKanbanIncremental() {
-            const sources = [
-              { name: 'Peta', fetcher: (p,b)=> fetchFromKanbanPaged('Peta', p, b) },
-              { name: 'GMX', fetcher: (p,b)=> fetchFromKanbanPaged('GMX', p, b) }
-            ];
-            if (typeof IncrementalLoader === 'undefined') { console.log('IncrementalLoader not found'); return; }
-            await IncrementalLoader.loadInBatches({
-              sources,
-              batchSize: 50,
-              onBatch: (ctx, all) => {
-                tickets = all;
-                renderKanbanIncremental(all);
-                const tally = window.DashboardUtils?.tallyTickets ? window.DashboardUtils.tallyTickets(all) : null;
-                if (tally) window.dispatchEvent(new CustomEvent('tickets-updated', { detail: tally }));
-              },
-              onDone: (all) => {
-                tickets = all;
-                renderKanbanIncremental(all);
-                const tally = window.DashboardUtils?.tallyTickets ? window.DashboardUtils.tallyTickets(all) : null;
-                if (tally) window.dispatchEvent(new CustomEvent('tickets-updated', { detail: tally }));
-              }
-            });
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-          if (typeof IncrementalLoader !== 'undefined') loadKanbanIncremental();
-        });
+        // Note: Kanban uses Supabase via refreshTickets() -> getTicketsFromInstance()
 
         function loadMore(status) {
             const allStatusTickets = ticketsByStatus[status] || [];
