@@ -1673,6 +1673,13 @@
             return sessionTokens[instanceName];
         }
 
+        // Helper: extract last segment of group label
+        function lastGroupLabel(name) {
+            if (!name) return '';
+            const parts = String(name).split('>');
+            return parts[parts.length - 1].trim();
+        }
+
         // Função para processar tickets do Supabase
         function processTickets(rawTickets, instanceName) {
             return rawTickets.map(ticket => {
@@ -2399,9 +2406,3 @@ ${JSON.stringify(error, null, 2)}
     </script>
 </body>
 </html>
-        // Helper: extract last segment of group label (global utility across pages)
-        function lastGroupLabel(name) {
-            if (!name) return '';
-            const parts = String(name).split('>');
-            return parts[parts.length - 1].trim();
-        }
