@@ -491,9 +491,22 @@ Deno.serve(async (req) => {
   const startTime = Date.now()
   
   // Permite especificar qual instância sincronizar (opcional)
-  const { instance, resume_peta, resume_gmx } = await req.json().catch(() => ({}))
+  //Parâmetros: instance, reset_peta, reset_gmx
+  const { instance, reset_peta, reset_gmx, resume_peta, resume_gmx } = await req.json().catch(() => ({}))
   
   try {
+    // Verificar se precisa resetar (zerar e recomeçar)
+    if (reset_peta) {
+      console.log('Resetando PETA...')
+      await supabase.from('sync_control').delete().eq('instance', 'PETA')
+      await supabase.from('tickets_cache').delete().eq('instance', 'PETA')
+    }
+    if (reset_gmx) {
+      console.log('Resetando GMX...')
+      await supabase.from('sync_control').delete().eq('instance', 'GMX')
+      await supabase.from('tickets_cache').delete().eq('instance', 'GMX')
+    }
+    
     // Determinar qual instância precisa de sincronização
     const { data: petaSync } = await supabase
       .from('sync_control')
@@ -511,8 +524,12 @@ Deno.serve(async (req) => {
     let petaResult: SyncResult = { success: true, completed: true }
     let gmxResult: SyncResult = { success: true, completed: true }
     
-    const petaNeedsSync = !petaSync || !petaSync.last_page || petaSync.last_page < (petaSync.total_pages || 12)
-    const gmxNeedsSync = !gmxSync || !gmxSync.last_page || gmxSync.last_page < (gmxSync.total_pages || 78)
+    // Forçar sincronização se foi resetado ou não tem dados
+    const petaHasData = petaSync && petaSync.last_page && petaSync.last_page > 0
+    const gmxHasData = gmxSync && gmxSync.last_page && gmxSync.last_page > 0
+    
+    const petaNeedsSync = reset_peta || !petaHasData || !petaSync || !petaSync.last_page || petaSync.last_page < (petaSync.total_pages || 12)
+    const gmxNeedsSync = reset_gmx || !gmxHasData || !gmxSync || !gmxSync.last_page || gmxSync.last_page < (gmxSync.total_pages || 78)
     
     // Processa apenas uma instância por vez para evitar timeout
     if (petaNeedsSync && (!gmxNeedsSync || (petaSync?.last_page || 0) <= (gmxSync?.last_page || 0))) {
