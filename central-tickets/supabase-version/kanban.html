@@ -1536,7 +1536,7 @@
                     let query = window._sb
                         .from('tickets_cache')
                         .select('*')
-                        .eq('instance', instanceName)
+                        .eq('instance', instanceName.toUpperCase())
                         .not('status_key', 'in', '("solved","closed")')
                         .order('date_mod', { ascending: false })
                         .range(page * pageSize, page * pageSize + currentPageSize - 1);

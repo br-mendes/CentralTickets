@@ -623,7 +623,7 @@
                 const { data, error } = await window._sb
                     .from('user_cache')
                     .select('name')
-                    .eq('instance', instanceName)
+                    .eq('instance', instanceName.toUpperCase())
                     .eq('user_id', userId.toString())
                     .single();
 
@@ -699,7 +699,7 @@
                 let query = window._sb
                     .from('tickets_cache')
                     .select('*')
-                    .eq('instance', instanceName)
+                    .eq('instance', instanceName.toUpperCase())
                     .in('status_key', ['pending', 'approval'])
                     .order('date_mod', { ascending: false })
                     .range(page * pageSize, page * pageSize + currentPageSize - 1);
@@ -866,7 +866,7 @@
                 const { data, error } = await window._sb
                     .from('user_cache')
                     .select('name')
-                    .eq('instance', instanceName)
+                    .eq('instance', instanceName.toUpperCase())
                     .eq('user_id', userId.toString())
                     .single();
 
@@ -936,7 +936,7 @@
                 let query = window._sb
                     .from('tickets_cache')
                     .select('*')
-                    .eq('instance', instanceName)
+                    .eq('instance', instanceName.toUpperCase())
                     .eq('status_id', 7) // Aprovação status
                     .order('date_mod', { ascending: false })
                     .range(page * pageSize, (page + 1) * pageSize - 1);

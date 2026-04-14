@@ -746,7 +746,7 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                     let query = window._sb
                         .from('tickets_cache')
                         .select('*')
-                        .eq('instance', instanceName)
+                        .eq('instance', instanceName.toUpperCase())
                         .order('date_created', { ascending: false })
                         .range(page * pageSize, page * pageSize + currentPageSize - 1);
 
@@ -871,7 +871,7 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                 const { data, error } = await window._sb
                     .from('user_cache')
                     .select('name')
-                    .eq('instance', instanceName)
+                    .eq('instance', instanceName.toUpperCase())
                     .eq('user_id', userId.toString())
                     .single();
 

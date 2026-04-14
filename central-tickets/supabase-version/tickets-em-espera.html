@@ -1304,7 +1304,7 @@
                     let query = window._sb
                         .from('tickets_cache')
                         .select('*')
-                        .eq('instance', instanceName)
+                        .eq('instance', instanceName.toUpperCase())
                         .in('status_key', ['processing', 'pending'])
                         .order('date_mod', { ascending: true })
                         .range(page * pageSize, page * pageSize + currentPageSize - 1);
