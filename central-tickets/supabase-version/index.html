@@ -268,6 +268,64 @@
             font-size: 1rem;
         }
 
+        /* Skeleton Loading */
+        .skeleton {
+            background: linear-gradient(90deg, var(--border) 25%, var(--background) 50%, var(--border) 75%);
+            background-size: 200% 100%;
+            animation: skeleton-shimmer 1.5s ease-in-out infinite;
+            border-radius: var(--radius-sm);
+        }
+
+        @keyframes skeleton-shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .skeleton-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+        }
+
+        .skeleton-title {
+            height: 24px;
+            width: 60%;
+            margin-bottom: 16px;
+        }
+
+        .skeleton-text {
+            height: 16px;
+            width: 100%;
+            margin-bottom: 8px;
+        }
+
+        .skeleton-text-short {
+            height: 16px;
+            width: 40%;
+        }
+
+        .skeleton-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .skeleton-table-row {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+            gap: 16px;
+        }
+
+        .skeleton-table-row .skeleton {
+            height: 20px;
+        }
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+
         .error-container {
             display: flex;
             flex-direction: column;
@@ -2686,13 +2744,42 @@
             });
         }
 
-        // Função para exibir tela de loading
+        // Função para exibir tela de loading com skeleton
         function showLoading(message = 'Carregando tickets...') {
             const mainContent = document.getElementById('mainContent');
             mainContent.innerHTML = `
-                <div class="loading-container">
-                    <div class="spinner"></div>
-                    <p class="loading-text">${message}</p>
+                <div style="padding: 24px;">
+                    <p class="loading-text" style="margin-bottom: 20px; font-weight: 500;">${message}</p>
+                    
+                    <!-- Skeleton Cards -->
+                    <div class="skeleton-grid" style="margin-bottom: 24px;">
+                        <div class="skeleton-card">
+                            <div class="skeleton skeleton-title"></div>
+                            <div class="skeleton skeleton-text"></div>
+                            <div class="skeleton skeleton-text-short"></div>
+                        </div>
+                        <div class="skeleton-card">
+                            <div class="skeleton skeleton-title"></div>
+                            <div class="skeleton skeleton-text"></div>
+                            <div class="skeleton skeleton-text-short"></div>
+                        </div>
+                        <div class="skeleton-card">
+                            <div class="skeleton skeleton-title"></div>
+                            <div class="skeleton skeleton-text"></div>
+                            <div class="skeleton skeleton-text-short"></div>
+                        </div>
+                        <div class="skeleton-card">
+                            <div class="skeleton skeleton-title"></div>
+                            <div class="skeleton skeleton-text"></div>
+                            <div class="skeleton skeleton-text-short"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Skeleton Table -->
+                    <div class="skeleton-card">
+                        <div class="skeleton skeleton-title" style="margin-bottom: 16px; width: 40%;"></div>
+                        ${Array(5).fill('<div class="skeleton-table-row"><div class="skeleton" style="width: 60px;"></div><div class="skeleton" style="flex: 1;"></div><div class="skeleton" style="width: 100px;"></div><div class="skeleton" style="width: 80px;"></div></div>').join('')}
+                    </div>
                 </div>
             `;
         }
@@ -3555,7 +3642,7 @@ ${JSON.stringify(error, null, 2)}
             input.click();
         }
 
-        // Função para atualizar tickets com carregamento híbrido
+// Função para atualizar tickets com carregamento híbrido
         async function refreshTickets() {
             if (isLoading) return;
             
@@ -3569,60 +3656,37 @@ ${JSON.stringify(error, null, 2)}
             console.log('🔄 Carregando tickets do Supabase...');
 
             try {
-             // Buscar todos os tickets do Supabase usando paginação
-              let allTickets = [];
-              let page = 0;
-              const pageSize = 1000; // Tamanho da página ajustável
-              let hasMore = true;
-              
-              console.log('Iniciando carregamento de tickets do Supabase...');
-              
-              while (hasMore) {
-                  let query = window._sb
-                      .from('tickets_cache')
-                      .select('*')
-                      .order('date_mod', { ascending: false })
-                      .range(page * pageSize, (page + 1) * pageSize - 1);
+                // Buscar tickets com limite fixo para performance
+                const MAX_TICKETS = 3000;
+                let allTickets = [];
+                let page = 0;
+                const pageSize = 1000;
+                
+                console.log('Iniciando carregamento de tickets do Supabase...');
+                
+                // Primeira página
+                let query = window._sb
+                    .from('tickets_cache')
+                    .select('*')
+                    .order('date_mod', { ascending: false })
+                    .limit(MAX_TICKETS);
 
-                  // Filtrar por instâncias selecionadas
-                  if (selectedInstances.length > 0 && selectedInstances.length < 1) {
-                      const instance = selectedInstances[0].toUpperCase();
-                      query = query.eq('instance', instance);
-                  }
+                // Filtrar por instâncias selecionadas
+                if (selectedInstances.length > 0 && selectedInstances.length < 2) {
+                    const instance = selectedInstances[0].toUpperCase();
+                    query = query.eq('instance', instance);
+                }
 
-                  const { data, error } = await query;
-                  
-                  if (error) {
-                      throw new Error(`Erro ao buscar tickets do Supabase (página ${page}): ${error.message}`);
-                  }
-                  
-                  if (!data || data.length === 0) {
-                      hasMore = false;
-                  } else {
-                      allTickets = [...allTickets, ...data];
-                      page++;
-                      console.log(`[Supabase] Carregados ${allTickets.length} tickets (página ${page})`);
-                      
-                      // Se retornou menos que o tamanho da página, é a última
-                      if (data.length < pageSize) {
-                          hasMore = false;
-                      }
-                  }
-              }
-              
-              console.log(`[Supabase] Total carregado: ${allTickets.length} tickets`);
-              
-              // Atribuir os resultados
-              const { data: allTicketsData, error: paginationError } = { data: allTickets, error: null };
-              const error = paginationError;
+const { data, error } = await query;
+                
+                if (error) {
+                    throw new Error(`Erro ao buscar tickets do Supabase: ${error.message}`);
+                }
+                
+                allTickets = data || [];
+                console.log(`[Supabase] Total carregado: ${allTickets.length} tickets (limite: ${MAX_TICKETS})`);
 
-              console.log(`Raw Supabase data: ${allTickets.length} tickets, error: ${error?.message || 'none'}`);
-
-              if (error) {
-                  throw new Error(`Erro ao buscar tickets do Supabase: ${error.message}`);
-              }
-
-tickets = (allTickets || []).map(ticket => ({
+                tickets = (allTickets || []).map(ticket => ({
                     id: ticket.ticket_id,
                     title: ticket.title,
                     entity: ticket.entity,
@@ -3650,10 +3714,6 @@ tickets = (allTickets || []).map(ticket => ({
                         ? (window.APP_CONFIG?.GLPI_PETA_TICKET_URL || '')
                         : (window.APP_CONFIG?.GLPI_GMX_TICKET_URL || ''),
                 }));
-
-                // Skip GLPI technician fetch for now (too slow with 3000+ tickets)
-                // tickets = await fetchTechniciansFromGLPI(tickets);
-                console.log('Skipping GLPI technician fetch for performance');
 
                 loadedCounts = { processing: INITIAL_LOAD, pending: INITIAL_LOAD, solved: INITIAL_LOAD, closed: INITIAL_LOAD };
                 console.log('Calling renderKanban...');
@@ -3750,10 +3810,10 @@ tickets = (allTickets || []).map(ticket => ({
                 refreshTickets();
             }, 500);
 
-            // Configurar atualização automática (recarrega a página)
+            // Configurar atualização automática (apenas dados, sem recarregar página)
             refreshTimer = setInterval(() => {
-                console.log('🔄 Recarregando página automaticamente...');
-                location.reload();
+                console.log('🔄 Atualizando dados automaticamente...');
+                refreshTickets();
             }, REFRESH_INTERVAL);
             startCountdown();
         });
@@ -3771,69 +3831,6 @@ tickets = (allTickets || []).map(ticket => ({
             if (!name) return '';
             const parts = String(name).split('>');
             return parts[parts.length - 1].trim();
-        }
-
-        // Fetch technician names from GLPI using Ticket_User API (type=2 for assigned)
-        async function fetchTechniciansFromGLPI(tickets) {
-            if (!tickets || tickets.length === 0) return tickets;
-            
-            const config = window.APP_CONFIG;
-            
-            for (let i = 0; i < tickets.length; i++) {
-                const ticket = tickets[i];
-                if (ticket.technician) continue;
-                
-                const instance = ticket.instance?.toLowerCase() === 'peta'
-                    ? { BASE_URL: config.GLPI_PETA_URL, USER_TOKEN: config.GLPI_PETA_USER_TOKEN, APP_TOKEN: config.GLPI_PETA_APP_TOKEN }
-                    : { BASE_URL: config.GLPI_GMX_URL, USER_TOKEN: config.GLPI_GMX_USER_TOKEN, APP_TOKEN: config.GLPI_GMX_APP_TOKEN };
-                
-                try {
-                    if (!window.sessionTokens?.[ticket.instance]) {
-                        await window.initSessionGLPI(ticket.instance);
-                    }
-                    
-                    const response = await fetch(
-                        `${instance.BASE_URL}/Ticket/${ticket.id}/Ticket_User`,
-                        {
-                            method: 'GET',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Session-Token': window.sessionTokens[ticket.instance],
-                                'App-Token': instance.APP_TOKEN,
-                            },
-                        }
-                    );
-                    
-                    if (response.ok) {
-                        const actors = await response.json();
-                        const technician = actors?.find(a => a.type === 2);
-                        
-                        if (technician?.users_id) {
-                            const userResponse = await fetch(
-                                `${instance.BASE_URL}/User/${technician.users_id}`,
-                                {
-                                    method: 'GET',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                        'Session-Token': window.sessionTokens[ticket.instance],
-                                        'App-Token': instance.APP_TOKEN,
-                                    },
-                                }
-                            );
-                            
-                            if (userResponse.ok) {
-                                const user = await userResponse.json();
-                                const name = [user.firstname, user.realname].filter(Boolean).join(' ') || user.name || technician.users_id.toString();
-                                tickets[i].technician = name;
-                            }
-                        }
-                    }
-                } catch (e) {
-                    console.warn(`Failed to fetch technician for ticket ${ticket.id}:`, e);
-                }
-            }
-            
-            return tickets;
         }
     </script>
 </body>
