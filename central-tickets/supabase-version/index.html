@@ -3276,7 +3276,7 @@ ${JSON.stringify(error, null, 2)}
             try {
              // Buscar todos os tickets do Supabase com limite alto
              // Primeiro, obter a contagem total para definir um limite adequado
-             const { data: countData, error: countError } = await window._sb
+             const { count, error: countError } = await window._sb
                  .from('tickets_cache')
                  .select('*', { count: 'exact', head: true });
                  
@@ -3284,7 +3284,7 @@ ${JSON.stringify(error, null, 2)}
                  throw new Error(`Erro ao contar tickets do Supabase: ${countError.message}`);
              }
              
-             const totalCount = countData?.length ?? 0;
+             const totalCount = count ?? 0;
              console.log(`Total tickets no Supabase: ${totalCount}`);
              
              // Usar um limite que seja pelo menos o total de registros, mas com um teto razoável
