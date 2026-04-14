@@ -3274,46 +3274,35 @@ ${JSON.stringify(error, null, 2)}
             console.log('🔄 Carregando tickets do Supabase...');
 
             try {
-             // Buscar todos os tickets do Supabase com paginação
-             let allTickets = [];
-             let page = 0;
-             const pageSize = 1000; // Ajuste conforme necessário
-             let hasMore = true;
-             
-             while (hasMore) {
-                 let query = window._sb
-                     .from('tickets_cache')
-                     .select('*')
-                     .order('date_mod', { ascending: false })
-                     .range(page * pageSize, (page + 1) * pageSize - 1);
-
-                 // Filtrar por instâncias selecionadas
-                 if (selectedInstances.length > 0 && selectedInstances.length < 2) {
-                     const instance = selectedInstances[0];
-                     query = query.eq('instance', instance);
-                 }
-
-                 const { data, error } = await query;
+             // Buscar todos os tickets do Supabase com limite alto
+             // Primeiro, obter a contagem total para definir um limite adequado
+             const { data: countData, error: countError } = await window._sb
+                 .from('tickets_cache')
+                 .select('*', { count: 'exact', head: true });
                  
-                 if (error) {
-                     throw new Error(`Erro ao buscar tickets do Supabase (página ${page}): ${error.message}`);
-                 }
-                 
-                 if (!data || data.length === 0) {
-                     hasMore = false;
-                 } else {
-                     allTickets = [...allTickets, ...data];
-                     page++;
-                     
-                     // Se retornou menos que o tamanho da página, é a última
-                     if (data.length < pageSize) {
-                         hasMore = false;
-                     }
-                 }
+             if (countError) {
+                 throw new Error(`Erro ao contar tickets do Supabase: ${countError.message}`);
              }
              
-             const { data: allTicketsData, error: paginationError } = { data: allTickets, error: null };
-             const error = paginationError;
+             const totalCount = countData?.length ?? 0;
+             console.log(`Total tickets no Supabase: ${totalCount}`);
+             
+             // Usar um limite que seja pelo menos o total de registros, mas com um teto razoável
+             const limit = Math.min(totalCount, 10000); // Limite de 10k para evitar sobrecarga
+             
+             let query = window._sb
+                 .from('tickets_cache')
+                 .select('*')
+                 .order('date_mod', { ascending: false })
+                 .limit(limit);
+
+             // Filtrar por instâncias selecionadas
+             if (selectedInstances.length > 0 && selectedInstances.length < 2) {
+                 const instance = selectedInstances[0];
+                 query = query.eq('instance', instance);
+             }
+
+             const { data, error } = await query;
 
                 console.log(`Raw Supabase data: ${data?.length || 0} tickets, error: ${error?.message || 'none'}`);
 
