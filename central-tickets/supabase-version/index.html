@@ -782,6 +782,49 @@
             flex-shrink: 0;
         }
 
+        .priority-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+
+        .priority-badge.low {
+            background: rgba(107, 114, 128, 0.15);
+            color: #6b7280;
+        }
+
+        .priority-badge.medium {
+            background: rgba(59, 130, 246, 0.15);
+            color: #3b82f6;
+        }
+
+        .priority-badge.high {
+            background: rgba(249, 115, 22, 0.15);
+            color: #f97316;
+        }
+
+        .priority-badge.urgent {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+        }
+
+        .priority-badge.critical {
+            background: rgba(153, 27, 27, 0.2);
+            color: #991b1b;
+        }
+
+        .priority-badge svg {
+            width: 10px;
+            height: 10px;
+            flex-shrink: 0;
+        }
+
         .ticket-card.urgent {
             border-color: #f59e0b;
             background: linear-gradient(135deg, rgba(245, 158, 11, 0.05), transparent);
@@ -2150,6 +2193,18 @@
             'closed': 'Fechado',
         };
 
+        const TICKET_PRIORITY = {
+            1: { label: 'Baixa', key: 'low', color: '#6b7280' },
+            2: { label: 'Média', key: 'medium', color: '#3b82f6' },
+            3: { label: 'Alta', key: 'high', color: '#f97316' },
+            4: { label: 'Urgente', key: 'urgent', color: '#ef4444' },
+            5: { label: 'Crítica', key: 'critical', color: '#991b1b' },
+        };
+
+        function getPriorityIcon() {
+            return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>';
+        }
+
         function getStatusIcon(status) {
             const icons = {
                 'new': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle></svg>',
@@ -2682,13 +2737,17 @@ ${JSON.stringify(error, null, 2)}
         function getInstanceStats(tickets, instanceName) {
             // Filter case-insensitive to handle 'Peta' and 'PETA'
             const instanceTickets = tickets.filter(t => t.instance?.toLowerCase() === instanceName.toLowerCase());
+            
+            // Support both status (key) and status_key from Supabase
+            const getStatus = (t) => t.status || t.status_key || 'new';
+            
             return {
                 total: instanceTickets.length,
-                new: instanceTickets.filter(t => t.status === 'new').length,
-                processing: instanceTickets.filter(t => t.status === 'processing').length,
-                pending: instanceTickets.filter(t => t.status === 'pending').length,
-                solved: instanceTickets.filter(t => t.status === 'solved').length,
-                closed: instanceTickets.filter(t => t.status === 'closed').length,
+                new: instanceTickets.filter(t => getStatus(t) === 'new').length,
+                processing: instanceTickets.filter(t => getStatus(t) === 'processing').length,
+                pending: instanceTickets.filter(t => getStatus(t) === 'pending').length,
+                solved: instanceTickets.filter(t => getStatus(t) === 'solved').length,
+                closed: instanceTickets.filter(t => getStatus(t) === 'closed').length,
                 tickets: instanceTickets
             };
         }
@@ -2867,6 +2926,7 @@ ${JSON.stringify(error, null, 2)}
             const ticketsByTechnician = {};
             tickets.forEach(t => {
                 const tech = t.technician || 'Não atribuído';
+                const status = t.status || t.status_key || 'new';
                 if (!ticketsByTechnician[tech]) {
                     ticketsByTechnician[tech] = { 
                         total: 0, 
@@ -2879,10 +2939,10 @@ ${JSON.stringify(error, null, 2)}
                     };
                 }
                 ticketsByTechnician[tech].total++;
-                if (t.status === 'processing') ticketsByTechnician[tech].processing++;
-                if (t.status === 'pending') ticketsByTechnician[tech].pending++;
-                if (t.status === 'solved') ticketsByTechnician[tech].solved++;
-                if (t.status === 'closed') ticketsByTechnician[tech].closed++;
+                if (status === 'processing') ticketsByTechnician[tech].processing++;
+                if (status === 'pending') ticketsByTechnician[tech].pending++;
+                if (status === 'solved') ticketsByTechnician[tech].solved++;
+                if (status === 'closed') ticketsByTechnician[tech].closed++;
                 if (t.instance?.toLowerCase() === 'peta') ticketsByTechnician[tech].peta++;
                 if (t.instance?.toLowerCase() === 'gmx') ticketsByTechnician[tech].gmx++;
             });
@@ -3337,7 +3397,9 @@ ${JSON.stringify(error, null, 2)}
                 `;
             }
             
-            const urgentClass = isFiltered ? 'urgent' : '';
+            const priorityInfo = ticket.priority_id ? (TICKET_PRIORITY[ticket.priority_id] || TICKET_PRIORITY[1]) : TICKET_PRIORITY[1];
+            const isUrgent = priorityInfo.key === 'urgent' || priorityInfo.key === 'critical';
+            const urgentClass = isFiltered || isUrgent ? 'urgent' : '';
             const instanceClass = ticket.instance ? ticket.instance.toLowerCase() : '';
             const cardClass = `ticket-card ${ticket.status} ${urgentClass}`.trim();
 
@@ -3351,8 +3413,9 @@ ${JSON.stringify(error, null, 2)}
                         </span>
                         <span class="instance-badge ${instanceClass}">${ticket.instance}</span>
                     </div>
-                    <div class="ticket-status">
+                    <div class="ticket-status-row" style="display: flex; gap: 6px; align-items: center; margin-bottom: 6px;">
                         <span class="status-badge ${ticket.status}">${getStatusIcon(ticket.status)}${ticket.statusName}</span>
+                        ${ticket.priority ? `<span class="priority-badge ${priorityInfo.key}">${getPriorityIcon()}${priorityInfo.label}</span>` : ''}
                     </div>
                     
                     <div class="ticket-entity-mini" title="${ticket.entity}">${ticket.entity}</div>
@@ -3559,7 +3622,7 @@ ${JSON.stringify(error, null, 2)}
                   throw new Error(`Erro ao buscar tickets do Supabase: ${error.message}`);
               }
 
-             tickets = (allTickets || []).map(ticket => ({
+tickets = (allTickets || []).map(ticket => ({
                     id: ticket.ticket_id,
                     title: ticket.title,
                     entity: ticket.entity,
@@ -3569,6 +3632,8 @@ ${JSON.stringify(error, null, 2)}
                     statusId: ticket.status_id,
                     status: ticket.status_key,
                     statusName: ticket.status_name,
+                    priorityId: ticket.priority_id || 1,
+                    priority: ticket.priority || '1-Baixa',
                     group: lastGroupLabel(ticket.group_name || ''),
                     groupFull: ticket.group_name,
                     technician: ticket.technician || '',

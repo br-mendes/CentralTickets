@@ -84,7 +84,17 @@ function processTicket(ticket: any[], instance: string) {
     7: { key: 'pending-approval', name: 'Aprovação' },
   }
   
+  const priorityMap: Record<number, string> = {
+    1: '1-Baixa',
+    2: '2-Média',
+    3: '3-Alta',
+    4: '4-Urgente',
+    5: '5-Crítica',
+  }
+  
   const status = statusMap[statusId] || { key: 'new', name: 'Novo' }
+  const priorityId = parseInt(ticket[3]) || 1
+  const priority = priorityMap[priorityId] || '1-Baixa'
   const dueDate = ticket[151]
   const isSlaLate = dueDate ? new Date(dueDate) < new Date() : false
 
@@ -99,6 +109,9 @@ function processTicket(ticket: any[], instance: string) {
     status_id: statusId,
     status_key: status.key,
     status_name: status.name,
+    priority_id: priorityId,
+    priority: priority,
+    urgency: priorityId >= 4 ? true : false,
     group_name: ticket[8] || '',
     technician: '',
     technician_id: 0,

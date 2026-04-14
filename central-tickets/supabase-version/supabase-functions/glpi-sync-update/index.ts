@@ -61,6 +61,17 @@ function getStatusName(id: number): string {
   }
 }
 
+function getPriorityLabel(id: number): string {
+  switch (id) {
+    case 1: return '1-Baixa'
+    case 2: return '2-Média'
+    case 3: return '3-Alta'
+    case 4: return '4-Urgente'
+    case 5: return '5-Crítica'
+    default: return '1-Baixa'
+  }
+}
+
 function getRootCategory(cat: string): string {
   if (!cat) return 'Não categorizado'
   return cat.split(' > ')[0].trim()
@@ -284,6 +295,7 @@ async function syncFull(instanceName: string): Promise<SyncResult> {
     if (!ticketData) { failed++; continue }
     
     const statusId = Number(ticketData.status) || 1
+    const priorityId = Number(ticketData.urgency) || 1
     const tech = await fetchTechnician(ticket_id, config, session, config.appToken)
     
     const entityFull = (ticketData.entities?.completename as string) ?? (ticketData.entity?.completename as string) ?? ''
@@ -303,6 +315,9 @@ async function syncFull(instanceName: string): Promise<SyncResult> {
       status_id: statusId,
       status_key: getStatusKey(statusId),
       status_name: getStatusName(statusId),
+      priority_id: priorityId,
+      priority: getPriorityLabel(priorityId),
+      urgency: priorityId >= 4,
       group_name: groupName,
       date_created: ticketData.date_creation ?? null,
       date_mod: ticketData.date_mod ?? null,
