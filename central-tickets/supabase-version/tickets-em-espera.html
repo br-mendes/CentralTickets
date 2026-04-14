@@ -1289,24 +1289,42 @@
 
         async function getTicketsFromInstance(instanceName) {
             try {
-                // Buscar tickets com status em atendimento (2,3) ou pendente (4)
-                const { data, error } = await window._sb
-                    .from('tickets_cache')
-                    .select('*')
-                    .eq('instance', instanceName)
-                    .in('status_id', [2, 3, 4])
-                    .order('date_mod', { ascending: true })
-                    .limit(500);
+                let allTickets = [];
+                let page = 0;
+                const pageSize = 1000;
+                let hasMore = true;
 
-                if (error) {
-                    console.error(`Erro ao buscar tickets de ${instanceName} do Supabase:`, error);
-                    return [];
+                while (hasMore) {
+                    let query = window._sb
+                        .from('tickets_cache')
+                        .select('*')
+                        .eq('instance', instanceName)
+                        .in('status_id', [2, 3, 4])
+                        .order('date_mod', { ascending: true })
+                        .range(page * pageSize, (page + 1) * pageSize - 1);
+
+                    const { data, error } = await query;
+
+                    if (error) {
+                        console.error(`Erro ao buscar tickets de ${instanceName} do Supabase:`, error);
+                        return [];
+                    }
+
+                    if (!data || data.length === 0) {
+                        hasMore = false;
+                    } else {
+                        allTickets = [...allTickets, ...data];
+                        page++;
+                        if (data.length < pageSize) {
+                            hasMore = false;
+                        }
+                    }
                 }
 
-                console.log(`${instanceName}: ${(data || []).length} tickets carregados do Supabase`);
+                console.log(`${instanceName}: ${(allTickets || []).length} tickets carregados do Supabase`);
                 
                 // Fetch technician names from GLPI API
-                const ticketsWithTechnicians = await fetchTechniciansFromGLPI(data || [], instanceName);
+                const ticketsWithTechnicians = await fetchTechniciansFromGLPI(allTickets || [], instanceName);
                 
                 return processTickets(ticketsWithTechnicians, instanceName);
             } catch (error) {
