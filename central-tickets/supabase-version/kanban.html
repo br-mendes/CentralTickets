@@ -1749,9 +1749,8 @@
 
                 console.log(`${instanceName}: ${(data || []).length} tickets carregados do Supabase`);
                 
-                const ticketsWithTechnicians = await fetchTechniciansFromGLPI(data || [], instanceName);
-                
-                return processTickets(ticketsWithTechnicians, instanceName);
+                // Use Supabase data directly (technician field is already populated by sync function)
+                return processTickets(data || [], instanceName);
             } catch (error) {
                 console.error(`Erro ao buscar tickets de ${instanceName}:`, error);
                 throw error;
@@ -1759,27 +1758,14 @@
         }
 
         async function getAllTickets() {
-            const BATCH_SIZE = 50; // Process tickets in batches for incremental rendering
             const allTickets = [];
             
-            // Process each instance separately to show progress
+            // Process each instance separately
             for (const instanceName of selectedInstances) {
                 try {
                     const instanceTickets = await getTicketsFromInstance(instanceName);
-                    console.log(`${instanceName}: ${instanceTickets.length} tickets brutos carregados`);
-                    
-                    // Process tickets in batches for incremental rendering
-                    for (let i = 0; i < instanceTickets.length; i += BATCH_SIZE) {
-                        const batch = instanceTickets.slice(i, i + BATCH_SIZE);
-                        const resolvedBatch = await resolveTechnicianNamesForPage(batch, instanceName);
-                        allTickets.push(...resolvedBatch);
-                        
-                        // Update UI incrementally
-                        if (window.renderKanban && typeof window.renderKanban === 'function') {
-                            // Apply current sorting/filters to show partial results
-                            window.renderKanbanIncremental(allTickets);
-                        }
-                    }
+                    console.log(`${instanceName}: ${instanceTickets.length} tickets processados`);
+                    allTickets.push(...instanceTickets);
                 } catch (error) {
                     console.error(`Falha ao carregar tickets de ${instanceName}:`, error);
                 }
@@ -1941,15 +1927,8 @@ ${JSON.stringify(error, null, 2)}
         function renderKanban(tickets) {
             const mainContent = document.getElementById('mainContent');
             
-            console.log('renderKanban received tickets:', tickets.length);
-            if (tickets.length > 0) {
-                console.log('Sample ticket:', tickets[0]);
-                console.log('Sample ticket status:', tickets[0].status);
-            }
-            
             ticketsByStatus = STATUS_ORDER.reduce((acc, status) => {
                 acc[status] = tickets.filter(t => t.status === status);
-                console.log(`Status ${status}: ${acc[status].length} tickets`);
                 return acc;
             }, {});
             
