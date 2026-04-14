@@ -1470,11 +1470,6 @@ async function refreshTickets() {
                 tickets = await getAllTickets();
                 renderTable(tickets);
                 startCountdown();
-                
-                // Always sync to Supabase cache on page load
-                if (typeof syncToSupabase === 'function') {
-                    syncToSupabase();
-                }
             } catch (error) {
                 console.error('Erro ao carregar tickets:', error);
             } finally {
@@ -1623,7 +1618,17 @@ async function refreshTickets() {
         document.addEventListener('DOMContentLoaded', () => {
             if (typeof renderSharedHeader === 'function') renderSharedHeader();
             initTheme();
-            refreshTickets();
+            
+            // First sync from GLPI to Supabase cache
+            if (typeof syncToSupabase === 'function') {
+                syncToSupabase();
+            }
+            
+            // Then load and display tickets
+            setTimeout(() => {
+                refreshTickets();
+            }, 500);
+            
             refreshTimer = setInterval(refreshTickets, REFRESH_INTERVAL);
         });
 
