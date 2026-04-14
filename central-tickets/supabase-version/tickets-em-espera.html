@@ -548,54 +548,52 @@
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 5px 12px;
-            border-radius: var(--radius-sm);
+            padding: 4px 10px;
+            border-radius: 20px;
             font-size: 0.75rem;
             font-weight: 600;
-        }
-
-        .status-badge.pending-approval {
-            background: rgba(139, 92, 246, 0.25);
-            color: #6b21a8;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
         }
 
         .status-badge svg {
-            width: 14px;
-            height: 14px;
+            width: 12px;
+            height: 12px;
         }
 
         .status-badge.new {
-            background: rgba(59, 130, 246, 0.12);
-            color: #2563eb;
+            background: rgba(59, 130, 246, 0.15);
+            color: #3b82f6;
         }
 
         .status-badge.processing, .status-badge.em-atendimento {
-            background: rgba(34, 197, 94, 0.12);
-            color: #16a34a;
+            background: rgba(34, 197, 94, 0.15);
+            color: #22c55e;
         }
 
         .status-badge.pending {
-            background: rgba(249, 115, 22, 0.12);
+            background: rgba(249, 115, 22, 0.15);
             color: #f97316;
         }
 
         .status-badge.pending-approval, .status-badge.aprovacao {
-            background: rgba(139, 92, 246, 0.12);
-            color: #7c3aed;
+            background: rgba(249, 115, 22, 0.15);
+            color: #f97316;
         }
 
         .status-badge.solved {
-            background: rgba(107, 114, 128, 0.12);
+            background: rgba(107, 114, 128, 0.15);
             color: #6b7280;
         }
 
         .status-badge.closed {
-            background: rgba(0, 0, 0, 0.12);
-            color: #000000;
+            background: rgba(31, 41, 55, 0.25);
+            color: #1f2937;
         }
 
         .col-group {
             width: 160px;
+            min-width: 140px;
         }
 
         .group-info {
