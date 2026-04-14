@@ -1180,25 +1180,6 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
             renderResults();
         }
 
-            filteredTickets = allTickets.filter(ticket => {
-                const dateToCheck = dateType === 'opening' ? ticket.dateCreated : ticket.lastUpdate;
-                if (!dateToCheck) return false;
-
-                const date = new Date(dateToCheck);
-                if (isNaN(date.getTime())) return false;
-
-                if (year && date.getFullYear() !== parseInt(year)) return false;
-                if (month && (date.getMonth() + 1) !== parseInt(month)) return false;
-                if (instance && ticket.instance !== instance) return false;
-                if (entity && ticket.entity !== entity) return false;
-                if (status && ticket.status !== status) return false;
-
-                return true;
-            });
-
-            renderResults();
-        }
-
         function renderResults() {
             const content = document.getElementById('resultsContent');
             const countEl = document.getElementById('resultsCount');
