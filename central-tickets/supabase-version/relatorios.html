@@ -943,6 +943,12 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
             return ticket[5] ? ticket[5].toString() : '';
         }
 
+        function lastGroupLabel(name) {
+            if (!name) return '';
+            const parts = String(name).split('>');
+            return parts[parts.length - 1].trim();
+        }
+
         function processTickets(rawTickets, instanceName) {
             return rawTickets.map(ticket => {
                 const statusId = ticket.status_id || 1;
