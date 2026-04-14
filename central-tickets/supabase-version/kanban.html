@@ -1927,8 +1927,11 @@ ${JSON.stringify(error, null, 2)}
         function renderKanban(tickets) {
             const mainContent = document.getElementById('mainContent');
             
+            console.log('renderKanban called with', tickets.length, 'tickets');
+            
             ticketsByStatus = STATUS_ORDER.reduce((acc, status) => {
                 acc[status] = tickets.filter(t => t.status === status);
+                console.log(`renderKanban: status=${status}, count=${acc[status].length}, sampleStatus=${tickets.length > 0 ? tickets[0].status : 'none'}`);
                 return acc;
             }, {});
             
