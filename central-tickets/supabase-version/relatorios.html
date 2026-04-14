@@ -860,7 +860,7 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
             countdownEl.textContent = `Próximo refresh: ${minutes}:${seconds.toString().padStart(2, '0')}`;
             
             if (remaining <= 0) {
-                loadAllTickets();
+                loadReport();
             }
         }
 
@@ -1041,7 +1041,8 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         document.addEventListener('DOMContentLoaded', () => {
             initTheme();
-            loadAllTickets();
+            loadReport();
+            startCountdown();
         });
     </script>
 </body>

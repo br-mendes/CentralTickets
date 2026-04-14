@@ -603,7 +603,11 @@
             justify-content: space-between;
             align-items: flex-start;
             gap: 8px;
-            margin-bottom: 10px;
+            margin-bottom: 4px;
+        }
+
+        .ticket-status {
+            margin-bottom: 6px;
         }
 
         .ticket-id {
@@ -3271,6 +3275,9 @@ ${JSON.stringify(error, null, 2)}
                             </a>
                         </span>
                         <span class="instance-badge ${instanceClass}">${ticket.instance}</span>
+                    </div>
+                    <div class="ticket-status">
+                        <span class="status-badge ${ticket.status}">${getStatusIcon(ticket.status)}${ticket.statusName}</span>
                     </div>
                     
                     <div class="ticket-entity-mini" title="${ticket.entity}">${ticket.entity}</div>
