@@ -1931,6 +1931,8 @@ ${JSON.stringify(error, null, 2)}
         function renderKanban(tickets) {
             const mainContent = document.getElementById('mainContent');
             
+            console.log('renderKanban: tickets[0] after process:', JSON.stringify(tickets[0]?.status));
+            
             ticketsByStatus = STATUS_ORDER.reduce((acc, status) => {
                 acc[status] = tickets.filter(t => t.status === status);
                 return acc;
