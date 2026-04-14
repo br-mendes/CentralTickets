@@ -3534,6 +3534,13 @@ ${JSON.stringify(error, null, 2)}
                 // Reiniciar contador regressivo
                 startCountdown();
                 
+                // Always sync to Supabase cache on page load
+                setTimeout(() => {
+                    if (typeof syncToSupabase === 'function') {
+                        syncToSupabase();
+                    }
+                }, 1000);
+                
                 console.log(`✅ Atualização concluída: ${tickets.length} tickets carregados do Supabase`);
                 console.log(`✅ Dashboard rendered successfully`);
             } catch (error) {

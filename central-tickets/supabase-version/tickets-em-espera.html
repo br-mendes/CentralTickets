@@ -1262,6 +1262,11 @@
                 tickets = await getAllTickets();
                 renderTable(tickets);
                 startCountdown();
+                
+                // Always sync to Supabase cache on page load
+                if (typeof syncToSupabase === 'function') {
+                    syncToSupabase();
+                }
             } catch (error) {
                 console.error('Erro ao carregar tickets:', error);
             } finally {

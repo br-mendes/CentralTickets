@@ -1458,7 +1458,7 @@
 
         // ========== REFRESH TICKETS ==========
         
-        async function refreshTickets() {
+async function refreshTickets() {
             if (isLoading) return;
             
             isLoading = true;
@@ -1468,15 +1468,20 @@
 
             try {
                 tickets = await getAllTickets();
-                filteredTickets = [...tickets];
-                applyFilters();
+                renderTable(tickets);
                 startCountdown();
+                
+                // Always sync to Supabase cache on page load
+                if (typeof syncToSupabase === 'function') {
+                    syncToSupabase();
+                }
             } catch (error) {
                 console.error('Erro ao carregar tickets:', error);
             } finally {
                 isLoading = false;
                 if (refreshBtn) refreshBtn.disabled = false;
             }
+        }
         }
 
         function showLoading() {
