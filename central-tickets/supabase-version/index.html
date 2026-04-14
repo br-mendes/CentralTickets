@@ -3642,115 +3642,140 @@ ${JSON.stringify(error, null, 2)}
             input.click();
         }
 
-// Função para atualizar tickets com carregamento híbrido
+// Função para atualizar tickets com carregamento otimizado
         async function refreshTickets() {
             if (isLoading) return;
-            
             isLoading = true;
+
             const refreshBtn = document.getElementById('refreshBtn');
             const syncBtn = document.getElementById('syncBtn');
             if (refreshBtn) refreshBtn.disabled = true;
             if (syncBtn) syncBtn.disabled = true;
-            showLoading('Carregando dados do Supabase...');
-            
-            console.log('🔄 Carregando tickets do Supabase...');
+
+            const CACHE_MAX_AGE = 10 * 60 * 1000; // 10 minutos
 
             try {
-                // Buscar tickets com limite fixo para performance
-                const MAX_TICKETS = 3000;
+                // Verificar cache primeiro
+                const cached = localStorage.getItem(CACHE_KEY);
+                const cacheTimestamp = getCacheTimestamp();
+                
+                if (cached && cacheTimestamp) {
+                    const age = Date.now() - new Date(cacheTimestamp).getTime();
+                    if (age < CACHE_MAX_AGE) {
+                        console.log('📂 Carregando do cache local (válido)...');
+                        const cacheData = JSON.parse(cached);
+                        tickets = cacheData.tickets;
+                        window.currentTickets = tickets;
+                        renderKanban(tickets);
+                        
+                        const lastUpdateEl = document.getElementById('lastUpdate');
+                        if (lastUpdateEl) lastUpdateEl.textContent = `Atualizado: ${getCurrentTimeFormatted()}`;
+                        startCountdown();
+                        isLoading = false;
+                        if (refreshBtn) refreshBtn.disabled = false;
+                        if (syncBtn) syncBtn.disabled = false;
+                        console.log(`✅ Cache usado: ${tickets.length} tickets`);
+                        return;
+                    } else {
+                        console.log('📂 Cache expirado, carregando do Supabase...');
+                    }
+                }
+
+                console.log('[Supabase] Iniciando carregamento completo de tickets...');
+
                 let allTickets = [];
                 let page = 0;
-                const pageSize = 1000;
-                
-                console.log('Iniciando carregamento de tickets do Supabase...');
-                
-                // Primeira página
-                let query = window._sb
-                    .from('tickets_cache')
-                    .select('*')
-                    .order('date_mod', { ascending: false })
-                    .limit(MAX_TICKETS);
+                const pageSize = 2000;
+                let hasMore = true;
 
-                // Filtrar por instâncias selecionadas
-                if (selectedInstances.length > 0 && selectedInstances.length < 2) {
-                    const instance = selectedInstances[0].toUpperCase();
-                    query = query.eq('instance', instance);
+                while (hasMore) {
+                    const from = page * pageSize;
+                    const to = from + pageSize - 1;
+
+                    const { data, error } = await window._sb
+                        .from('tickets_cache')
+                        .select('*')
+                        .order('date_mod', { ascending: false })
+                        .range(from, to);
+
+                    if (error) throw new Error(`Erro na página ${page}: ${error.message}`);
+
+                    if (!data || data.length === 0) {
+                        hasMore = false;
+                    } else {
+                        allTickets = [...allTickets, ...data];
+                        page++;
+                        console.log(`[Supabase] Página ${page} → Total: ${allTickets.length}`);
+                        
+                        showLoading(`Carregando tickets... ${allTickets.length} registros`);
+                    }
                 }
 
-const { data, error } = await query;
-                
-                if (error) {
-                    throw new Error(`Erro ao buscar tickets do Supabase: ${error.message}`);
-                }
-                
-                allTickets = data || [];
-                console.log(`[Supabase] Total carregado: ${allTickets.length} tickets (limite: ${MAX_TICKETS})`);
-
-                tickets = (allTickets || []).map(ticket => ({
-                    id: ticket.ticket_id,
-                    title: ticket.title,
-                    entity: ticket.entity,
-                    entityFull: ticket.entity_full,
-                    category: ticket.category,
-                    rootCategory: ticket.root_category,
-                    statusId: ticket.status_id,
-                    status: ticket.status_key,
-                    statusName: ticket.status_name,
-                    priorityId: ticket.priority_id || 1,
-                    priority: ticket.priority || '1-Baixa',
-                    group: lastGroupLabel(ticket.group_name || ''),
-                    groupFull: ticket.group_name,
-                    technician: ticket.technician || '',
-                    dateCreated: ticket.date_created,
-                    lastUpdate: ticket.date_mod,
-                    dueDate: ticket.due_date,
-                    isSlaLate: ticket.is_sla_late || false,
-                    isOverdueFirst: ticket.is_overdue_first || false,
-                    isOverdueResolve: ticket.is_overdue_resolve || false,
-                    timeToOwn: ticket.time_to_own,
-                    timeToResolve: ticket.time_to_resolve,
-                    instance: ticket.instance,
-                    instanceUrl: ticket.instance?.toLowerCase() === 'peta' 
-                        ? (window.APP_CONFIG?.GLPI_PETA_TICKET_URL || '')
+                // Mapear para formato do dashboard
+                tickets = allTickets.map(t => ({
+                    id: t.ticket_id,
+                    title: t.title,
+                    entity: t.entity,
+                    entityFull: t.entity_full,
+                    category: t.category,
+                    rootCategory: t.root_category,
+                    statusId: t.status_id,
+                    status: t.status_key || 'new',
+                    statusName: t.status_name,
+                    priorityId: t.priority_id || 1,
+                    priority: t.priority || '1-Baixa',
+                    group: lastGroupLabel(t.group_name || ''),
+                    groupFull: t.group_name,
+                    technician: t.technician || '',
+                    dateCreated: t.date_created,
+                    lastUpdate: t.date_mod,
+                    dueDate: t.due_date,
+                    isSlaLate: t.is_sla_late || false,
+                    isOverdueFirst: t.is_overdue_first || false,
+                    isOverdueResolve: t.is_overdue_resolve || false,
+                    timeToOwn: t.time_to_own,
+                    timeToResolve: t.time_to_resolve,
+                    instance: t.instance,
+                    instanceUrl: t.instance?.toLowerCase() === 'peta' 
+                        ? (window.APP_CONFIG?.GLPI_PETA_TICKET_URL || '') 
                         : (window.APP_CONFIG?.GLPI_GMX_TICKET_URL || ''),
                 }));
 
-                loadedCounts = { processing: INITIAL_LOAD, pending: INITIAL_LOAD, solved: INITIAL_LOAD, closed: INITIAL_LOAD };
-                console.log('Calling renderKanban...');
+                // Salvar no cache
+                localStorage.setItem(CACHE_KEY, JSON.stringify({
+                    tickets: tickets,
+                    timestamp: new Date().toISOString()
+                }));
+                localStorage.setItem(CACHE_TIMESTAMP_KEY, new Date().toISOString());
+
+                console.log(`[Supabase] Finalizado: ${tickets.length} tickets`);
+
                 window.currentTickets = tickets;
                 renderKanban(tickets);
-                
-                // Dispatch event for Tailwind dashboard
-                const tally = window.DashboardUtils?.tallyTickets?.(tickets);
-                if (tally) {
-                    window.dispatchEvent(new CustomEvent('tickets-updated', { detail: tally }));
-                }
-                
-                // Atualizar última atualização
+
+                // Atualizar UI
                 const lastUpdateEl = document.getElementById('lastUpdate');
-                if (lastUpdateEl) {
-                    lastUpdateEl.textContent = `Atualizado: ${getCurrentTimeFormatted()}`;
-                }
-                
-                // Reiniciar contador regressivo
+                if (lastUpdateEl) lastUpdateEl.textContent = `Atualizado: ${getCurrentTimeFormatted()}`;
                 startCountdown();
-                
-                // Always sync to Supabase cache on page load
-                console.log(`✅ Atualização concluída: ${tickets.length} tickets carregados do Supabase`);
-                console.log(`✅ Dashboard rendered successfully`);
+
+                console.log(`✅ Carregamento concluído: ${tickets.length} tickets`);
             } catch (error) {
-                console.error('❌ Erro na atualização:', error);
+                console.error('[Supabase] Erro ao carregar tickets:', error);
                 
-                // Se falhou, usar cache se disponível
-                if (tickets.length > 0) {
-                    console.log('📂 Usando dados do cache local...');
-                    renderKanban(tickets);
+                // Tentar usar cache se disponível
+                const cached = localStorage.getItem(CACHE_KEY);
+                if (cached) {
+                    try {
+                        const cacheData = JSON.parse(cached);
+                        tickets = cacheData.tickets;
+                        window.currentTickets = tickets;
+                        renderKanban(tickets);
+                        console.log('📂 Usando cache local após erro');
+                    } catch {
+                        showError('Falha ao carregar tickets', 'Verifique a conexão e tente novamente.', error);
+                    }
                 } else {
-                    showError(
-                        'Erro ao carregar tickets',
-                        'Verifique sua conexão com o Supabase ou tente novamente mais tarde.',
-                        { message: error.message }
-                    );
+                    showError('Falha ao carregar tickets', 'Verifique a conexão e tente novamente.', error);
                 }
             } finally {
                 isLoading = false;
