@@ -2900,6 +2900,19 @@ ${JSON.stringify(error, null, 2)}
             const htmlCategory = renderCategoryCards(ticketsByCategory);
             const htmlPeriod = renderTailwindPeriodContent(tickets, 30);
 
+            // Set default period button
+            setTimeout(() => {
+                const defaultBtn = document.querySelector('[data-period="30"]');
+                if (defaultBtn) {
+                    document.querySelectorAll('.period-btn').forEach(b => {
+                        b.classList.remove('bg-blue-600', 'text-white');
+                        b.classList.add('bg-gray-200', 'text-gray-700');
+                    });
+                    defaultBtn.classList.remove('bg-gray-200', 'text-gray-700');
+                    defaultBtn.classList.add('bg-blue-600', 'text-white');
+                }
+            }, 100);
+
             return '<div class="p-6">' +
                 '<div class="bg-white rounded-lg shadow p-6 mb-6">' +
                     '<h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">' +
@@ -2949,12 +2962,14 @@ ${JSON.stringify(error, null, 2)}
                         '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>' +
                         'Tickets por Período' +
                     '</h2>' +
-                    '<div class="flex gap-2 mb-6">' +
-                        '<button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">Este Mês</button>' +
-                        '<button class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">Últimos 60 dias</button>' +
-                        '<button class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">Últimos 90 dias</button>' +
+                    '<div class="flex gap-2 mb-6" id="periodButtons">' +
+                        '<button class="period-btn px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors" data-period="total" onclick="filterPeriod(this)">Total</button>' +
+                        '<button class="period-btn px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors" data-period="30" onclick="filterPeriod(this)">Últimos 30 dias</button>' +
+                        '<button class="period-btn px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors" data-period="60" onclick="filterPeriod(this)">Últimos 60 dias</button>' +
+                        '<button class="period-btn px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors" data-period="90" onclick="filterPeriod(this)">Últimos 90 dias</button>' +
+                        '<button class="period-btn px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors" data-period="365" onclick="filterPeriod(this)">Este Ano</button>' +
                     '</div>' +
-                    htmlPeriod +
+                    '<div id="periodContent">' + htmlPeriod + '</div>' +
                 '</div>' +
                 '<div class="bg-white rounded-lg shadow p-6">' +
                     '<h2 class="text-xl font-bold text-gray-800 mb-4">Ações Rápidas</h2>' +
@@ -3220,10 +3235,66 @@ ${JSON.stringify(error, null, 2)}
         }
 
         function updatePeriodFilter(btn, tickets) {
-            document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            const days = parseInt(btn.dataset.period);
-            document.getElementById('periodContent').innerHTML = renderPeriodContent(tickets, days);
+            document.querySelectorAll('.period-btn').forEach(b => {
+                b.classList.remove('bg-blue-600', 'text-white');
+                b.classList.add('bg-gray-200', 'text-gray-700');
+            });
+            btn.classList.remove('bg-gray-200', 'text-gray-700');
+            btn.classList.add('bg-blue-600', 'text-white');
+            
+            const days = btn.dataset.period;
+            const contentDiv = document.getElementById('periodContent');
+            
+            if (days === 'total') {
+                // Show all tickets (no date filter)
+                const totalOpened = tickets.length;
+                const closedTickets = tickets.filter(t => t.status === 'closed' || t.status === 'solved');
+                const totalClosed = closedTickets.length;
+                const petaCount = tickets.filter(t => t.instance?.toLowerCase() === 'peta').length;
+                const gmxCount = tickets.filter(t => t.instance?.toLowerCase() === 'gmx').length;
+                const petaClosed = closedTickets.filter(t => t.instance?.toLowerCase() === 'peta').length;
+                const gmxClosed = closedTickets.filter(t => t.instance?.toLowerCase() === 'gmx').length;
+                const closureRate = totalOpened > 0 ? Math.round((totalClosed / totalOpened) * 100) : 0;
+                
+                contentDiv.innerHTML = renderTailwindPeriodContentAll(totalOpened, totalClosed, petaCount, gmxCount, petaClosed, gmxClosed, closureRate);
+            } else {
+                const daysNum = parseInt(days);
+                contentDiv.innerHTML = renderTailwindPeriodContent(tickets, daysNum);
+            }
+        }
+
+        function renderTailwindPeriodContentAll(totalOpened, totalClosed, petaCount, gmxCount, petaClosed, gmxClosed, closureRate) {
+            return `
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-gray-50 rounded-lg p-4 text-center">
+                        <div class="text-3xl font-bold text-gray-800">${totalOpened}</div>
+                        <div class="text-sm text-gray-600">Total de Tickets</div>
+                        <div class="text-xs mt-1 text-blue-600">Peta: ${petaCount}</div>
+                        <div class="text-xs text-orange-600">GMX: ${gmxCount}</div>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-4 text-center">
+                        <div class="text-3xl font-bold text-green-600">${totalClosed}</div>
+                        <div class="text-sm text-gray-600">Fechados/Solucionados</div>
+                        <div class="text-xs mt-1 text-blue-600">Peta: ${petaClosed}</div>
+                        <div class="text-xs text-orange-600">GMX: ${gmxClosed}</div>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-4 text-center">
+                        <div class="text-3xl font-bold text-purple-600">${closureRate}%</div>
+                        <div class="text-sm text-gray-600">Taxa de Fechamento</div>
+                        <div class="text-xs mt-1 text-gray-500">Fechados / Total</div>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-4 text-center">
+                        <div class="text-3xl font-bold text-blue-600">${totalOpened - totalClosed}</div>
+                        <div class="text-sm text-gray-600">Em Aberto</div>
+                        <div class="text-xs mt-1 text-gray-500">Total - Fechados</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Global function for period buttons
+        function filterPeriod(btn) {
+            updatePeriodFilter(btn, window.currentTickets || []);
         }
 
         function toggleSolutionChart(btn) {
@@ -3517,6 +3588,7 @@ ${JSON.stringify(error, null, 2)}
 
                 loadedCounts = { processing: INITIAL_LOAD, pending: INITIAL_LOAD, solved: INITIAL_LOAD, closed: INITIAL_LOAD };
                 console.log('Calling renderKanban...');
+                window.currentTickets = tickets;
                 renderKanban(tickets);
                 
                 // Dispatch event for Tailwind dashboard
