@@ -1941,8 +1941,15 @@ ${JSON.stringify(error, null, 2)}
         function renderKanban(tickets) {
             const mainContent = document.getElementById('mainContent');
             
+            console.log('renderKanban received tickets:', tickets.length);
+            if (tickets.length > 0) {
+                console.log('Sample ticket:', tickets[0]);
+                console.log('Sample ticket status:', tickets[0].status);
+            }
+            
             ticketsByStatus = STATUS_ORDER.reduce((acc, status) => {
                 acc[status] = tickets.filter(t => t.status === status);
+                console.log(`Status ${status}: ${acc[status].length} tickets`);
                 return acc;
             }, {});
             
