@@ -3275,16 +3275,13 @@ ${JSON.stringify(error, null, 2)}
                         <div class="text-xs mt-1 text-gray-500">Fechados / Abertos</div>
                     </div>
                     <div class="bg-gray-50 rounded-lg p-4 text-center">
-                        <div class="text-3xl font-bold text-\${color}-600">\${Math.round(totalOpened * 30 / days)}</div>
+                        <div class="text-3xl font-bold text-${color}-600">${Math.round(totalOpened * 30 / days)}</div>
                         <div class="text-sm text-gray-600">Média Mensal</div>
                         <div class="text-xs mt-1 text-gray-500">Tickets/mês</div>
                     </div>
                 </div>
             `;
         }
-    </script>
-</body>
-</html>
 
         function updatePeriodFilter(btn, tickets) {
             document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
