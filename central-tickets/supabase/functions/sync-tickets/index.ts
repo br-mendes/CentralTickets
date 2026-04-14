@@ -1,6 +1,6 @@
 // Supabase Edge Function para sincronização de tickets
+// Suporta sincronização incremental via múltiplas invocações
 // Agendar via: Supabase Dashboard > Edge Functions > Schedules
-// Schedule: Every 3 hours
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -22,6 +22,9 @@ const GLPI_INSTANCES = {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
+const PAGE_SIZE = 25 // Tickets por página (padrão GLPI)
+const MAX_PAGES_PER_RUN = 10 // Máximo de páginas por execução (~250 tickets)
+
 interface TicketData {
   id: number
   ticket_id: number
@@ -34,11 +37,23 @@ interface TicketData {
   status_key: string
   status_name: string
   group_name: string
+  technician: string
+  technician_id: number
   date_created: string | null
   date_mod: string | null
   due_date: string | null
   is_sla_late: boolean
   instance: string
+}
+
+interface SyncResult {
+  success: boolean
+  count?: number
+  error?: string
+  completed?: boolean
+  pagesProcessed?: number
+  lastPage?: number
+  totalPages?: number
 }
 
 async function initSession(instance: typeof GLPI_INSTANCES.PETA | typeof GLPI_INSTANCES.GMX) {
@@ -64,23 +79,79 @@ async function initSession(instance: typeof GLPI_INSTANCES.PETA | typeof GLPI_IN
   return data.session_token
 }
 
-async function getAllTickets(instance: typeof GLPI_INSTANCES.PETA | typeof GLPI_INSTANCES.GMX, sessionToken: string) {
-  const allTickets: any[] = []
-  let page = 0
-  const pageSize = 25
-
-  while (true) {
-    const start = page * pageSize
-    const end = start + pageSize - 1
-
+async function getPageRange(instance: typeof GLPI_INSTANCES.PETA | typeof GLPI_INSTANCES.GMX, sessionToken: string, startPage: number, maxPages: number) {
+  const tickets: any[] = []
+  let page = startPage
+  const endPage = startPage + maxPages
+  
+  // Primeiro, pega o totalcount da primeira página
+  const firstStart = page * PAGE_SIZE
+  const firstEnd = firstStart + PAGE_SIZE - 1
+  
+  const firstSearchParams = new URLSearchParams({
+    'range': `${firstStart}-${firstEnd}`,
+    'expand_dropdowns': 'true',
+    'get_hateoas': 'false',
+  })
+  
+  const firstUrl = `${instance.BASE_URL}/search/Ticket?${firstSearchParams.toString()}`
+  console.log(`[${instance.BASE_URL}] Primeiro request: range ${firstStart}-${firstEnd}, pageSize=${PAGE_SIZE}`)
+  
+  let firstResponse = await fetch(firstUrl, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Session-Token': sessionToken,
+      'App-Token': instance.APP_TOKEN,
+    },
+  })
+  
+  // Se 401, renova sessão e tenta novamente
+  if (firstResponse.status === 401) {
+    console.log(`[${instance.BASE_URL}] Sessão expirada, renovando...`)
+    sessionToken = await initSession(instance)
+    firstResponse = await fetch(firstUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Session-Token': sessionToken,
+        'App-Token': instance.APP_TOKEN,
+      },
+    })
+  }
+  
+  if (!firstResponse.ok) {
+    const errorText = await firstResponse.text()
+    console.error(`[${instance.BASE_URL}] Erro primeira página (${firstResponse.status}):`, errorText)
+    throw new Error(`Erro ao buscar primeira página: ${firstResponse.status} - ${errorText.substring(0, 100)}`)
+  }
+  
+  const firstData = await firstResponse.json()
+  const totalCount = firstData.totalcount || 0
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE)
+  
+  console.log(`[${instance.BASE_URL}] Total: ${totalCount} tickets, ${totalPages} páginas`)
+  
+  if (!firstData.data || firstData.data.length === 0) {
+    return { tickets: [], completed: true, lastPage: page, totalPages }
+  }
+  
+  tickets.push(...firstData.data)
+  page++
+  
+  // Processa as páginas restantes
+  while (page < endPage && page < totalPages) {
+    const start = page * PAGE_SIZE
+    const end = start + PAGE_SIZE - 1
+    
     const searchParams = new URLSearchParams({
       'range': `${start}-${end}`,
       'expand_dropdowns': 'true',
       'get_hateoas': 'false',
     })
-
+    
     const url = `${instance.BASE_URL}/search/Ticket?${searchParams.toString()}`
-    console.log(`[${instance.BASE_URL}] Buscando tickets página ${page} (range: ${start}-${end})`)
+    console.log(`[${instance.BASE_URL}] Buscando página ${page} (range: ${start}-${end})`)
     
     const response = await fetch(url, {
       method: 'GET',
@@ -90,28 +161,32 @@ async function getAllTickets(instance: typeof GLPI_INSTANCES.PETA | typeof GLPI_
         'App-Token': instance.APP_TOKEN,
       },
     })
-
+    
     if (!response.ok) {
       const errorText = await response.text()
-      console.error(`[${instance.BASE_URL}] Erro busca: ${response.status}`, errorText)
+      console.error(`[${instance.BASE_URL}] Erro página ${page}: ${response.status}`, errorText)
       if (response.status === 401) {
         sessionToken = await initSession(instance)
         continue
       }
       throw new Error(`Erro na busca: ${response.status}`)
     }
-
+    
     const data = await response.json()
-    console.log(`[${instance.BASE_URL}] Página ${page}: ${data.count || 0} tickets (total: ${data.totalcount})`)
     
     if (!data.data || data.data.length === 0) break
-
-    allTickets.push(...data.data)
+    
+    tickets.push(...data.data)
     page++
-    if (page >= 25) break
+    
+    // Verifica se chegou ao final
+    if (data.data.length < PAGE_SIZE || page >= totalPages) {
+      break
+    }
   }
-
-  return allTickets
+  
+  const completed = page >= totalPages
+  return { tickets, completed, lastPage: page, totalPages }
 }
 
 function processEntity(entityFull: string, instanceName: string): string {
@@ -179,6 +254,8 @@ function processTickets(tickets: any[], instanceName: string): TicketData[] {
       status_key: getStatusKey(statusId),
       status_name: getStatusName(statusId),
       group_name: ticket[8] || 'Não atribuído',
+      technician: '',
+      technician_id: 0,
       date_created: dateCreated,
       date_mod: dateMod,
       due_date: dueDate,
@@ -188,49 +265,180 @@ function processTickets(tickets: any[], instanceName: string): TicketData[] {
   })
 }
 
-async function syncInstance(instanceName: 'PETA' | 'GMX') {
+async function fetchTechniciansForTickets(
+  tickets: TicketData[], 
+  instance: typeof GLPI_INSTANCES.PETA | typeof GLPI_INSTANCES.GMX,
+  sessionToken: string
+): Promise<Map<number, { name: string, id: number }>> {
+  const techMap = new Map<number, { name: string, id: number }>()
+  
+  // Fetch technicians in batches to avoid too many requests
+  const batchSize = 10
+  
+  for (let i = 0; i < tickets.length; i += batchSize) {
+    const batch = tickets.slice(i, i + batchSize)
+    const promises = batch.map(async (ticket) => {
+      try {
+        const response = await fetch(
+          `${instance.BASE_URL}/Ticket/${ticket.ticket_id}/Ticket_User`,
+          {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Session-Token': sessionToken,
+              'App-Token': instance.APP_TOKEN,
+            },
+          }
+        )
+        
+        if (!response.ok) return null
+        
+        const data = await response.json()
+        if (!data || !Array.isArray(data)) return null
+        
+        // Find assigned technician (type = 2)
+        const assignedTech = data.find((actor: any) => actor.type === 2)
+        if (!assignedTech || !assignedTech.users_id) return null
+        
+        // Get user details
+        const userResponse = await fetch(
+          `${instance.BASE_URL}/User/${assignedTech.users_id}`,
+          {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Session-Token': sessionToken,
+              'App-Token': instance.APP_TOKEN,
+            },
+          }
+        )
+        
+        if (!userResponse.ok) {
+          return { name: assignedTech.users_id.toString(), id: assignedTech.users_id }
+        }
+        
+        const user = await userResponse.json()
+        const firstname = user.firstname || ''
+        const realname = user.realname || ''
+        const name = user.name || ''
+        
+        let fullName = ''
+        if (firstname && realname) {
+          fullName = `${firstname} ${realname}`
+        } else if (firstname) {
+          fullName = firstname
+        } else if (realname) {
+          fullName = realname
+        } else {
+          fullName = name
+        }
+        
+        return { 
+          name: fullName || assignedTech.users_id.toString(), 
+          id: assignedTech.users_id 
+        }
+        
+      } catch (error) {
+        console.error(`Erro ao buscar técnico para ticket ${ticket.ticket_id}:`, error)
+        return null
+      }
+    })
+    
+    const results = await Promise.all(promises)
+    results.forEach((result, idx) => {
+      if (result) {
+        techMap.set(batch[idx].ticket_id, result)
+      }
+    })
+    
+    // Small delay between batches
+    if (i + batchSize < tickets.length) {
+      await new Promise(resolve => setTimeout(resolve, 100))
+    }
+  }
+  
+  return techMap
+}
+
+async function syncInstance(instanceName: 'PETA' | 'GMX', resumePage: number = 0): Promise<SyncResult> {
   const instance = GLPI_INSTANCES[instanceName]
   
-  console.log(`Iniciando sincronização de ${instanceName}...`)
+  console.log(`Iniciando sincronização de ${instanceName} (a partir da página ${resumePage})...`)
   console.log(`URL: ${instance.BASE_URL}`)
   
   try {
+    // Verifica progresso anterior
+    const { data: syncData } = await supabase
+      .from('sync_control')
+      .select('last_page, total_pages')
+      .eq('instance', instanceName)
+      .single()
+    
+    const startPage = resumePage || (syncData?.last_page || 0)
+    console.log(`${instanceName}: Continuando da página ${startPage}`)
+    
     const sessionToken = await initSession(instance)
-    console.log(`${instanceName}: Sessão iniciada, token: ${sessionToken.substring(0, 10)}...`)
+    console.log(`${instanceName}: Sessão iniciada`)
     
-    const rawTickets = await getAllTickets(instance, sessionToken)
+    // Busca um range de páginas
+    const { tickets: rawTickets, completed, lastPage, totalPages } = await getPageRange(instance, sessionToken, startPage, MAX_PAGES_PER_RUN)
+    
     const tickets = processTickets(rawTickets, instanceName)
+    const pagesProcessed = lastPage - startPage
     
-    console.log(`${instanceName}: ${tickets.length} tickets processados`)
+    console.log(`${instanceName}: ${tickets.length} tickets processados (páginas ${startPage}-${lastPage-1})`)
     
-    // Upsert tickets
-    for (const ticket of tickets) {
-      const { error } = await supabase
-        .from('tickets_cache')
-        .upsert({
-          ticket_id: ticket.ticket_id,
-          instance: ticket.instance,
-          title: ticket.title,
-          entity: ticket.entity,
-          entity_full: ticket.entity_full,
-          category: ticket.category,
-          root_category: ticket.root_category,
-          status_id: ticket.status_id,
-          status_key: ticket.status_key,
-          status_name: ticket.status_name,
-          group_name: ticket.group_name,
-          date_created: ticket.date_created,
-          date_mod: ticket.date_mod,
-          due_date: ticket.due_date,
-          is_sla_late: ticket.is_sla_late,
-          last_sync: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'ticket_id,instance'
-        })
+    // Buscar técnicos para os tickets
+    let techMap: Map<number, { name: string, id: number }> = new Map()
+    if (tickets.length > 0) {
+      console.log(`${instanceName}: Buscando técnicos...`)
+      techMap = await fetchTechniciansForTickets(tickets, instance, sessionToken)
       
-      if (error) {
-        console.error(`Erro ao salvar ticket ${ticket.ticket_id}:`, error)
+      // Atualiza os tickets com as informações do técnico
+      tickets.forEach(ticket => {
+        const tech = techMap.get(ticket.ticket_id)
+        if (tech) {
+          ticket.technician = tech.name
+          ticket.technician_id = tech.id
+        }
+      })
+    }
+    
+    if (tickets.length > 0) {
+      // Upsert tickets em batch
+      const batchSize = 100
+      for (let i = 0; i < tickets.length; i += batchSize) {
+        const batch = tickets.slice(i, i + batchSize)
+        const { error } = await supabase
+          .from('tickets_cache')
+          .upsert(
+            batch.map(t => ({
+              ticket_id: t.ticket_id,
+              instance: t.instance,
+              title: t.title,
+              entity: t.entity,
+              entity_full: t.entity_full,
+              category: t.category,
+              root_category: t.root_category,
+              status_id: t.status_id,
+              status_key: t.status_key,
+              status_name: t.status_name,
+              group_name: t.group_name,
+              technician: t.technician,
+              technician_id: t.technician_id,
+              date_created: t.date_created,
+              date_mod: t.date_mod,
+              due_date: t.due_date,
+              is_sla_late: t.is_sla_late,
+              last_sync: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })),
+            { onConflict: 'ticket_id,instance' }
+          )
+        
+        if (error) {
+          console.error(`Erro ao salvar batch ${i}:`, error)
+        }
       }
     }
     
@@ -240,15 +448,24 @@ async function syncInstance(instanceName: 'PETA' | 'GMX') {
       .upsert({
         instance: instanceName,
         last_sync: new Date().toISOString(),
-        status: 'success',
-        tickets_count: tickets.length,
+        status: completed ? 'success' : 'in_progress',
+        tickets_count: (syncData?.total_pages ? syncData.total_pages * PAGE_SIZE : 0),
+        last_page: lastPage,
+        total_pages: totalPages,
         updated_at: new Date().toISOString()
       }, {
         onConflict: 'instance'
       })
     
-    console.log(`${instanceName}: Sincronização concluída com sucesso`)
-    return { success: true, count: tickets.length }
+    console.log(`${instanceName}: ${completed ? 'Sincronização concluída' : 'Página ' + lastPage + ' de ' + totalPages}`)
+    return { 
+      success: true, 
+      count: tickets.length, 
+      completed,
+      pagesProcessed,
+      lastPage,
+      totalPages
+    }
     
   } catch (error) {
     console.error(`${instanceName}: Erro na sincronização:`, error)
@@ -273,29 +490,67 @@ Deno.serve(async (req) => {
   
   const startTime = Date.now()
   
+  // Permite especificar qual instância sincronizar (opcional)
+  const { instance, resume_peta, resume_gmx } = await req.json().catch(() => ({}))
+  
   try {
-    // Sincronizar sequencialmente para evitar timeout
-    const petaResult = await syncInstance('PETA')
-    const gmxResult = await syncInstance('GMX')
+    // Determinar qual instância precisa de sincronização
+    const { data: petaSync } = await supabase
+      .from('sync_control')
+      .select('last_page, total_pages, status')
+      .eq('instance', 'PETA')
+      .single()
+    
+    const { data: gmxSync } = await supabase
+      .from('sync_control')
+      .select('last_page, total_pages, status')
+      .eq('instance', 'GMX')
+      .single()
+    
+    // Decide qual instância processar (evita timeout processando ambas)
+    let petaResult: SyncResult = { success: true, completed: true }
+    let gmxResult: SyncResult = { success: true, completed: true }
+    
+    const petaNeedsSync = !petaSync || !petaSync.last_page || petaSync.last_page < (petaSync.total_pages || 12)
+    const gmxNeedsSync = !gmxSync || !gmxSync.last_page || gmxSync.last_page < (gmxSync.total_pages || 78)
+    
+    // Processa apenas uma instância por vez para evitar timeout
+    if (petaNeedsSync && (!gmxNeedsSync || (petaSync?.last_page || 0) <= (gmxSync?.last_page || 0))) {
+      const startPagePeta = petaSync?.last_page || 0
+      petaResult = await syncInstance('PETA', startPagePeta)
+    } else if (gmxNeedsSync) {
+      const startPageGmx = gmxSync?.last_page || 0
+      gmxResult = await syncInstance('GMX', startPageGmx)
+    }
     
     const duration = Date.now() - startTime
     
     // Log final
+    const petaCompleted = petaResult.completed && petaResult.success
+    const gmxCompleted = gmxResult.completed && gmxResult.success
+    const allCompleted = petaCompleted && gmxCompleted
+    const anyFailed = !petaResult.success || !gmxResult.success
+    
     await supabase
       .from('sync_logs')
       .insert({
         instance: 'ALL',
         finished_at: new Date().toISOString(),
-        status: (petaResult.success && gmxResult.success) ? 'success' : 'partial',
+        status: allCompleted ? 'success' : (anyFailed ? 'failed' : 'partial'),
         tickets_processed: (petaResult.count || 0) + (gmxResult.count || 0),
         error_message: !petaResult.success ? petaResult.error : (!gmxResult.success ? gmxResult.error : null)
       })
     
     return new Response(
       JSON.stringify({
-        success: true,
-        results: { peta: petaResult, gmx: gmxResult },
-        duration_ms: duration
+        success: !anyFailed,
+        results: { 
+          peta: petaResult, 
+          gmx: gmxResult 
+        },
+        duration_ms: duration,
+        needsResume: !allCompleted,
+        message: petaResult.completed ? 'PETA completo' : (gmxResult.completed ? 'GMX completo' : 'Progresso salvo')
       }),
       { headers: { 'Content-Type': 'application/json' } }
     )
