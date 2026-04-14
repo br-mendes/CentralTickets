@@ -3047,9 +3047,9 @@ ${JSON.stringify(error, null, 2)}
             const htmlCategory = renderCategoryCards(ticketsByCategory);
             const htmlPeriod = renderTailwindPeriodContent(tickets, 30);
 
-            // Set default period button
+            // Set default period button - show ALL tickets by default
             setTimeout(() => {
-                const defaultBtn = document.querySelector('[data-period="30"]');
+                const defaultBtn = document.querySelector('[data-period="total"]');
                 if (defaultBtn) {
                     document.querySelectorAll('.period-btn').forEach(b => {
                         b.classList.remove('bg-blue-600', 'text-white');
@@ -3652,35 +3652,7 @@ ${JSON.stringify(error, null, 2)}
             if (refreshBtn) refreshBtn.disabled = true;
             if (syncBtn) syncBtn.disabled = true;
 
-            const CACHE_MAX_AGE = 10 * 60 * 1000; // 10 minutos
-
             try {
-                // Verificar cache primeiro
-                const cached = localStorage.getItem(CACHE_KEY);
-                const cacheTimestamp = getCacheTimestamp();
-                
-                if (cached && cacheTimestamp) {
-                    const age = Date.now() - new Date(cacheTimestamp).getTime();
-                    if (age < CACHE_MAX_AGE) {
-                        console.log('📂 Carregando do cache local (válido)...');
-                        const cacheData = JSON.parse(cached);
-                        tickets = cacheData.tickets;
-                        window.currentTickets = tickets;
-                        renderKanban(tickets);
-                        
-                        const lastUpdateEl = document.getElementById('lastUpdate');
-                        if (lastUpdateEl) lastUpdateEl.textContent = `Atualizado: ${getCurrentTimeFormatted()}`;
-                        startCountdown();
-                        isLoading = false;
-                        if (refreshBtn) refreshBtn.disabled = false;
-                        if (syncBtn) syncBtn.disabled = false;
-                        console.log(`✅ Cache usado: ${tickets.length} tickets`);
-                        return;
-                    } else {
-                        console.log('📂 Cache expirado, carregando do Supabase...');
-                    }
-                }
-
                 console.log('[Supabase] Iniciando carregamento completo de tickets...');
 
                 let allTickets = [];
@@ -3710,6 +3682,8 @@ ${JSON.stringify(error, null, 2)}
                         showLoading(`Carregando tickets... ${allTickets.length} registros`);
                     }
                 }
+
+                console.log(`[Supabase] Total carregado do Supabase: ${allTickets.length}`);
 
                 // Mapear para formato do dashboard
                 tickets = allTickets.map(t => ({
@@ -3741,12 +3715,17 @@ ${JSON.stringify(error, null, 2)}
                         : (window.APP_CONFIG?.GLPI_GMX_TICKET_URL || ''),
                 }));
 
-                // Salvar no cache
-                localStorage.setItem(CACHE_KEY, JSON.stringify({
-                    tickets: tickets,
-                    timestamp: new Date().toISOString()
-                }));
-                localStorage.setItem(CACHE_TIMESTAMP_KEY, new Date().toISOString());
+                // Salvar apenas metadata no cache (não os tickets completos para evitar quota)
+                try {
+                    const cacheMeta = {
+                        count: tickets.length,
+                        timestamp: new Date().toISOString(),
+                        lastId: tickets.length > 0 ? tickets[0].id : null
+                    };
+                    localStorage.setItem(CACHE_TIMESTAMP_KEY, JSON.stringify(cacheMeta));
+                } catch (e) {
+                    console.warn('Não foi possível salvar metadata do cache:', e);
+                }
 
                 console.log(`[Supabase] Finalizado: ${tickets.length} tickets`);
 
@@ -3761,22 +3740,7 @@ ${JSON.stringify(error, null, 2)}
                 console.log(`✅ Carregamento concluído: ${tickets.length} tickets`);
             } catch (error) {
                 console.error('[Supabase] Erro ao carregar tickets:', error);
-                
-                // Tentar usar cache se disponível
-                const cached = localStorage.getItem(CACHE_KEY);
-                if (cached) {
-                    try {
-                        const cacheData = JSON.parse(cached);
-                        tickets = cacheData.tickets;
-                        window.currentTickets = tickets;
-                        renderKanban(tickets);
-                        console.log('📂 Usando cache local após erro');
-                    } catch {
-                        showError('Falha ao carregar tickets', 'Verifique a conexão e tente novamente.', error);
-                    }
-                } else {
-                    showError('Falha ao carregar tickets', 'Verifique a conexão e tente novamente.', error);
-                }
+                showError('Falha ao carregar tickets', 'Verifique a conexão e tente novamente.', error);
             } finally {
                 isLoading = false;
                 if (refreshBtn) refreshBtn.disabled = false;
