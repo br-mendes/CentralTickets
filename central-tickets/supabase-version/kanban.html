@@ -2374,13 +2374,6 @@ ${JSON.stringify(error, null, 2)}
                 // Reiniciar contador regressivo
                 startCountdown();
                 
-                // Always sync to Supabase cache on page load
-                setTimeout(() => {
-                    if (typeof syncToSupabase === 'function') {
-                        syncToSupabase();
-                    }
-                }, 1000);
-                
                 console.log('✅ Atualização concluída com sucesso');
             } catch (error) {
                 console.error('❌ Erro na atualização:', error);
@@ -2452,8 +2445,15 @@ ${JSON.stringify(error, null, 2)}
             initTheme();
             initInstanceDropdown();
             
-            // Always load from Supabase directly (no localStorage cache)
-            refreshTickets();
+            // First sync from GLPI to Supabase cache
+            if (typeof syncToSupabase === 'function') {
+                syncToSupabase();
+            }
+            
+            // Then load and display tickets
+            setTimeout(() => {
+                refreshTickets();
+            }, 500);
 
             // Configurar atualização automática
             refreshTimer = setInterval(refreshTickets, REFRESH_INTERVAL);
