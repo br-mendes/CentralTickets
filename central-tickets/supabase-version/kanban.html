@@ -1682,15 +1682,16 @@
 
         // Função para processar tickets do Supabase
         function processTickets(rawTickets, instanceName) {
-            if (rawTickets.length > 0) {
-                console.log(`processTickets: sample raw ticket:`, JSON.stringify(rawTickets[0], null, 2));
-            }
             return rawTickets.map(ticket => {
                 const statusId = ticket.status_id || 1;
+                const statusKey = ticket.status_key || 'new';
                 const statusInfo = TICKET_STATUS[statusId] || TICKET_STATUS[1];
                 
-                const finalStatus = ticket.status_key || statusInfo.key;
-                console.log(`ticket ${ticket.ticket_id}: status_id=${statusId}, status_key=${ticket.status_key}, finalStatus=${finalStatus}`);
+                let finalStatus = statusKey;
+                if (statusId === 7) finalStatus = 'pending-approval';
+                else if (!['processing', 'pending', 'solved', 'closed', 'pending-approval'].includes(finalStatus)) {
+                    finalStatus = statusInfo.key;
+                }
                 
                 return {
                     id: ticket.ticket_id,
@@ -1748,8 +1749,6 @@
                     .not('status_key', 'in', '("solved","closed")')
                     .order('date_mod', { ascending: false })
                     .limit(500);
-                
-                console.log(`getTicketsFromInstance ${instanceName}: raw data sample:`, data?.[0]);
 
                 if (error) {
                     console.error(`Erro ao buscar tickets de ${instanceName} do Supabase:`, error);
@@ -1935,8 +1934,6 @@ ${JSON.stringify(error, null, 2)}
         // Função para renderizar o Kanban com todos os tickets
         function renderKanban(tickets) {
             const mainContent = document.getElementById('mainContent');
-            
-            console.log('renderKanban: tickets[0] after process:', JSON.stringify(tickets[0]?.status));
             
             ticketsByStatus = STATUS_ORDER.reduce((acc, status) => {
                 acc[status] = tickets.filter(t => t.status === status);
