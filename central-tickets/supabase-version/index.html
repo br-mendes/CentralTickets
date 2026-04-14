@@ -2740,6 +2740,15 @@ ${JSON.stringify(error, null, 2)}
 
         function renderFullDashboard(tickets) {
             console.log(`renderFullDashboard received: ${tickets?.length || 0} tickets`);
+            
+            // Debug: ver valores únicos de instance
+            const uniqueInstances = [...new Set(tickets.map(t => t.instance))];
+            console.log('Unique instances:', uniqueInstances);
+            
+            const petaCount = tickets.filter(t => t.instance === 'Peta').length;
+            const gmxCount = tickets.filter(t => t.instance === 'GMX').length;
+            console.log(`Peta: ${petaCount}, GMX: ${gmxCount}, Total: ${petaCount + gmxCount}`);
+            
             window.ticketsBySolution = null;
             const petaStats = getInstanceStats(tickets, 'Peta');
             const gmxStats = getInstanceStats(tickets, 'GMX');
