@@ -1282,7 +1282,7 @@
         const LOAD_MORE = 50;
 
         // Intervalo de atualização automática (30 minutos)
-        const REFRESH_INTERVAL = 1800000;
+        const REFRESH_INTERVAL = 1800000; // 30 minutes
         let refreshTimer = null;
         let countdownTimer = null;
         let nextRefreshTime = null;
@@ -1682,9 +1682,11 @@
 
         // Função para processar tickets do Supabase
         function processTickets(rawTickets, instanceName) {
-            const statusKeys = [...new Set(rawTickets.map(t => t.status_key))];
-            console.log(`processTickets ${instanceName}: statusKeys found:`, statusKeys);
-            
+            console.log(`processTickets called with ${rawTickets.length} tickets for ${instanceName}`);
+            if (rawTickets.length > 0) {
+                const statusKeys = [...new Set(rawTickets.map(t => t.status_key))];
+                console.log(`processTickets ${instanceName}: statusKeys found:`, statusKeys);
+            }
             return rawTickets.map(ticket => {
                 const statusId = ticket.status_id || 1;
                 const statusKey = ticket.status_key || 'new';

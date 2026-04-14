@@ -994,7 +994,7 @@
         let currentSort = { field: 'lastUpdate', direction: 'desc' };
         
         // Intervalo de atualização automática (30 minutos)
-        const REFRESH_INTERVAL = 1800000;
+        const REFRESH_INTERVAL = 180000; // 3 minutes
         let refreshTimer = null;
         let countdownTimer = null;
         let nextRefreshTime = null;
