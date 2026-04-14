@@ -70,6 +70,10 @@ function processTicket(ticket: any[], instance: string) {
     entity = entityFull.replace(/^GMX\s*TECNOLOGIA\s*>\s*/gi, '').trim()
   }
   
+  // Get root category
+  const categoryFull = ticket[7] || ''
+  const rootCategory = categoryFull.split(' > ')[0] || 'Não categorizado'
+  
   const statusMap: Record<number, { key: string, name: string }> = {
     1: { key: 'new', name: 'Novo' },
     2: { key: 'processing', name: 'Em atendimento' },
@@ -90,15 +94,25 @@ function processTicket(ticket: any[], instance: string) {
     title: ticket[1] || 'Sem título',
     entity: entity,
     entity_full: entityFull,
-    category: ticket[7] || 'Não categorizado',
+    category: categoryFull,
+    root_category: rootCategory,
     status_id: statusId,
     status_key: status.key,
     status_name: status.name,
     group_name: ticket[8] || '',
+    technician: '',
+    technician_id: 0,
     date_created: ticket[15] || ticket.date_creation || null,
     date_mod: ticket[19] || ticket.date_mod || null,
     due_date: dueDate || null,
     is_sla_late: isSlaLate,
+    is_overdue_first: false,
+    is_overdue_resolve: isSlaLate,
+    time_to_own: null,
+    time_to_resolve: null,
+    sla_percentage_first: null,
+    sla_percentage_resolve: null,
+    pending_reason: null,
     last_sync: new Date().toISOString(),
   }
 }
