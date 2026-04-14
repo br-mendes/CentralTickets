@@ -3362,52 +3362,57 @@ ${JSON.stringify(error, null, 2)}
 
             try {
              // Buscar todos os tickets do Supabase usando paginação
-             let allTickets = [];
-             let page = 0;
-             const pageSize = 1000; // Tamanho da página ajustável
-             let hasMore = true;
-             
-             while (hasMore) {
-                 let query = window._sb
-                     .from('tickets_cache')
-                     .select('*')
-                     .order('date_mod', { ascending: false })
-                     .range(page * pageSize, (page + 1) * pageSize - 1);
+              let allTickets = [];
+              let page = 0;
+              const pageSize = 1000; // Tamanho da página ajustável
+              let hasMore = true;
+              
+              console.log('Iniciando carregamento de tickets do Supabase...');
+              
+              while (hasMore) {
+                  let query = window._sb
+                      .from('tickets_cache')
+                      .select('*')
+                      .order('date_mod', { ascending: false })
+                      .range(page * pageSize, (page + 1) * pageSize - 1);
 
-                 // Filtrar por instâncias selecionadas
-                 if (selectedInstances.length > 0 && selectedInstances.length < 2) {
-                     const instance = selectedInstances[0];
-                     query = query.eq('instance', instance);
-                 }
+                  // Filtrar por instâncias selecionadas
+                  if (selectedInstances.length > 0 && selectedInstances.length < 2) {
+                      const instance = selectedInstances[0];
+                      query = query.eq('instance', instance);
+                  }
 
-                 const { data, error } = await query;
-                 
-                 if (error) {
-                     throw new Error(`Erro ao buscar tickets do Supabase (página ${page}): ${error.message}`);
-                 }
-                 
-                 if (!data || data.length === 0) {
-                     hasMore = false;
-                 } else {
-                     allTickets = [...allTickets, ...data];
-                     page++;
-                     
-                     // Se retornou menos que o tamanho da página, é a última
-                     if (data.length < pageSize) {
-                         hasMore = false;
-                     }
-                 }
-             }
-             
-             // Atribuir os resultados
-             const { data: allTicketsData, error: paginationError } = { data: allTickets, error: null };
-             const error = paginationError;
+                  const { data, error } = await query;
+                  
+                  if (error) {
+                      throw new Error(`Erro ao buscar tickets do Supabase (página ${page}): ${error.message}`);
+                  }
+                  
+                  if (!data || data.length === 0) {
+                      hasMore = false;
+                  } else {
+                      allTickets = [...allTickets, ...data];
+                      page++;
+                      console.log(`[Supabase] Carregados ${allTickets.length} tickets (página ${page})`);
+                      
+                      // Se retornou menos que o tamanho da página, é a última
+                      if (data.length < pageSize) {
+                          hasMore = false;
+                      }
+                  }
+              }
+              
+              console.log(`[Supabase] Total carregado: ${allTickets.length} tickets`);
+              
+              // Atribuir os resultados
+              const { data: allTicketsData, error: paginationError } = { data: allTickets, error: null };
+              const error = paginationError;
 
-             console.log(`Raw Supabase data: ${allTickets.length} tickets, error: ${error?.message || 'none'}`);
+              console.log(`Raw Supabase data: ${allTickets.length} tickets, error: ${error?.message || 'none'}`);
 
-             if (error) {
-                 throw new Error(`Erro ao buscar tickets do Supabase: ${error.message}`);
-             }
+              if (error) {
+                  throw new Error(`Erro ao buscar tickets do Supabase: ${error.message}`);
+              }
 
              tickets = (allTickets || []).map(ticket => ({
                     id: ticket.ticket_id,
