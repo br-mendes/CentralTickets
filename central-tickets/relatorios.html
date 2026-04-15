@@ -371,6 +371,16 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+.col-solution {
+    max-width: 250px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
 table { table-layout: fixed; width: 100%; }
 th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
@@ -983,9 +993,10 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                     <td class="col-technician">${t.technician || 'Não atribuído'}</td>
                     <td><span class="sla-badge ${t.slaAtendimento === 'No prazo' ? 'sla-ok' : 'sla-late'}">${t.slaAtendimento}</span></td>
                     <td><span class="sla-badge ${t.slaSolucao === 'No prazo' ? 'sla-ok' : 'sla-late'}">${t.slaSolucao}</span></td>
-                    <td class="col-date">${formatDate(t.dateCreated)}</td>
+                    <td class="col-date">${formatDateTime(t.dateCreated)}</td>
                     <td class="col-date">${formatDateTime(t.lastUpdate)}</td>
                     <td class="col-date">${t.date_solved ? formatDateTime(t.date_solved) : '-'}</td>
+                    <td class="col-solution" title="${t.solution_content || ''}">${t.solution_content || '-'}</td>
                 </tr>
             `);
             
@@ -1007,6 +1018,7 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                                 <th class="col-date">Abertura</th>
                                 <th class="col-date">Última Atualização</th>
                                 <th class="col-date">Data/Hora Solução</th>
+                                <th class="col-solution">Solução</th>
                             </tr>
                         </thead>
                         <tbody>${rows}</tbody>
@@ -1028,9 +1040,10 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                 'Técnico': t.technician || '',
                 'SLA Atendimento': t.slaAtendimento || '',
                 'SLA Solução': t.slaSolucao || '',
-                'Data de Abertura': formatDate(t.dateCreated),
+                'Data de Abertura': formatDateTime(t.dateCreated),
                 'Última Atualização': formatDateTime(t.lastUpdate),
-                'Data/Hora Solução': t.date_solved ? formatDateTime(t.date_solved) : '-'
+                'Data/Hora Solução': t.date_solved ? formatDateTime(t.date_solved) : '-',
+                'Solução': t.solution_content || '-'
             }));
 
             const ws = XLSX.utils.json_to_sheet(data);
