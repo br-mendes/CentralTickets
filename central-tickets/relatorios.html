@@ -704,10 +704,9 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     <script src="glpi-technician.js"></script>
     <script src="shared-header.js"></script>
     <script>
+      // startRefreshCountdown não é chamado no DOMContentLoaded principal desta página
       document.addEventListener('DOMContentLoaded', () => {
-        if (typeof window.renderSharedHeader === 'function') window.renderSharedHeader();
-        if (typeof window.initTheme === 'function') window.initTheme();
-        if (typeof window.startRefreshCountdown === 'function') window.startRefreshCountdown();
+        if (typeof window.startRefreshCountdown === 'function') window.startRefreshCountdown(3 * 60 * 1000);
       });
     </script>
     <script src="utils.js"></script>
@@ -752,31 +751,6 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         let allTickets = [];
         let filteredTickets = [];
         let isLoading = false;
-
-        function toggleTheme() {
-            const html = document.documentElement;
-            const isDark = html.getAttribute('data-theme') === 'dark';
-            if (isDark) {
-                html.removeAttribute('data-theme');
-                localStorage.setItem('theme', 'light');
-                document.getElementById('sunIcon').style.display = 'block';
-                document.getElementById('moonIcon').style.display = 'none';
-            } else {
-                html.setAttribute('data-theme', 'dark');
-                localStorage.setItem('theme', 'dark');
-                document.getElementById('sunIcon').style.display = 'none';
-                document.getElementById('moonIcon').style.display = 'block';
-            }
-        }
-
-        function initTheme() {
-            const savedTheme = localStorage.getItem('theme') || 'light';
-            if (savedTheme === 'dark') {
-                document.documentElement.setAttribute('data-theme', 'dark');
-                document.getElementById('sunIcon').style.display = 'none';
-                document.getElementById('moonIcon').style.display = 'block';
-            }
-        }
 
         async function initSession(instanceName) {
             const instance = INSTANCES[instanceName];
