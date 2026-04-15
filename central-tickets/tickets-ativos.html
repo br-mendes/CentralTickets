@@ -512,6 +512,17 @@
             transition: background-color 0.3s, border-color 0.3s;
         }
 
+        .table-container table {
+            table-layout: fixed;
+            width: 100%;
+        }
+
+        .table-container td, .table-container th {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
