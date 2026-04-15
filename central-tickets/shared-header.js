@@ -173,7 +173,7 @@ function applyGlobalFilters(tickets) {
     if (days) {
         const cutoff = new Date();
         cutoff.setDate(cutoff.getDate() - days);
-        filtered = filtered.filter(t => new Date(t.dateCreated) >= cutoff);
+        filtered = filtered.filter(t => new Date(t.date_created || t.dateCreated) >= cutoff);
     }
 
     // Filtro por técnico

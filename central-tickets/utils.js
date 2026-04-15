@@ -5,7 +5,7 @@
 
 // ==================== THEME MANAGEMENT ====================
 const ThemeManager = {
-    KEY: 'centraltickets-theme',
+    KEY: 'theme',
     
     init() {
         const saved = localStorage.getItem(this.KEY);

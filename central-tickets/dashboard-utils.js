@@ -14,7 +14,7 @@
     for (const t of tickets){
       const st = t.status ?? t.status_key ?? '';
       const instance = t.instance ?? '';
-      const isLate = t.isSlaLate ?? t.is_overdue_resolve ?? false;
+      const isLate = t.is_sla_late ?? t.isSlaLate ?? t.is_overdue_resolve ?? false;
       
       // Count by status
       if (typeof st === 'string'){
