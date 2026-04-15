@@ -2109,10 +2109,12 @@
                 <div class="spinner"></div>
                 <p class="loading-text">Carregando tickets...</p>
             </div>
-        </main>
+</main>
     </div>
 
-<script src="config.js"></script>
+    <!-- Load env config from Vercel serverless function first -->
+    <script src="/api/env.js"></script>
+    <script src="config.js"></script>
     <script src="glpi-technician.js"></script>
     <script src="shared-header.js"></script>
     <script src="cache-manager.js"></script>
