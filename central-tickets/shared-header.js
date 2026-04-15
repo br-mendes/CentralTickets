@@ -53,6 +53,16 @@
     initTheme();
   }
 
+  function normalizeStatus(statusName) {
+    if (!statusName) return 'new';
+    if (statusName.includes('Em atendimento') || statusName.includes('processando')) return 'processing';
+    if (statusName.includes('Pendente')) return 'pending';
+    if (statusName.includes('Solucionado')) return 'solved';
+    if (statusName.includes('Fechado')) return 'closed';
+    if (statusName.includes('Aprovação') || statusName.includes('Aprovacao')) return 'pending';
+    return 'new';
+  }
+
   function initTheme() {
     const saved = localStorage.getItem('theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -99,6 +109,7 @@
   // Expose functions
   window.renderSharedHeader = renderSharedHeader;
   window.initTheme = initTheme;
+  window.normalizeStatus = normalizeStatus;
 
   // Auto-init on DOMContentLoaded
   document.addEventListener('DOMContentLoaded', renderSharedHeader);

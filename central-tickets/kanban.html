@@ -2113,7 +2113,7 @@ ${JSON.stringify(error, null, 2)}
                     </div>
                     
                     <div class="ticket-status">
-                        <span class="status-badge ${ticket.status}">${getStatusIcon(ticket.status)}${ticket.statusName}</span>
+                        <span class="status-badge ${ticket.status_key || ticket.status}">${getStatusIcon(ticket.status)}${ticket.statusName}</span>
                     </div>
                     ${ticket.dueDate ? `
                     <div class="sla-row">

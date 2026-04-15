@@ -1003,7 +1003,7 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                     <td class="col-instance"><span class="instance-badge ${t.instance.toLowerCase()}">${t.instance}</span></td>
                     <td class="col-entity" title="${t.entity}">${t.entity}</td>
                     <td class="col-category" title="${t.category}">${t.category}</td>
-                    <td class="col-status"><span class="status-badge ${t.status}">${getStatusIcon(t.status)}${t.statusName}</span></td>
+                    <td class="col-status"><span class="status-badge ${t.status_key || t.status}">${getStatusIcon(t.status)}${t.statusName}</span></td>
                     <td class="col-group" title="${t.group}">${t.group}</td>
                     <td class="col-technician">${t.technician || 'Não atribuído'}</td>
                     <td><span class="sla-badge ${t.slaAtendimento === 'No prazo' ? 'sla-ok' : 'sla-late'}">${t.slaAtendimento}</span></td>

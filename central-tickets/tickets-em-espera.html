@@ -1189,7 +1189,7 @@
                         </td>
                         <td class="col-entity" title="${ticket.entityFull}">${ticket.entity}</td>
                         <td class="col-status">
-                            <span class="status-badge ${ticket.status}">${statusIcon}${ticket.statusName}</span>
+                            <span class="status-badge ${ticket.status_key || ticket.status}">${statusIcon}${ticket.statusName}</span>
                         </td>
                         <td class="col-group" title="${ticket.group}">${ticket.group}</td>
                         <td class="col-technician" title="${ticket.technician || 'Não atribuído'}">${ticket.technician || '-'}</td>
