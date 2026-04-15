@@ -39,6 +39,21 @@
         ${buildNavHTML(current)}
       </nav>
       <div class="header-right">
+        <!-- Busca Global -->
+        <div class="header-search">
+          <svg xmlns="http://www.w3.org/2000/svg" class="search-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input id="globalSearch" type="text" placeholder="Buscar ID ou título..." class="search-input">
+        </div>
+
+        <!-- Filtro por Período -->
+        <select id="periodFilter" class="header-filter">
+          <option value="all">Todos os períodos</option>
+          <option value="7">Últimos 7 dias</option>
+          <option value="30">Últimos 30 dias</option>
+          <option value="90">Últimos 90 dias</option>
+        </select>
+
+        <!-- Contador regressivo e tema (já existentes) -->
         <span class="refresh-countdown" id="refreshCountdown"></span>
         <button class="theme-toggle" onclick="toggleTheme()" title="Alternar tema">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
