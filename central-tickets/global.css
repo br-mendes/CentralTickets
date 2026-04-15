@@ -346,13 +346,13 @@ body {
     border-radius: var(--radius-md);
     border: 1px solid var(--border);
     background: var(--surface);
-    margin: 0 auto;
+    margin: 16px auto;
 }
 
 .table-responsive table {
     width: 100%;
     table-layout: fixed;
-    min-width: 1200px;
+    min-width: 1300px;
     border-collapse: collapse;
 }
 
