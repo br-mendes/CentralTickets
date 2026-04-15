@@ -1411,20 +1411,38 @@
             try {
                 console.log(`[${instanceName}] Carregando TODOS os tickets ativos...`);
 
-                // Load ALL tickets - no limit
-                const { data, error } = await window._sb
-                    .from('tickets_cache')
-                    .select('*')
-                    .eq('instance', instanceName.toUpperCase())
-                    .in('status_key', ['processing', 'pending'])
-                    .order('date_mod', { ascending: false });
+                // Supabase has default limit of 1000, so we need to paginate
+                const allTickets = [];
+                let page = 0;
+                const pageSize = 1000;
+                let hasMore = true;
 
-                if (error) {
-                    console.error(`Erro ao buscar tickets de ${instanceName} do Supabase:`, error);
-                    return [];
+                while (hasMore) {
+                    const { data, error } = await window._sb
+                        .from('tickets_cache')
+                        .select('*')
+                        .eq('instance', instanceName.toUpperCase())
+                        .in('status_key', ['processing', 'pending'])
+                        .order('date_mod', { ascending: false })
+                        .range(page * pageSize, (page + 1) * pageSize - 1);
+
+                    if (error) {
+                        console.error(`Erro ao buscar tickets de ${instanceName} do Supabase:`, error);
+                        return [];
+                    }
+
+                    if (data && data.length > 0) {
+                        allTickets.push(...data);
+                        console.log(`[${instanceName}] Página ${page + 1}: ${data.length} tickets (total: ${allTickets.length})`);
+                        page++;
+                        if (data.length < pageSize) {
+                            hasMore = false;
+                        }
+                    } else {
+                        hasMore = false;
+                    }
                 }
 
-                const allTickets = data || [];
                 console.log(`[${instanceName}] Total carregado: ${allTickets.length} tickets ativos`);
                 return allTickets;
             } catch (error) {

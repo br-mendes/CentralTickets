@@ -3679,15 +3679,33 @@ ${JSON.stringify(error, null, 2)}
             try {
                 console.log('[Supabase] Carregando TODOS os tickets...');
 
-                // Load ALL tickets - no limit
-                const { data, error } = await window._sb
-                    .from('tickets_cache')
-                    .select('*')
-                    .order('date_mod', { ascending: false });
+                // Supabase has default limit of 1000, so we need to paginate
+                const allTickets = [];
+                let page = 0;
+                const pageSize = 1000;
+                let hasMore = true;
 
-                if (error) throw new Error(error.message);
+                while (hasMore) {
+                    const { data, error } = await window._sb
+                        .from('tickets_cache')
+                        .select('*')
+                        .order('date_mod', { ascending: false })
+                        .range(page * pageSize, (page + 1) * pageSize - 1);
 
-                const allTickets = data || [];
+                    if (error) throw new Error(error.message);
+
+                    if (data && data.length > 0) {
+                        allTickets.push(...data);
+                        console.log(`[Supabase] Página ${page + 1}: ${data.length} tickets (total: ${allTickets.length})`);
+                        page++;
+                        if (data.length < pageSize) {
+                            hasMore = false;
+                        }
+                    } else {
+                        hasMore = false;
+                    }
+                }
+
                 console.log(`[Supabase] Total carregado: ${allTickets.length} tickets`);
 
                 // Mapear para formato do dashboard
