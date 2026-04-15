@@ -1168,9 +1168,10 @@
                 const slaText = ticket.isSlaLate ? 'SLA Excedido' : 'No Prazo';
                 
                 // Calculate hours since last update for alert
+                const lastUpdateStr = ticket.lastUpdate || ticket.date_mod || ticket.date;
                 let hoursSinceUpdate = 0;
-                if (ticket.lastUpdate) {
-                    const lastUpdate = new Date(ticket.lastUpdate);
+                if (lastUpdateStr) {
+                    const lastUpdate = new Date(lastUpdateStr);
                     hoursSinceUpdate = (Date.now() - lastUpdate.getTime()) / (1000 * 60 * 60);
                 }
                 
