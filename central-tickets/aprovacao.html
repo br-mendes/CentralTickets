@@ -9,12 +9,548 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="config.js" defer></script>
-    <script src="shared-header.js" defer></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --background: #f8fafc;
+            --surface: #ffffff;
+            --border: #e2e8f0;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --status-processing: #22c55e;
+            --status-pending: #f97316;
+            --status-approval: #f97316;
+            --status-solved: #6b7280;
+            --status-closed: #1f2937;
+            --status-new: #3b82f6;
+            --sla-ok: #22c55e;
+            --sla-late: #dc2626;
+            --radius-sm: 6px;
+            --radius-md: 8px;
+        }
+
+        [data-theme="dark"] {
+            --background: #0f172a;
+            --surface: #1e293b;
+            --border: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        table { table-layout: fixed; width: 100%; }
+        th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--background);
+            color: var(--text-primary);
+            line-height: 1.5;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        .header-content {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header h1 .page-title {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .header h1 .title-main {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.2;
+        }
+
+        .header h1 .subtitle {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .header-logo {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            flex-shrink: 0;
+        }
+
+        .header-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .header-logo-fallback {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header-logo-fallback svg {
+            width: 22px;
+            height: 22px;
+            color: white;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover {
+            background: var(--surface);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .nav-link.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .instance-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .instance-toggle label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--surface);
+        }
+
+        .instance-toggle input:checked + label {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .instance-toggle input {
+            display: none;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .refresh-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .app {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .main {
+            flex: 1;
+            padding: 24px;
+            max-width: 1600px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .filters-bar {
+            display: flex;
+            gap: 12px;
+            padding: 16px 24px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .search-box {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .search-box svg {
+            width: 16px;
+            height: 16px;
+            color: var(--text-muted);
+        }
+
+        .search-box input {
+            border: none;
+            background: none;
+            outline: none;
+            width: 100%;
+            font-size: 0.875rem;
+            color: var(--text-primary);
+        }
+
+        .filter-select {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--surface);
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+
+        .table-container {
+            background: var(--surface);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: var(--background);
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+        }
+
+        td {
+            padding: 12px 16px;
+            font-size: 0.875rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        tr:hover {
+            background: var(--background);
+        }
+
+        .ticket-id {
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .instance-badge {
+            display: inline-flex;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .instance-badge.peta, .instance-peta { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+        .instance-badge.gmx, .instance-gmx { background: rgba(234, 179, 8, 0.15); color: #ca8a04; }
+
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 48px;
+            gap: 16px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 48px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state h3 {
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .batch-progress {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            padding: 8px 16px;
+            background: var(--background);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .batch-progress .spinner {
+            width: 14px;
+            height: 14px;
+            border-width: 2px;
+        }
+
+        .stats-bar {
+            display: flex;
+            gap: 24px;
+            padding: 16px 24px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .stat-item.warning .stat-value { color: #f59e0b; }
+        .stat-item.danger .stat-value { color: #ef4444; }
+
+        .approve-btn {
+            padding: 4px 8px;
+            font-size: 0.75rem;
+            background: #10b981;
+            color: white;
+        }
+
+        .reject-btn {
+            padding: 4px 8px;
+            font-size: 0.75rem;
+            background: #ef4444;
+            color: white;
+        }
+    </style>
 </head>
 <body>
     <div class="app">
-        <header class="header"></header>
+        <header class="header">
+            <div class="header-content">
+                <div class="header-left">
+                    <h1>
+                        <span class="header-logo">
+                            <img src="favicon-peta.png" alt="Logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <span class="header-logo-fallback" style="display: none;">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                    <polyline points="22,6 12,13 2,6"></polyline>
+                                </svg>
+                            </span>
+                        </span>
+                        <span class="page-title">
+                            <span class="title-main">Aprovação de Tickets</span>
+                            <span class="subtitle">Tickets aguardando validação</span>
+                        </span>
+                    </h1>
+                </div>
+                <nav class="header-nav">
+                    <a href="index.html" class="nav-link">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="7" height="9"/>
+                            <rect x="14" y="3" width="7" height="5"/>
+                            <rect x="14" y="12" width="7" height="9"/>
+                            <rect x="3" y="16" width="7" height="5"/>
+                        </svg>
+                        Dashboard
+                    </a>
+                    <a href="tickets-ativos.html" class="nav-link">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                            <polyline points="22 4 12 14.01 9 11.01"/>
+                        </svg>
+                        Ativos
+                    </a>
+                    <a href="tickets-em-espera.html" class="nav-link">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                        Espera
+                    </a>
+                    <a href="aprovacao.html" class="nav-link active">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <path d="M9 15l2 2 4-4"/>
+                        </svg>
+                        Aprovação
+                    </a>
+                    <a href="relatorios.html" class="nav-link">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="20" x2="18" y2="10"/>
+                            <line x1="12" y1="20" x2="12" y2="4"/>
+                            <line x1="6" y1="20" x2="6" y2="14"/>
+                        </svg>
+                        Relatórios
+                    </a>
+                    <a href="kanban.html" class="nav-link">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <line x1="9" y1="3" x2="9" y2="21"/>
+                            <line x1="15" y1="3" x2="15" y2="21"/>
+                        </svg>
+                        Kanban
+                    </a>
+                </nav>
+                <div class="header-right">
+                    <div class="instance-toggle">
+                        <input type="checkbox" id="checkPeta" checked>
+                        <label for="checkPeta">Peta</label>
+                        <input type="checkbox" id="checkGmx" checked>
+                        <label for="checkGmx">GMX</label>
+                    </div>
+                    <span class="refresh-info">
+                        <span class="refresh-countdown" id="refreshCountdown"></span>
+                        <button class="btn btn-primary" id="refreshBtn" onclick="refreshTickets()">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 2v6h-6"></path>
+                                <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
+                                <path d="M3 22v-6h6"></path>
+                                <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+                            </svg>
+                            Atualizar
+                        </button>
+                    </span>
+                </div>
+            </div>
+        </header>
 
         <div class="filters-bar">
             <div class="search-box">
@@ -40,7 +576,9 @@
         </main>
     </div>
 
+    <script src="config.js"></script>
     <script src="glpi-technician.js"></script>
+    <script src="shared-header.js"></script>
     <script src="utils.js"></script>
     <script src="incremental-loader.js"></script>
     <script src="dashboard-utils.js"></script>
@@ -93,8 +631,101 @@
         // Cache de nomes de usuários para evitar múltiplas chamadas
         const userNameCache = {};
 
+        // Função para buscar nome de usuário pelo ID usando cache do Supabase
+        async function getUserName(userId, instanceName) {
+            if (!userId) return '';
+            
+            const cacheKey = `${instanceName}_${userId}`;
+            // In-memory cache
+            if (userNameCache[cacheKey]) {
+                return userNameCache[cacheKey];
+            }
+            // Persistent cache (localStorage) with TTL
+            const cachedPersist = window.loadUserNameFromCache?.(instanceName, userId);
+            if (cachedPersist) {
+                userNameCache[cacheKey] = cachedPersist;
+                return cachedPersist;
+            }
 
+            try {
+                // Try to get from Supabase user cache first
+                const { data, error } = await window._sb
+                    .from('user_cache')
+                    .select('name')
+                    .eq('instance', instanceName.toUpperCase())
+                    .eq('user_id', userId.toString())
+                    .single();
 
+                if (!error && data) {
+                    userNameCache[cacheKey] = data.name;
+                    window.saveUserNameToCache?.(instanceName, userId, data.name);
+                    return data.name;
+                }
+            } catch (error) {
+                // Fallback to local storage
+                const cachedPersist2 = window.loadUserNameFromCache?.(instanceName, userId);
+                if (cachedPersist2) {
+                    userNameCache[cacheKey] = cachedPersist2;
+                    return cachedPersist2;
+                }
+            }
+
+            // If not found anywhere, return ID as string
+            return userId.toString();
+        }
+
+        // Função para resolver nomes de técnicos para um batch de tickets
+        async function resolveTechnicianNamesForPage(tickets, instanceName) {
+            const userIds = new Set();
+            
+            tickets.forEach(ticket => {
+                const assigned = ticket[4];
+                if (assigned) {
+                    if (Array.isArray(assigned)) {
+                        assigned.forEach(id => userIds.add(id));
+                    } else {
+                        userIds.add(assigned);
+                    }
+                }
+            });
+
+            await Promise.all(Array.from(userIds).map(userId => 
+                getUserName(userId, instanceName)
+            ));
+
+            return tickets.map(ticket => {
+                const assigned = ticket[4];
+                let technicianName = '';
+                
+                if (assigned) {
+                    if (Array.isArray(assigned) && assigned.length > 0) {
+                        technicianName = userNameCache[`${instanceName}_${assigned[0]}`] || assigned[0].toString();
+                    } else {
+                        technicianName = userNameCache[`${instanceName}_${assigned}`] || assigned.toString();
+                    }
+                }
+
+                return {
+                    ...ticket,
+                    _technicianName: technicianName
+                };
+            });
+        }
+
+        async function getTicketsFromInstance(instanceName) {
+            let allTickets = [];
+            let page = 0;
+            const pageSize = 100;
+            const maxTickets = 500;
+            let hasMore = true;
+            
+            console.log(`[${instanceName}] Total carregado: ${allTickets.length} tickets de aprovação (limite: ${maxTickets})`);
+
+            // Fetch technician names from GLPI API
+            const ticketsWithTechnicians = await fetchTechniciansFromGLPI(allTickets || [], instanceName);
+            
+            return processTickets(ticketsWithTechnicians, instanceName);
+        }
 
         // Function to get all tickets from all instances
         async function getAllTickets() {
@@ -364,7 +995,7 @@
                     dateCreated: ticket.date_created,
                     lastUpdate: lastUpdate,
                     instance: instanceName,
-                    instanceUrl: (ticket.instance?.toUpperCase() === 'PETA')
+                    instanceUrl: ticket.instance === 'Peta' 
                         ? (window.APP_CONFIG?.GLPI_PETA_TICKET_URL || '')
                         : (window.APP_CONFIG?.GLPI_GMX_TICKET_URL || ''),
                 };
@@ -518,6 +1149,7 @@
                 tickets = await getAllTickets();
                 filteredTickets = [...tickets];
                 applyFilters();
+                startCountdown();
             } catch (error) {
                 console.error('Erro ao carregar tickets:', error);
                 showError('Erro ao carregar tickets', error.message);
@@ -548,7 +1180,24 @@
             `;
         }
 
-        // Countdown gerenciado pelo shared-header.js via initSharedHeader()
+        let nextRefreshTime = null;
+        let countdownTimer = null;
+
+        function startCountdown() {
+            if (countdownTimer) clearInterval(countdownTimer);
+            nextRefreshTime = Date.now() + REFRESH_INTERVAL;
+            
+            countdownTimer = setInterval(() => {
+                const remaining = Math.max(0, nextRefreshTime - Date.now());
+                const minutes = Math.floor(remaining / 60000);
+                const seconds = Math.floor((remaining % 60000) / 1000);
+                
+                const countdownEl = document.getElementById('refreshCountdown');
+                if (countdownEl) {
+                    countdownEl.textContent = `Atualiza em ${minutes}:${seconds.toString().padStart(2, '0')}`;
+                }
+            }, 1000);
+        }
 
         async function approveTicket(ticketId, instanceName) {
             if (!confirm(`Aprovar ticket #${ticketId}?`)) return;
@@ -620,11 +1269,14 @@
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
-            if (window.initSharedHeader) {
-                window.initSharedHeader({ refreshInterval: REFRESH_INTERVAL });
-            }
+            // renderSharedHeader and initTheme are auto-called by shared-header.js
             refreshTickets();
             refreshTimer = setInterval(refreshTickets, REFRESH_INTERVAL);
+            
+            // Usar o contador regressivo do shared-header.js
+            if (typeof window.startRefreshCountdown === 'function') {
+                window.startRefreshCountdown(REFRESH_INTERVAL);
+            }
         });
     </script>
 </body>

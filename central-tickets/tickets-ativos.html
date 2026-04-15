@@ -9,12 +9,1161 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="config.js" defer></script>
-    <script src="shared-header.js" defer></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --background: #f8fafc;
+            --surface: #ffffff;
+            --border: #e2e8f0;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --status-new: #3b82f6;
+            --status-processing: #22c55e;
+            --status-pending: #f97316;
+            --status-approval: #f97316;
+            --status-solved: #6b7280;
+            --status-closed: #1f2937;
+            --sla-ok: #22c55e;
+            --sla-late: #dc2626;
+            --radius-sm: 6px;
+            --radius-md: 8px;
+        }
+
+        [data-theme="dark"] {
+            --background: #0f172a;
+            --surface: #1e293b;
+            --border: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        table { table-layout: fixed; width: 100%; }
+        th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--background);
+            color: var(--text-primary);
+            line-height: 1.5;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        .header-content {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header h1 .page-title {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .header h1 .title-main {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.2;
+        }
+
+        .header h1 .subtitle {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .header-logo {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            flex-shrink: 0;
+        }
+
+        .header-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .header-logo-fallback {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header-logo-fallback svg {
+            width: 22px;
+            height: 22px;
+            color: white;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover {
+            background: var(--border);
+            color: var(--text-primary);
+        }
+
+        .nav-link.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .nav-link.active:hover {
+            background: var(--primary-dark);
+            color: white;
+        }
+
+        .nav-link svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .header-nav {
+            display: flex;
+            gap: 8px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 12px;
+        }
+
+        .header-stats .stat {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.875rem;
+        }
+
+        .theme-toggle {
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .theme-toggle:hover {
+            background: var(--border);
+        }
+
+        .theme-toggle svg {
+            width: 20px;
+            height: 20px;
+            color: var(--text-primary);
+        }
+
+        .header-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .stats {
+            display: flex;
+            gap: 16px;
+        }
+
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.875rem;
+        }
+
+        .stat-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .stat-dot.processing { background: var(--status-processing); }
+        .stat-dot.pending { background: var(--status-pending); }
+        .stat-dot.sla-late { background: var(--sla-late); }
+
+        .stat-value {
+            font-weight: 600;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .last-update {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .refresh-countdown {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-left: 10px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .filters-bar {
+            max-width: 1600px;
+            margin: 0 auto 16px;
+            padding: 0 24px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 250px;
+            max-width: 400px;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 12px 10px 40px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            background: var(--surface);
+            color: var(--text-primary);
+            transition: all 0.2s;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .search-box svg {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            color: var(--text-muted);
+        }
+
+        .filter-select {
+            padding: 10px 32px 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            background: var(--surface);
+            color: var(--text-primary);
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            transition: all 0.2s;
+        }
+
+        .filter-select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .filter-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+
+        .filter-checkbox:hover {
+            background: var(--background);
+        }
+
+        .filter-checkbox input {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        .multi-select-header {
+            padding: 10px 32px 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            background: var(--surface);
+            color: var(--text-primary);
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-width: 130px;
+        }
+
+        .multi-select-header:hover {
+            background: var(--background);
+            border-color: var(--primary);
+        }
+
+        .multi-select-header:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .multi-select-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 4px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            z-index: 100;
+            overflow: hidden;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .multi-select-dropdown.open {
+            display: block;
+        }
+
+        .multi-select-dropdown label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 0.875rem;
+        }
+
+        .multi-select-dropdown label:hover {
+            background: var(--background);
+        }
+
+        .multi-select-option {
+            font-size: 0.875rem;
+            color: var(--text-primary);
+        }
+
+        .multi-select-option input {
+            cursor: pointer;
+            width: 16px;
+            height: 16px;
+        }
+
+        .filter-dropdown-wrapper {
+            position: relative;
+        }
+
+        .selected-entities {
+            display: inline-flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-left: 8px;
+        }
+
+        .selected-entity-tag {
+            background: var(--primary);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+        }
+
+        .results-count {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-left: auto;
+        }
+
+        .main {
+            padding: 0 24px 24px;
+            max-width: 98%;
+            margin: 0 auto;
+        }
+
+        .table-container {
+            background: var(--surface);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            overflow-x: auto;
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        .table-container table {
+            table-layout: fixed;
+            width: 100%;
+        }
+
+        .table-container td, .table-container th {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+
+        thead {
+            background: var(--background);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            transition: background-color 0.3s;
+        }
+
+        th {
+            padding: 12px 10px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            user-select: none;
+            transition: color 0.2s;
+        }
+
+        td {
+            padding: 10px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+            transition: border-color 0.3s;
+        }
+
+        th:hover {
+            color: var(--primary);
+        }
+
+        th .sort-icon {
+            margin-left: 4px;
+            opacity: 0.3;
+        }
+
+        th.sorted .sort-icon {
+            opacity: 1;
+        }
+
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+            transition: border-color 0.3s;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(37, 99, 235, 0.02);
+        }
+
+        [data-theme="dark"] tr:hover td {
+            background: rgba(37, 99, 235, 0.05);
+        }
+
+        .ticket-id {
+            font-weight: 600;
+            color: var(--primary);
+            width: 70px;
+        }
+
+        .ticket-id a {
+            color: var(--primary);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .ticket-id a:hover {
+            color: var(--primary-dark);
+            text-decoration: underline;
+        }
+
+.col-instance {
+            width: 80px;
+        }
+
+        .entity {
+            color: var(--text-secondary);
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .col-instance {
+            width: 80px;
+        }
+
+        .col-entity {
+            width: 130px;
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .col-category {
+            width: auto;
+            min-width: 180px;
+        }
+
+        .category {
+            max-width: 250px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .col-status {
+            width: 140px;
+        }
+
+        .col-group {
+            width: 160px;
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .col-technician {
+            width: 140px;
+            max-width: 140px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .col-priority {
+            width: 100px;
+        }
+
+        .col-date {
+            width: 140px;
+        }
+
+        .col-pending {
+            width: 90px;
+        }
+
+        .col-sla {
+            width: 100px;
+        }
+
+        /* Dark mode priority badges */
+        [data-theme="dark"] .priority-badge.low {
+            background: rgba(107, 114, 128, 0.25);
+            color: #9ca3af;
+        }
+        [data-theme="dark"] .priority-badge.medium {
+            background: rgba(59, 130, 246, 0.25);
+            color: #60a5fa;
+        }
+        [data-theme="dark"] .priority-badge.high {
+            background: rgba(249, 115, 22, 0.25);
+            color: #fb923c;
+        }
+        [data-theme="dark"] .priority-badge.urgent {
+            background: rgba(239, 68, 68, 0.25);
+            color: #f87171;
+        }
+        [data-theme="dark"] .priority-badge.critical {
+            background: rgba(153, 27, 27, 0.3);
+            color: #fca5a5;
+        }
+
+        .priority-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+
+        .priority-badge.low {
+            background: rgba(107, 114, 128, 0.15);
+            color: #6b7280;
+        }
+
+        .priority-badge.medium {
+            background: rgba(59, 130, 246, 0.15);
+            color: #3b82f6;
+        }
+
+        .priority-badge.high {
+            background: rgba(249, 115, 22, 0.15);
+            color: #f97316;
+        }
+
+        .priority-badge.urgent {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+        }
+
+        .priority-badge.critical {
+            background: rgba(153, 27, 27, 0.2);
+            color: #991b1b;
+        }
+
+        .priority-badge svg {
+            width: 10px;
+            height: 10px;
+            flex-shrink: 0;
+        }
+
+        .date {
+            white-space: nowrap;
+            color: var(--text-secondary);
+        }
+
+        .sla-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .sla-badge.ok {
+            background: rgba(34, 197, 94, 0.15);
+            color: #22c55e;
+        }
+
+        .sla-badge.late {
+            background: rgba(239, 68, 68, 0.15);
+            color: #dc2626;
+        }
+
+        .sla-badge svg {
+            width: 12px;
+            height: 12px;
+        }
+
+        .sla-countdown {
+            display: block;
+            font-size: 0.7rem;
+            margin-top: 4px;
+            opacity: 0.8;
+        }
+
+        .sla-countdown.warning {
+            color: var(--status-processing);
+        }
+
+        .sla-countdown.critical {
+            color: var(--sla-late);
+            font-weight: 600;
+        }
+
+        @keyframes blink-red {
+            0%, 50% { background-color: rgba(239, 68, 68, 0.15); }
+            51%, 100% { background-color: transparent; }
+        }
+
+        .row-sla-late {
+            animation: blink-red 1s infinite;
+        }
+
+        [data-theme="dark"] .row-sla-late {
+            animation: blink-red-dark 1s infinite;
+        }
+
+        @keyframes blink-red-dark {
+            0%, 50% { background-color: rgba(239, 68, 68, 0.25); }
+            51%, 100% { background-color: rgba(239, 68, 68, 0.1); }
+        }
+
+        .pending-reason {
+            font-size: 0.75rem;
+            color: var(--status-pending);
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .pending-time {
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .instance-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .instance-badge.peta {
+            background: rgba(37, 99, 235, 0.15);
+            color: #2563eb;
+        }
+
+        .instance-badge.gmx {
+            background: rgba(234, 88, 12, 0.15);
+            color: #ea580c;
+        }
+
+        .filter-instance-group {
+            display: flex;
+            gap: 4px;
+        }
+
+        .instance-filter-btn {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: var(--surface);
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .instance-filter-btn:hover {
+            background: var(--background);
+        }
+
+        .instance-filter-btn.active {
+            border-color: var(--primary);
+            background: rgba(37, 99, 235, 0.1);
+            color: var(--primary);
+        }
+
+        .instance-filter-btn.peta.active {
+            border-color: #2563eb;
+            background: rgba(37, 99, 235, 0.15);
+            color: #2563eb;
+        }
+
+        .instance-filter-btn.gmx.active {
+            border-color: #ea580c;
+            background: rgba(234, 88, 12, 0.15);
+            color: #ea580c;
+        }
+
+        .instance-dropdown {
+            position: relative;
+        }
+
+        .instance-dropdown-header {
+            padding: 8px 12px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.875rem;
+            user-select: none;
+            transition: border-color 0.2s, background-color 0.2s;
+        }
+
+        .instance-dropdown-header:hover {
+            border-color: var(--primary);
+            background: var(--background);
+        }
+
+        .instance-dropdown-header svg {
+            width: 16px;
+            height: 16px;
+            transition: transform 0.2s;
+        }
+
+        .instance-dropdown.open .instance-dropdown-header svg {
+            transform: rotate(180deg);
+        }
+
+        .instance-dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 4px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            z-index: 100;
+            overflow: hidden;
+        }
+
+        .instance-dropdown.open .instance-dropdown-menu {
+            display: block;
+        }
+
+        .instance-dropdown-option {
+            padding: 10px 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.2s;
+        }
+
+        .instance-dropdown-option:hover {
+            background: var(--background);
+        }
+
+        .instance-dropdown-option input {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        .instance-dropdown-option.peta {
+            color: #2563eb;
+        }
+
+        .instance-dropdown-option.gmx {
+            color: #7c3aed;
+        }
+
+        .quick-filters {
+            display: flex;
+            gap: 6px;
+        }
+
+        .quick-filter-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 10px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: var(--surface);
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .quick-filter-btn:hover {
+            background: var(--background);
+            border-color: var(--primary);
+        }
+
+        .quick-filter-btn.active {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: #ef4444;
+            color: #ef4444;
+        }
+
+        .quick-filter-btn.active.pending-btn {
+            background: rgba(139, 92, 246, 0.1);
+            border-color: #8b5cf6;
+            color: #8b5cf6;
+        }
+
+        .filters-bar .search-box {
+            flex: 1;
+        }
+
+        @media (max-width: 900px) {
+            .header-content {
+                flex-wrap: wrap;
+                gap: 16px;
+            }
+
+            .header-stats {
+                order: 3;
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 700px) {
+            .header-nav {
+                width: 100%;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+
+            .nav-link {
+                flex: 1;
+                justify-content: center;
+                min-width: 100px;
+            }
+
+            .header-right {
+                width: 100%;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 12px;
+            }
+
+            .header-stats {
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 500px) {
+            .header-nav {
+                display: none;
+            }
+        }
+    </style>
 </head>
 <body>
-<div class="app">
-  <header class="header"></header>
+    <header class="header">
+        <div class="header-content">
+            <div class="header-left">
+                <h1>
+                    <span class="header-logo">
+                        <img src="favicon-peta.png" alt="Logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <span class="header-logo-fallback" style="display: none;">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                <polyline points="22,6 12,13 2,6"></polyline>
+                            </svg>
+                        </span>
+                    </span>
+                    <span class="page-title">
+                        <span class="title-main">Central de Tickets</span>
+                        <span class="subtitle">Tickets Ativos</span>
+                    </span>
+                </h1>
+            </div>
+            <nav class="header-nav">
+                <a href="index.html" class="nav-link">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="9"/>
+                        <rect x="14" y="3" width="7" height="5"/>
+                        <rect x="14" y="12" width="7" height="9"/>
+                        <rect x="3" y="16" width="7" height="5"/>
+                    </svg>
+                    Dashboard
+                </a>
+                <a href="tickets-ativos.html" class="nav-link active">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                    Ativos
+                </a>
+                <a href="tickets-em-espera.html" class="nav-link">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    Espera
+                </a>
+                <a href="aprovacao.html" class="nav-link">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <path d="M9 15l2 2 4-4"/>
+                    </svg>
+                    Aprovação
+                </a>
+                <a href="relatorios.html" class="nav-link">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="20" x2="18" y2="10"/>
+                        <line x1="12" y1="20" x2="12" y2="4"/>
+                        <line x1="6" y1="20" x2="6" y2="14"/>
+                    </svg>
+                    Relatórios
+                </a>
+                <a href="kanban.html" class="nav-link">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                        <line x1="9" y1="3" x2="9" y2="21"/>
+                        <line x1="15" y1="3" x2="15" y2="21"/>
+                    </svg>
+                    Kanban
+                </a>
+            </nav>
+            <div class="header-right">
+                <div class="header-stats">
+                    <div class="stat">
+                        <span class="stat-dot processing"></span>
+                        <span class="stat-value" id="countProcessing">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-dot pending"></span>
+                        <span class="stat-value" id="countPending">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-dot sla-late"></span>
+                        <span class="stat-value" id="countSlaLate">0</span>
+                    </div>
+                </div>
+                <button class="theme-toggle" onclick="toggleTheme()" title="Alternar tema">
+                    <svg id="sunIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                    <svg id="moonIcon" style="display:none;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                </button>
+                <button class="cache-btn" onclick="syncToSupabase()" title="Sincronizar com Supabase" id="syncBtn">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 12a9 9 0 0 1-9 9m0 0A9 9 0 0 1 3 12m9 9a9 9 0 0 1-9-9m0 0a9 9 0 0 1 9-9"></path>
+                        <polyline points="17 1 21 5 17 9"></polyline>
+                        <path d="M3 12a9 9 0 0 1 9-9m0 0a9 9 0 0 1 9 9"></path>
+                        <polyline points="7 23 3 19 7 15"></polyline>
+                    </svg>
+                </button>
+                <span class="last-update" id="lastUpdate"></span>
+                <span class="refresh-countdown" id="refreshCountdown"></span>
+                <button class="btn btn-primary" id="refreshBtn" onclick="refreshTickets()">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 2v6h-6"></path>
+                        <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
+                        <path d="M3 22v-6h6"></path>
+                        <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+                    </svg>
+                    Atualizar
+                </button>
+            </div>
+        </div>
+    </header>
 
     <div class="filters-bar">
         <div class="search-box" style="flex: 2; min-width: 200px; max-width: 350px;">
@@ -137,7 +1286,9 @@
         </div>
     </main>
 
+    <script src="config.js"></script>
     <script src="glpi-technician.js"></script>
+    <script src="shared-header.js"></script>
     <script src="incremental-loader.js"></script>
     <script src="dashboard-utils.js"></script>
     <script src="cache-manager.js"></script>
@@ -364,23 +1515,20 @@
 
         // ========== REFRESH TICKETS ==========
         
-        async function refreshTickets() {
+async function refreshTickets() {
             if (isLoading) return;
+            
             isLoading = true;
             const refreshBtn = document.getElementById('refreshBtn');
             if (refreshBtn) refreshBtn.disabled = true;
             showLoading();
 
             try {
-                tickets = await getAllTickets();
-                filteredTickets = [...tickets];
-                populateDropdownOptions();
-                renderTable(filteredTickets);
+tickets = await getAllTickets();
+                renderTable(tickets);
+                startCountdown();
             } catch (error) {
                 console.error('Erro ao carregar tickets:', error);
-                document.getElementById('mainContent').innerHTML =
-                    `<div class="empty-state"><h3>Erro ao carregar</h3><p>${error.message}</p>
-                    <button class="btn btn-primary" onclick="refreshTickets()">Tentar novamente</button></div>`;
             } finally {
                 isLoading = false;
                 if (refreshBtn) refreshBtn.disabled = false;
@@ -396,145 +1544,46 @@
             `;
         }
 
-        // Funções de filtro
-        // Entidades/Categorias/Grupos selecionados via dropdowns customizados
-        let selectedEntities = new Set();
-        let selectedCategories = new Set();
-        let selectedGroups = new Set();
-        let activeQuickFilters = new Set();
+        function startCountdown() {
+            if (countdownTimer) clearInterval(countdownTimer);
+            nextRefreshTime = Date.now() + REFRESH_INTERVAL;
+            updateCountdown();
+            countdownTimer = setInterval(updateCountdown, 1000);
+        }
 
+        function updateCountdown() {
+            const countdownEl = document.getElementById('refreshCountdown');
+            if (!countdownEl || !nextRefreshTime) return;
+            
+            const remaining = Math.max(0, nextRefreshTime - Date.now());
+            const minutes = Math.floor(remaining / 60000);
+            const seconds = Math.floor((remaining % 60000) / 1000);
+            countdownEl.textContent = `Próximo refresh: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+            
+            if (remaining <= 0) {
+                refreshTickets();
+            }
+        }
+
+        // Funções de filtro
         function applyFilters() {
             const searchTerm = (document.getElementById('searchInput')?.value || '').toLowerCase();
             const statusFilter = document.getElementById('statusFilter')?.value || '';
-            const slaFilter = document.getElementById('slaFilter')?.value || '';
-
+            const entityFilter = document.getElementById('entityFilter')?.value || '';
+            
             filteredTickets = tickets.filter(ticket => {
-                if (searchTerm && !String(ticket.id).includes(searchTerm) &&
+                if (searchTerm && !String(ticket.id).includes(searchTerm) && 
                     !ticket.title?.toLowerCase().includes(searchTerm) &&
                     !ticket.entity?.toLowerCase().includes(searchTerm)) {
                     return false;
                 }
                 if (statusFilter && ticket.status !== statusFilter) return false;
-                if (slaFilter === 'ok' && ticket.isSlaLate) return false;
-                if (slaFilter === 'late' && !ticket.isSlaLate) return false;
-                if (selectedEntities.size > 0 && !selectedEntities.has(ticket.entity)) return false;
-                if (selectedCategories.size > 0 && !selectedCategories.has(ticket.category)) return false;
-                if (selectedGroups.size > 0 && !selectedGroups.has(ticket.group)) return false;
-                if (activeQuickFilters.has('slaLate') && !ticket.isSlaLate) return false;
-                if (activeQuickFilters.has('pending') && ticket.status !== 'pending') return false;
-                if (selectedInstances.length > 0 && !selectedInstances.includes(ticket.instance === 'PETA' ? 'Peta' : 'GMX')) return false;
+                if (entityFilter && ticket.entity !== entityFilter) return false;
                 return true;
             });
-
+            
             renderTable(filteredTickets);
             updateCounts();
-        }
-
-        function toggleQuickFilter(name) {
-            if (activeQuickFilters.has(name)) activeQuickFilters.delete(name);
-            else activeQuickFilters.add(name);
-            document.getElementById('btn' + name.charAt(0).toUpperCase() + name.slice(1))?.classList.toggle('active');
-            applyFilters();
-        }
-
-        function clearAllFilters() {
-            selectedEntities.clear();
-            selectedCategories.clear();
-            selectedGroups.clear();
-            activeQuickFilters.clear();
-            const searchEl = document.getElementById('searchInput');
-            if (searchEl) searchEl.value = '';
-            const statusEl = document.getElementById('statusFilter');
-            if (statusEl) statusEl.value = '';
-            const slaEl = document.getElementById('slaFilter');
-            if (slaEl) slaEl.value = '';
-            document.querySelectorAll('.quick-filter-btn').forEach(b => b.classList.remove('active'));
-            applyFilters();
-        }
-
-        function toggleEntityDropdown() {
-            document.getElementById('entityDropdown')?.classList.toggle('open');
-        }
-        function toggleCategoryDropdown() {
-            document.getElementById('categoryDropdown')?.classList.toggle('open');
-        }
-        function toggleGroupDropdown() {
-            document.getElementById('groupDropdown')?.classList.toggle('open');
-        }
-        function toggleInstanceDropdown() {
-            document.getElementById('instanceDropdownMenu')?.classList.toggle('open');
-        }
-
-        function toggleAllEntities(cb) {
-            if (cb.checked) selectedEntities.clear();
-            else document.querySelectorAll('#entityOptions input[type=checkbox]').forEach(c => { c.checked = false; });
-            applyFilters();
-        }
-        function toggleAllCategories(cb) {
-            if (cb.checked) selectedCategories.clear();
-            else document.querySelectorAll('#categoryOptions input[type=checkbox]').forEach(c => { c.checked = false; });
-            applyFilters();
-        }
-        function toggleAllGroups(cb) {
-            if (cb.checked) selectedGroups.clear();
-            else document.querySelectorAll('#groupOptions input[type=checkbox]').forEach(c => { c.checked = false; });
-            applyFilters();
-        }
-
-        function updateInstanceSelection() {
-            selectedInstances = [];
-            if (document.getElementById('checkPeta')?.checked) selectedInstances.push('Peta');
-            if (document.getElementById('checkGmx')?.checked) selectedInstances.push('GMX');
-            if (selectedInstances.length === 0) selectedInstances = ['Peta', 'GMX'];
-            updateInstanceDropdownLabel();
-            applyFilters();
-        }
-
-        function updateInstanceDropdownLabel() {
-            const el = document.getElementById('instanceDropdownLabel');
-            if (!el) return;
-            if (selectedInstances.length === 2) el.textContent = 'Todas as instâncias';
-            else el.textContent = selectedInstances.join(', ');
-        }
-
-        function populateDropdownOptions() {
-            const entities = [...new Set(tickets.map(t => t.entity).filter(Boolean))].sort();
-            const categories = [...new Set(tickets.map(t => t.category).filter(Boolean))].sort();
-            const groups = [...new Set(tickets.map(t => t.group).filter(Boolean))].sort();
-
-            const entityOpts = document.getElementById('entityOptions');
-            if (entityOpts) entityOpts.innerHTML = entities.map(e =>
-                `<label class="instance-dropdown-option"><input type="checkbox" onchange="toggleEntityOption(this,'${e.replace(/'/g,'\\\'')}')">${e}</label>`
-            ).join('');
-
-            const catOpts = document.getElementById('categoryOptions');
-            if (catOpts) catOpts.innerHTML = categories.map(c =>
-                `<label class="instance-dropdown-option"><input type="checkbox" onchange="toggleCategoryOption(this,'${c.replace(/'/g,'\\\'')}')">${c}</label>`
-            ).join('');
-
-            const grpOpts = document.getElementById('groupOptions');
-            if (grpOpts) grpOpts.innerHTML = groups.map(g =>
-                `<label class="instance-dropdown-option"><input type="checkbox" onchange="toggleGroupOption(this,'${g.replace(/'/g,'\\\'')}')">${g}</label>`
-            ).join('');
-        }
-
-        function toggleEntityOption(cb, value) {
-            if (cb.checked) selectedEntities.add(value); else selectedEntities.delete(value);
-            document.getElementById('entityAll').checked = selectedEntities.size === 0;
-            document.getElementById('entitySelectLabel').textContent = selectedEntities.size > 0 ? `Entidades (${selectedEntities.size})` : 'Entidades';
-            applyFilters();
-        }
-        function toggleCategoryOption(cb, value) {
-            if (cb.checked) selectedCategories.add(value); else selectedCategories.delete(value);
-            document.getElementById('categoryAll').checked = selectedCategories.size === 0;
-            document.getElementById('categorySelectLabel').textContent = selectedCategories.size > 0 ? `Categorias (${selectedCategories.size})` : 'Categorias';
-            applyFilters();
-        }
-        function toggleGroupOption(cb, value) {
-            if (cb.checked) selectedGroups.add(value); else selectedGroups.delete(value);
-            document.getElementById('groupAll').checked = selectedGroups.size === 0;
-            document.getElementById('groupSelectLabel').textContent = selectedGroups.size > 0 ? `Responsáveis (${selectedGroups.size})` : 'Responsáveis';
-            applyFilters();
         }
 
         function renderTable(ticketsToRender) {
@@ -613,14 +1662,13 @@
             console.log(`GMX: ${gmxCount} tickets (${gmxLate} SLA fora)`);
         }
 
+        let nextRefreshTime = null;
+        let countdownTimer = null;
         let refreshTimer = null;
 
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', () => {
-            // Inicializar header compartilhado (renderiza header, tema e countdown)
-            if (window.initSharedHeader) {
-                window.initSharedHeader({ refreshInterval: REFRESH_INTERVAL });
-            }
+            // renderSharedHeader and initTheme are auto-called by shared-header.js
 
             // First sync from GLPI to Supabase cache
             if (typeof syncToSupabase === 'function') {
@@ -628,12 +1676,18 @@
             }
 
             refreshTickets();
-
+            
             refreshTimer = setInterval(refreshTickets, REFRESH_INTERVAL);
+            
+            // Usar o contador regressivo do shared-header.js
+            if (typeof window.startRefreshCountdown === 'function') {
+                window.startRefreshCountdown(REFRESH_INTERVAL);
+            }
         });
 
         window.addEventListener('beforeunload', () => {
             if (refreshTimer) clearInterval(refreshTimer);
+            if (countdownTimer) clearInterval(countdownTimer);
         });
     </script>
 </body>

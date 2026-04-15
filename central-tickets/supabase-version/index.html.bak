@@ -4,18 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Central de Tickets - Dashboard de Tickets GLPI">
-<title>Central de Tickets</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-        tailwind.config = {
-            content: ["./**/*.html"],
-            theme: { extend: {} }
-        };
-    </script>
+    <title>Central de Tickets</title>
     <script src="incremental-loader.js"></script>
     <link rel="icon" href="favicon-peta.png" type="image/png">
-    <link rel="stylesheet" href="global.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -34,7 +25,7 @@
             --status-new: #3b82f6;
             --status-processing: #22c55e;
             --status-pending: #f97316;
-            --status-approval: #f97316;
+            --status-approval: #8b5cf6;
             --status-solved: #6b7280;
             --status-closed: #1f2937;
             
@@ -205,6 +196,10 @@
             margin-left: 10px;
         }
 
+        .refresh-countdown::before {
+            content: "⏱️ ";
+        }
+
         .btn {
             display: inline-flex;
             align-items: center;
@@ -269,64 +264,6 @@
         }
 
         .loading-text {
-            color: var(--text-secondary);
-            font-size: 1rem;
-        }
-
-        /* Skeleton Loading */
-        .skeleton {
-            background: linear-gradient(90deg, var(--border) 25%, var(--background) 50%, var(--border) 75%);
-            background-size: 200% 100%;
-            animation: skeleton-shimmer 1.5s ease-in-out infinite;
-            border-radius: var(--radius-sm);
-        }
-
-        @keyframes skeleton-shimmer {
-            0% { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
-        }
-
-        .skeleton-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: 20px;
-        }
-
-        .skeleton-title {
-            height: 24px;
-            width: 60%;
-            margin-bottom: 16px;
-        }
-
-        .skeleton-text {
-            height: 16px;
-            width: 100%;
-            margin-bottom: 8px;
-        }
-
-        .skeleton-text-short {
-            height: 16px;
-            width: 40%;
-        }
-
-        .skeleton-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-        }
-
-        .skeleton-table-row {
-            display: flex;
-            align-items: center;
-            padding: 12px;
-            border-bottom: 1px solid var(--border);
-            gap: 16px;
-        }
-
-        .skeleton-table-row .skeleton {
-            height: 20px;
-        }
             color: var(--text-secondary);
             font-size: 1rem;
         }
@@ -666,11 +603,7 @@
             justify-content: space-between;
             align-items: flex-start;
             gap: 8px;
-            margin-bottom: 4px;
-        }
-
-        .ticket-status {
-            margin-bottom: 6px;
+            margin-bottom: 10px;
         }
 
         .ticket-id {
@@ -734,8 +667,8 @@
         }
 
         .pending-time {
-            background: rgba(249, 115, 22, 0.15);
-            color: #f97316;
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--status-pending);
             padding: 6px 10px;
             border-radius: var(--radius-sm);
             font-size: 0.75rem;
@@ -797,47 +730,9 @@
             background: var(--status-pending);
         }
 
-        .priority-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.65rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.025em;
-        }
-
-        .priority-badge.low {
-            background: rgba(107, 114, 128, 0.15);
-            color: #6b7280;
-        }
-
-        .priority-badge.medium {
-            background: rgba(59, 130, 246, 0.15);
-            color: #3b82f6;
-        }
-
-        .priority-badge.high {
-            background: rgba(249, 115, 22, 0.15);
-            color: #f97316;
-        }
-
-        .priority-badge.urgent {
-            background: rgba(239, 68, 68, 0.15);
-            color: #ef4444;
-        }
-
-        .priority-badge.critical {
-            background: rgba(153, 27, 27, 0.2);
-            color: #991b1b;
-        }
-
-        .priority-badge svg {
-            width: 10px;
-            height: 10px;
-            flex-shrink: 0;
+        .status-badge.pending-approval {
+            background: rgba(139, 92, 246, 0.25);
+            color: #6b21a8;
         }
 
         .ticket-card.urgent {
@@ -1474,10 +1369,10 @@
         }
 
         .status-item.new .status-item-value { color: #3b82f6; }
-        .status-item.processing .status-item-value { color: #22c55e; }
-        .status-item.pending .status-item-value { color: #f97316; }
-        .status-item.solved .status-item-value { color: #6b7280; }
-        .status-item.closed .status-item-value { color: #1f2937; }
+        .status-item.processing .status-item-value { color: #f59e0b; }
+        .status-item.pending .status-item-value { color: #8b5cf6; }
+        .status-item.solved .status-item-value { color: #10b981; }
+        .status-item.closed .status-item-value { color: #6b7280; }
 
         .instance-metrics {
             display: grid;
@@ -1914,50 +1809,42 @@
                 <nav class="header-nav">
                     <a href="index.html" class="nav-link">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="3" width="7" height="9"/>
-                            <rect x="14" y="3" width="7" height="5"/>
-                            <rect x="14" y="12" width="7" height="9"/>
-                            <rect x="3" y="16" width="7" height="5"/>
+                            <rect x="3" y="3" width="7" height="7"></rect>
+                            <rect x="14" y="3" width="7" height="7"></rect>
+                            <rect x="14" y="14" width="7" height="7"></rect>
+                            <rect x="3" y="14" width="7" height="7"></rect>
                         </svg>
                         Dashboard
                     </a>
+                    <a href="kanban.html" class="nav-link">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="9" y1="3" x2="9" y2="21"></line>
+                            <line x1="15" y1="3" x2="15" y2="21"></line>
+                        </svg>
+                        Kanban
+                    </a>
                     <a href="tickets-ativos.html" class="nav-link">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                            <polyline points="22 4 12 14.01 9 11.01"/>
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                            <polyline points="22,6 12,13 2,6"></polyline>
                         </svg>
-                        Ativos
+                        Tickets Ativos
                     </a>
                     <a href="tickets-em-espera.html" class="nav-link">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"/>
-                            <polyline points="12 6 12 12 16 14"/>
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
                         </svg>
-                        Espera
-                    </a>
-                    <a href="aprovacao.html" class="nav-link">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                            <polyline points="14 2 14 8 20 8"/>
-                            <path d="M9 15l2 2 4-4"/>
-                        </svg>
-                        Aprovação
+                        Em Espera
                     </a>
                     <a href="relatorios.html" class="nav-link">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="18" y1="20" x2="18" y2="10"/>
-                            <line x1="12" y1="20" x2="12" y2="4"/>
-                            <line x1="6" y1="20" x2="6" y2="14"/>
+                            <path d="M3 3h18v18H3z"/>
+                            <path d="M7 7h10"/>
+                            <path d="M7 12h6"/>
                         </svg>
                         Relatórios
-                    </a>
-                    <a href="kanban.html" class="nav-link">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                            <line x1="9" y1="3" x2="9" y2="21"/>
-                            <line x1="15" y1="3" x2="15" y2="21"/>
-                        </svg>
-                        Kanban
                     </a>
                 </nav>
                 <div class="header-right">
@@ -2043,7 +1930,7 @@
                 <div class="spinner"></div>
                 <p class="loading-text">Carregando tickets...</p>
             </div>
-</main>
+        </main>
     </div>
 
     <script src="config.js"></script>
@@ -2189,12 +2076,12 @@
         // Mapeamento de status do GLPI
         const TICKET_STATUS = {
             1: { name: 'Novo', nameLegacy:'Novo', key: 'new', color: '#3b82f6' },
-            2: { name: 'Em atendimento', key: 'processing', color: '#22c55e' },
-            3: { name: 'Em atendimento', key: 'processing', color: '#22c55e' },
-            4: { name: 'Pendente', key: 'pending', color: '#f97316' },
-            5: { name: 'Solucionado', key: 'solved', color: '#6b7280' },
-            6: { name: 'Fechado', key: 'closed', color: '#1f2937' },
-            7: { name: 'Aprovação', key: 'pending-approval', color: '#f97316', waitText: 'Esperando por uma validação' },
+            2: { name: 'Em atendimento', key: 'processing', color: '#f59e0b' },
+            3: { name: 'Em atendimento', key: 'processing', color: '#f59e0b' },
+            4: { name: 'Pendente', key: 'pending', color: '#8b5cf6' },
+            5: { name: 'Solucionado', key: 'solved', color: '#10b981' },
+            6: { name: 'Fechado', key: 'closed', color: '#6b7280' },
+            7: { name: 'Aprovação', key: 'pending-approval', color: '#8b5cf6', waitText: 'Esperando por uma validação' },
         };
 
         // Ordem dos status no Kanban (removido 'new')
@@ -2208,28 +2095,30 @@
             'closed': 'Fechado',
         };
 
-        const TICKET_PRIORITY = {
-            1: { label: 'Baixa', key: 'low', color: '#6b7280' },
-            2: { label: 'Média', key: 'medium', color: '#3b82f6' },
-            3: { label: 'Alta', key: 'high', color: '#f97316' },
-            4: { label: 'Urgente', key: 'urgent', color: '#ef4444' },
-            5: { label: 'Crítica', key: 'critical', color: '#991b1b' },
-        };
-
-        function getPriorityIcon() {
-            return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>';
+        function toggleTheme() {
+            const html = document.documentElement;
+            const isDark = html.getAttribute('data-theme') === 'dark';
+            
+            if (isDark) {
+                html.removeAttribute('data-theme');
+                localStorage.setItem('theme', 'light');
+                document.getElementById('sunIcon').style.display = 'block';
+                document.getElementById('moonIcon').style.display = 'none';
+            } else {
+                html.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+                document.getElementById('sunIcon').style.display = 'none';
+                document.getElementById('moonIcon').style.display = 'block';
+            }
         }
 
-        function getStatusIcon(status) {
-            const icons = {
-                'new': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle></svg>',
-                'processing': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path></svg>',
-                'pending': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>',
-                'pending-approval': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>',
-                'solved': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>',
-                'closed': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line></svg>'
-            };
-            return icons[status] || '';
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                document.getElementById('sunIcon').style.display = 'none';
+                document.getElementById('moonIcon').style.display = 'block';
+            }
         }
 
         function toggleInstanceDropdown() {
@@ -2309,8 +2198,8 @@
         const INITIAL_LOAD = 100;
         const LOAD_MORE = 50;
 
-        // Intervalo de atualização automática (10 minutos = 600000ms)
-        const REFRESH_INTERVAL = 600000;
+        // Intervalo de atualização automática (30 minutos)
+        const REFRESH_INTERVAL = 1800000;
         let refreshTimer = null;
         let countdownTimer = null;
         let nextRefreshTime = null;
@@ -2675,42 +2564,13 @@
             });
         }
 
-        // Função para exibir tela de loading com skeleton
+        // Função para exibir tela de loading
         function showLoading(message = 'Carregando tickets...') {
             const mainContent = document.getElementById('mainContent');
             mainContent.innerHTML = `
-                <div style="padding: 24px;">
-                    <p class="loading-text" style="margin-bottom: 20px; font-weight: 500;">${message}</p>
-                    
-                    <!-- Skeleton Cards -->
-                    <div class="skeleton-grid" style="margin-bottom: 24px;">
-                        <div class="skeleton-card">
-                            <div class="skeleton skeleton-title"></div>
-                            <div class="skeleton skeleton-text"></div>
-                            <div class="skeleton skeleton-text-short"></div>
-                        </div>
-                        <div class="skeleton-card">
-                            <div class="skeleton skeleton-title"></div>
-                            <div class="skeleton skeleton-text"></div>
-                            <div class="skeleton skeleton-text-short"></div>
-                        </div>
-                        <div class="skeleton-card">
-                            <div class="skeleton skeleton-title"></div>
-                            <div class="skeleton skeleton-text"></div>
-                            <div class="skeleton skeleton-text-short"></div>
-                        </div>
-                        <div class="skeleton-card">
-                            <div class="skeleton skeleton-title"></div>
-                            <div class="skeleton skeleton-text"></div>
-                            <div class="skeleton skeleton-text-short"></div>
-                        </div>
-                    </div>
-                    
-                    <!-- Skeleton Table -->
-                    <div class="skeleton-card">
-                        <div class="skeleton skeleton-title" style="margin-bottom: 16px; width: 40%;"></div>
-                        ${Array(5).fill('<div class="skeleton-table-row"><div class="skeleton" style="width: 60px;"></div><div class="skeleton" style="flex: 1;"></div><div class="skeleton" style="width: 100px;"></div><div class="skeleton" style="width: 80px;"></div></div>').join('')}
-                    </div>
+                <div class="loading-container">
+                    <div class="spinner"></div>
+                    <p class="loading-text">${message}</p>
                 </div>
             `;
         }
@@ -2753,19 +2613,14 @@ ${JSON.stringify(error, null, 2)}
         }
 
         function getInstanceStats(tickets, instanceName) {
-            // Filter case-insensitive to handle 'Peta' and 'PETA'
-            const instanceTickets = tickets.filter(t => t.instance?.toLowerCase() === instanceName.toLowerCase());
-            
-            // Support both status (key) and status_key from Supabase
-            const getStatus = (t) => t.status || t.status_key || 'new';
-            
+            const instanceTickets = tickets.filter(t => t.instance === instanceName);
             return {
                 total: instanceTickets.length,
-                new: instanceTickets.filter(t => getStatus(t) === 'new').length,
-                processing: instanceTickets.filter(t => getStatus(t) === 'processing').length,
-                pending: instanceTickets.filter(t => getStatus(t) === 'pending').length,
-                solved: instanceTickets.filter(t => getStatus(t) === 'solved').length,
-                closed: instanceTickets.filter(t => getStatus(t) === 'closed').length,
+                new: instanceTickets.filter(t => t.status === 'new').length,
+                processing: instanceTickets.filter(t => t.status === 'processing').length,
+                pending: instanceTickets.filter(t => t.status === 'pending').length,
+                solved: instanceTickets.filter(t => t.status === 'solved').length,
+                closed: instanceTickets.filter(t => t.status === 'closed').length,
                 tickets: instanceTickets
             };
         }
@@ -2884,16 +2739,6 @@ ${JSON.stringify(error, null, 2)}
         }
 
         function renderFullDashboard(tickets) {
-            console.log(`renderFullDashboard received: ${tickets?.length || 0} tickets`);
-            
-            // Debug: ver valores únicos de instance
-            const uniqueInstances = [...new Set(tickets.map(t => t.instance))];
-            console.log('Unique instances:', uniqueInstances);
-            
-            const petaCount = tickets.filter(t => t.instance?.toLowerCase() === 'peta').length;
-            const gmxCount = tickets.filter(t => t.instance?.toLowerCase() === 'gmx').length;
-            console.log(`Peta: ${petaCount}, GMX: ${gmxCount}, Total: ${petaCount + gmxCount}`);
-            
             window.ticketsBySolution = null;
             const petaStats = getInstanceStats(tickets, 'Peta');
             const gmxStats = getInstanceStats(tickets, 'GMX');
@@ -2907,8 +2752,8 @@ ${JSON.stringify(error, null, 2)}
                 const entity = t.entity || 'Sem Entidade';
                 if (!ticketsByEntity[entity]) ticketsByEntity[entity] = { total: 0, peta: 0, gmx: 0 };
                 ticketsByEntity[entity].total++;
-                if (t.instance?.toLowerCase() === 'peta') ticketsByEntity[entity].peta++;
-                if (t.instance?.toLowerCase() === 'gmx') ticketsByEntity[entity].gmx++;
+                if (t.instance === 'Peta') ticketsByEntity[entity].peta++;
+                if (t.instance === 'GMX') ticketsByEntity[entity].gmx++;
             });
 
             window.ticketsByGroup = {};
@@ -2916,8 +2761,8 @@ ${JSON.stringify(error, null, 2)}
                 const group = t.group || 'Não atribuído';
                 if (!window.ticketsByGroup[group]) window.ticketsByGroup[group] = { total: 0, peta: 0, gmx: 0 };
                 window.ticketsByGroup[group].total++;
-                if (t.instance?.toLowerCase() === 'peta') window.ticketsByGroup[group].peta++;
-                if (t.instance?.toLowerCase() === 'gmx') window.ticketsByGroup[group].gmx++;
+                if (t.instance === 'Peta') window.ticketsByGroup[group].peta++;
+                if (t.instance === 'GMX') window.ticketsByGroup[group].gmx++;
             });
             const ticketsByGroup = window.ticketsByGroup;
 
@@ -2926,8 +2771,8 @@ ${JSON.stringify(error, null, 2)}
                 const cat = t.category || 'Sem Categoria';
                 if (!ticketsByCategory[cat]) ticketsByCategory[cat] = { total: 0, peta: 0, gmx: 0 };
                 ticketsByCategory[cat].total++;
-                if (t.instance?.toLowerCase() === 'peta') ticketsByCategory[cat].peta++;
-                if (t.instance?.toLowerCase() === 'gmx') ticketsByCategory[cat].gmx++;
+                if (t.instance === 'Peta') ticketsByCategory[cat].peta++;
+                if (t.instance === 'GMX') ticketsByCategory[cat].gmx++;
             });
 
             window.ticketsBySolution = {};
@@ -2935,83 +2780,21 @@ ${JSON.stringify(error, null, 2)}
                 const rootCat = getRootCategory(t.category) || 'Sem Categoria';
                 if (!window.ticketsBySolution[rootCat]) window.ticketsBySolution[rootCat] = { total: 0, peta: 0, gmx: 0 };
                 window.ticketsBySolution[rootCat].total++;
-                if (t.instance?.toLowerCase() === 'peta') window.ticketsBySolution[rootCat].peta++;
-                if (t.instance?.toLowerCase() === 'gmx') window.ticketsBySolution[rootCat].gmx++;
+                if (t.instance === 'Peta') window.ticketsBySolution[rootCat].peta++;
+                if (t.instance === 'GMX') window.ticketsBySolution[rootCat].gmx++;
             });
             const ticketsBySolution = window.ticketsBySolution;
-
-            // Tickets por Técnico
-            const ticketsByTechnician = {};
-            tickets.forEach(t => {
-                const tech = t.technician || 'Não atribuído';
-                const status = t.status || t.status_key || 'new';
-                if (!ticketsByTechnician[tech]) {
-                    ticketsByTechnician[tech] = { 
-                        total: 0, 
-                        processing: 0, 
-                        pending: 0, 
-                        solved: 0, 
-                        closed: 0,
-                        peta: 0,
-                        gmx: 0 
-                    };
-                }
-                ticketsByTechnician[tech].total++;
-                if (status === 'processing') ticketsByTechnician[tech].processing++;
-                if (status === 'pending') ticketsByTechnician[tech].pending++;
-                if (status === 'solved') ticketsByTechnician[tech].solved++;
-                if (status === 'closed') ticketsByTechnician[tech].closed++;
-                if (t.instance?.toLowerCase() === 'peta') ticketsByTechnician[tech].peta++;
-                if (t.instance?.toLowerCase() === 'gmx') ticketsByTechnician[tech].gmx++;
-            });
-            const technicianStats = Object.entries(ticketsByTechnician)
-                .sort((a, b) => b[1].total - a[1].total);
 
             // Build HTML sections using helper functions
             const htmlPeta = renderTailwindInstanceSummary('Peta', petaStats, petaAvgPending, 'blue');
             const htmlGmx = renderTailwindInstanceSummary('GMX', gmxStats, gmxAvgPending, 'orange');
             const htmlSla = renderSlaSection(slaOverdue);
-            const htmlTechnician = renderTechnicianCards(ticketsByTechnician);
             const htmlEntity = renderEntityCards(ticketsByEntity);
             const htmlGroup = renderGroupBars(ticketsByGroup);
             const htmlSolution = renderSolutionBars(ticketsBySolution);
             const htmlCategory = renderCategoryCards(ticketsByCategory);
             const htmlPeriod = renderTailwindPeriodContent(tickets, 30);
 
-            // Set default period button - show ALL tickets by default
-            setTimeout(() => {
-                const defaultBtn = document.querySelector('[data-period="total"]');
-                if (defaultBtn) {
-                    document.querySelectorAll('.period-btn').forEach(b => {
-                        b.classList.remove('bg-blue-600', 'text-white');
-                        b.classList.add('bg-gray-200', 'text-gray-700');
-                    });
-                    defaultBtn.classList.remove('bg-gray-200', 'text-gray-700');
-                    defaultBtn.classList.add('bg-blue-600', 'text-white');
-                }
-            }, 100);
-
-            const statusCounts = { new: 0, processing: 0, pending: 0, solved: 0, closed: 0 };
-            tickets.forEach(t => {
-                const status = t.status || t.status_key || 'new';
-                if (statusCounts[status] !== undefined) statusCounts[status]++;
-                else statusCounts.new++;
-            });
-            
-            const dates30 = [];
-            const opened30 = [];
-            const closed30 = [];
-            for (let i = 29; i >= 0; i--) {
-                const d = new Date();
-                d.setDate(d.getDate() - i);
-                const dateStr = d.toISOString().split('T')[0];
-                dates30.push(dateStr);
-                const opened = tickets.filter(t => t.date_creation && t.date_creation.startsWith(dateStr)).length;
-                const closed = tickets.filter(t => (t.solvedate || t.closedate || '').startsWith(dateStr)).length;
-                opened30.push(opened);
-                closed30.push(closed);
-            }
-            
             return '<div class="p-6">' +
                 '<div class="bg-white rounded-lg shadow p-6 mb-6">' +
                     '<h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">' +
@@ -3019,21 +2802,6 @@ ${JSON.stringify(error, null, 2)}
                         'Resumo por Instância' +
                     '</h2>' +
                     '<div class="grid grid-cols-1 md:grid-cols-2 gap-6">' + htmlPeta + htmlGmx + '</div>' +
-                '</div>' +
-                '<div class="bg-white rounded-lg shadow p-6 mb-6">' +
-                    '<h2 class="text-xl font-bold text-gray-800 mb-4">Tickets por Status</h2>' +
-                    '<div class="h-64"><canvas id="statusChart"></canvas></div>' +
-                '</div>' +
-                '<div class="bg-white rounded-lg shadow p-6 mb-6">' +
-                    '<h2 class="text-xl font-bold text-gray-800 mb-4">Tickets nos Últimos 30 Dias</h2>' +
-                    '<div class="h-64"><canvas id="trendChart"></canvas></div>' +
-                '</div>' +
-                '<div class="bg-white rounded-lg shadow p-6 mb-6">' +
-                    '<h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">' +
-                        '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>' +
-                        'Tickets por Técnico' +
-                    '</h2>' +
-                    '<div class="overflow-x-auto">' + htmlTechnician + '</div>' +
                 '</div>' +
                 htmlSla +
                 '<div class="bg-white rounded-lg shadow p-6 mb-6">' +
@@ -3069,14 +2837,12 @@ ${JSON.stringify(error, null, 2)}
                         '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>' +
                         'Tickets por Período' +
                     '</h2>' +
-                    '<div class="flex gap-2 mb-6" id="periodButtons">' +
-                        '<button class="period-btn px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors" data-period="total" onclick="filterPeriod(this)">Total</button>' +
-                        '<button class="period-btn px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors" data-period="30" onclick="filterPeriod(this)">Últimos 30 dias</button>' +
-                        '<button class="period-btn px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors" data-period="60" onclick="filterPeriod(this)">Últimos 60 dias</button>' +
-                        '<button class="period-btn px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors" data-period="90" onclick="filterPeriod(this)">Últimos 90 dias</button>' +
-                        '<button class="period-btn px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors" data-period="365" onclick="filterPeriod(this)">Este Ano</button>' +
+                    '<div class="flex gap-2 mb-6">' +
+                        '<button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">Este Mês</button>' +
+                        '<button class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">Últimos 60 dias</button>' +
+                        '<button class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">Últimos 90 dias</button>' +
                     '</div>' +
-                    '<div id="periodContent">' + htmlPeriod + '</div>' +
+                    htmlPeriod +
                 '</div>' +
                 '<div class="bg-white rounded-lg shadow p-6">' +
                     '<h2 class="text-xl font-bold text-gray-800 mb-4">Ações Rápidas</h2>' +
@@ -3092,8 +2858,8 @@ ${JSON.stringify(error, null, 2)}
         }
 
         function renderSlaSection(slaOverdue) {
-            const petaCount = slaOverdue.filter(t => t.instance?.toLowerCase() === 'peta').length;
-            const gmxCount = slaOverdue.filter(t => t.instance?.toLowerCase() === 'gmx').length;
+            const petaCount = slaOverdue.filter(t => t.instance === 'Peta').length;
+            const gmxCount = slaOverdue.filter(t => t.instance === 'GMX').length;
             const pendingCount = slaOverdue.filter(t => t.status === 'pending').length;
             const processingCount = slaOverdue.filter(t => t.status === 'processing').length;
             
@@ -3210,47 +2976,6 @@ ${JSON.stringify(error, null, 2)}
             }).join('');
         }
 
-        function renderTechnicianCards(ticketsByTechnician) {
-            const sorted = Object.entries(ticketsByTechnician).sort((a, b) => b[1].total - a[1].total);
-            if (sorted.length === 0) {
-                return '<div class="text-gray-500 text-center py-4">Nenhum técnico encontrado</div>';
-            }
-            return '<table class="min-w-full divide-y divide-gray-200">' +
-                '<thead class="bg-gray-50">' +
-                    '<tr>' +
-                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Técnico</th>' +
-                        '<th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Total</th>' +
-                        '<th class="px-4 py-3 text-center text-xs font-medium text-blue-600">Em Andamento</th>' +
-                        '<th class="px-4 py-3 text-center text-xs font-medium text-orange-600">Pendente</th>' +
-                        '<th class="px-4 py-3 text-center text-xs font-medium text-green-600">Solucionado</th>' +
-                        '<th class="px-4 py-3 text-center text-xs font-medium text-gray-600">Fechado</th>' +
-                        '<th class="px-4 py-3 text-center text-xs font-medium text-gray-500">PETA · GMX</th>' +
-                    '</tr>' +
-                '</thead>' +
-                '<tbody class="bg-white divide-y divide-gray-200">' +
-                sorted.slice(0, 20).map(([tech, stats]) => {
-                    return '<tr class="hover:bg-gray-50">' +
-                        '<td class="px-4 py-3 text-sm font-medium text-gray-900">' + tech + '</td>' +
-                        '<td class="px-4 py-3 text-center text-sm font-bold text-gray-800">' + stats.total + '</td>' +
-                        '<td class="px-4 py-3 text-center text-sm">' +
-                            (stats.processing > 0 ? '<span class="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">' + stats.processing + '</span>' : '<span class="text-gray-400">0</span>') +
-                        '</td>' +
-                        '<td class="px-4 py-3 text-center text-sm">' +
-                            (stats.pending > 0 ? '<span class="px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-medium">' + stats.pending + '</span>' : '<span class="text-gray-400">0</span>') +
-                        '</td>' +
-                        '<td class="px-4 py-3 text-center text-sm">' +
-                            (stats.solved > 0 ? '<span class="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">' + stats.solved + '</span>' : '<span class="text-gray-400">0</span>') +
-                        '</td>' +
-                        '<td class="px-4 py-3 text-center text-sm">' +
-                            (stats.closed > 0 ? '<span class="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">' + stats.closed + '</span>' : '<span class="text-gray-400">0</span>') +
-                        '</td>' +
-                        '<td class="px-4 py-3 text-center text-xs text-gray-500"><span class="text-blue-600">' + stats.peta + '</span> · <span class="text-orange-600">' + stats.gmx + '</span></td>' +
-                    '</tr>';
-                }).join('') +
-                '</tbody>' +
-            '</table>';
-        }
-
         function renderTailwindInstanceSummary(instanceName, stats, avgPending, color) {
             const colorClasses = {
                 blue: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-600', dark: 'text-blue-800' },
@@ -3302,10 +3027,10 @@ ${JSON.stringify(error, null, 2)}
         function renderTailwindPeriodContent(tickets, days) {
             const periodTickets = getTicketsByPeriod(tickets, days);
             const closedTickets = getTicketsClosedInPeriod(tickets, days);
-            const petaPeriod = periodTickets.filter(t => t.instance?.toLowerCase() === 'peta');
-            const gmxPeriod = periodTickets.filter(t => t.instance?.toLowerCase() === 'gmx');
-            const petaClosed = closedTickets.filter(t => t.instance?.toLowerCase() === 'peta');
-            const gmxClosed = closedTickets.filter(t => t.instance?.toLowerCase() === 'gmx');
+            const petaPeriod = periodTickets.filter(t => t.instance === 'Peta');
+            const gmxPeriod = periodTickets.filter(t => t.instance === 'GMX');
+            const petaClosed = closedTickets.filter(t => t.instance === 'Peta');
+            const gmxClosed = closedTickets.filter(t => t.instance === 'GMX');
             
             const petaClosedCount = petaClosed.length;
             const gmxClosedCount = gmxClosed.length;
@@ -3342,66 +3067,10 @@ ${JSON.stringify(error, null, 2)}
         }
 
         function updatePeriodFilter(btn, tickets) {
-            document.querySelectorAll('.period-btn').forEach(b => {
-                b.classList.remove('bg-blue-600', 'text-white');
-                b.classList.add('bg-gray-200', 'text-gray-700');
-            });
-            btn.classList.remove('bg-gray-200', 'text-gray-700');
-            btn.classList.add('bg-blue-600', 'text-white');
-            
-            const days = btn.dataset.period;
-            const contentDiv = document.getElementById('periodContent');
-            
-            if (days === 'total') {
-                // Show all tickets (no date filter)
-                const totalOpened = tickets.length;
-                const closedTickets = tickets.filter(t => t.status === 'closed' || t.status === 'solved');
-                const totalClosed = closedTickets.length;
-                const petaCount = tickets.filter(t => t.instance?.toLowerCase() === 'peta').length;
-                const gmxCount = tickets.filter(t => t.instance?.toLowerCase() === 'gmx').length;
-                const petaClosed = closedTickets.filter(t => t.instance?.toLowerCase() === 'peta').length;
-                const gmxClosed = closedTickets.filter(t => t.instance?.toLowerCase() === 'gmx').length;
-                const closureRate = totalOpened > 0 ? Math.round((totalClosed / totalOpened) * 100) : 0;
-                
-                contentDiv.innerHTML = renderTailwindPeriodContentAll(totalOpened, totalClosed, petaCount, gmxCount, petaClosed, gmxClosed, closureRate);
-            } else {
-                const daysNum = parseInt(days);
-                contentDiv.innerHTML = renderTailwindPeriodContent(tickets, daysNum);
-            }
-        }
-
-        function renderTailwindPeriodContentAll(totalOpened, totalClosed, petaCount, gmxCount, petaClosed, gmxClosed, closureRate) {
-            return `
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div class="bg-gray-50 rounded-lg p-4 text-center">
-                        <div class="text-3xl font-bold text-gray-800">${totalOpened}</div>
-                        <div class="text-sm text-gray-600">Total de Tickets</div>
-                        <div class="text-xs mt-1 text-blue-600">Peta: ${petaCount}</div>
-                        <div class="text-xs text-orange-600">GMX: ${gmxCount}</div>
-                    </div>
-                    <div class="bg-gray-50 rounded-lg p-4 text-center">
-                        <div class="text-3xl font-bold text-green-600">${totalClosed}</div>
-                        <div class="text-sm text-gray-600">Fechados/Solucionados</div>
-                        <div class="text-xs mt-1 text-blue-600">Peta: ${petaClosed}</div>
-                        <div class="text-xs text-orange-600">GMX: ${gmxClosed}</div>
-                    </div>
-                    <div class="bg-gray-50 rounded-lg p-4 text-center">
-                        <div class="text-3xl font-bold text-purple-600">${closureRate}%</div>
-                        <div class="text-sm text-gray-600">Taxa de Fechamento</div>
-                        <div class="text-xs mt-1 text-gray-500">Fechados / Total</div>
-                    </div>
-                    <div class="bg-gray-50 rounded-lg p-4 text-center">
-                        <div class="text-3xl font-bold text-blue-600">${totalOpened - totalClosed}</div>
-                        <div class="text-sm text-gray-600">Em Aberto</div>
-                        <div class="text-xs mt-1 text-gray-500">Total - Fechados</div>
-                    </div>
-                </div>
-            `;
-        }
-
-        // Global function for period buttons
-        function filterPeriod(btn) {
-            updatePeriodFilter(btn, window.currentTickets || []);
+            document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const days = parseInt(btn.dataset.period);
+            document.getElementById('periodContent').innerHTML = renderPeriodContent(tickets, days);
         }
 
         function toggleSolutionChart(btn) {
@@ -3420,114 +3089,8 @@ ${JSON.stringify(error, null, 2)}
 
         function renderKanban(tickets) {
             const mainContent = document.getElementById('mainContent');
-            console.log(`renderKanban received: ${tickets.length} tickets`);
-            
-            // Store tickets globally for filter functions
-            window.currentTickets = tickets;
-            
             mainContent.innerHTML = renderFullDashboard(tickets);
             console.log(`Dashboard rendered, innerHTML length: ${mainContent.innerHTML.length}`);
-            
-            // Initialize Charts after render
-            setTimeout(() => initCharts(tickets), 100);
-            
-            // Initialize global filters
-            if (typeof initGlobalFilters === 'function') {
-                initGlobalFilters(tickets);
-            }
-            
-            // Listen for global filter events
-            window.addEventListener('tickets-filtered', (e) => {
-                console.log(`Filtered tickets: ${e.detail.length}`);
-                if (typeof renderFullDashboard === 'function') {
-                    document.getElementById('mainContent').innerHTML = renderFullDashboard(e.detail);
-                    setTimeout(() => initCharts(e.detail), 100);
-                }
-            });
-        }
-        
-        function initCharts(tickets) {
-            // Status pie chart
-            const statusCounts = { new: 0, processing: 0, pending: 0, solved: 0, closed: 0 };
-            tickets.forEach(t => {
-                const status = t.status || t.status_key || 'new';
-                if (statusCounts[status] !== undefined) statusCounts[status]++;
-                else statusCounts.new++;
-            });
-            
-            const statusCtx = document.getElementById('statusChart');
-            if (statusCtx && window.Chart) {
-                if (statusCtx.chart) statusCtx.chart.destroy();
-                statusCtx.chart = new Chart(statusCtx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['Novo', 'Em Andamento', 'Pendente', 'Resolvido', 'Fechado'],
-                        datasets: [{
-                            data: [statusCounts.new, statusCounts.processing, statusCounts.pending, statusCounts.solved, statusCounts.closed],
-                            backgroundColor: ['#3b82f6', '#22c55e', '#f97316', '#6b7280', '#1f2937'],
-                            borderWidth: 0
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { position: 'bottom' } }
-                    }
-                });
-            }
-            
-            // Trend line chart (last 30 days)
-            const dates30 = [];
-            const opened30 = [];
-            const closed30 = [];
-            for (let i = 29; i >= 0; i--) {
-                const d = new Date();
-                d.setDate(d.getDate() - i);
-                const dateStr = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-                dates30.push(dateStr);
-                const targetDate = d.toISOString().split('T')[0];
-                const opened = tickets.filter(t => t.date_creation && t.date_creation.startsWith(targetDate)).length;
-                const closed = tickets.filter(t => (t.solvedate || t.closedate || '').startsWith(targetDate)).length;
-                opened30.push(opened);
-                closed30.push(closed);
-            }
-            
-            const trendCtx = document.getElementById('trendChart');
-            if (trendCtx && window.Chart) {
-                if (trendCtx.chart) trendCtx.chart.destroy();
-                trendCtx.chart = new Chart(trendCtx, {
-                    type: 'line',
-                    data: {
-                        labels: dates30,
-                        datasets: [
-                            {
-                                label: 'Abertos',
-                                data: opened30,
-                                borderColor: '#3b82f6',
-                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                                fill: true,
-                                tension: 0.3
-                            },
-                            {
-                                label: 'Fechados',
-                                data: closed30,
-                                borderColor: '#22c55e',
-                                backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                                fill: true,
-                                tension: 0.3
-                            }
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { position: 'bottom' } },
-                        scales: {
-                            y: { beginAtZero: true, ticks: { stepSize: 1 } }
-                        }
-                    }
-                });
-            }
         }
 
         // Função para renderizar card de ticket
@@ -3545,9 +3108,7 @@ ${JSON.stringify(error, null, 2)}
                 `;
             }
             
-            const priorityInfo = ticket.priority_id ? (TICKET_PRIORITY[ticket.priority_id] || TICKET_PRIORITY[1]) : TICKET_PRIORITY[1];
-            const isUrgent = priorityInfo.key === 'urgent' || priorityInfo.key === 'critical';
-            const urgentClass = isFiltered || isUrgent ? 'urgent' : '';
+            const urgentClass = isFiltered ? 'urgent' : '';
             const instanceClass = ticket.instance ? ticket.instance.toLowerCase() : '';
             const cardClass = `ticket-card ${ticket.status} ${urgentClass}`.trim();
 
@@ -3560,10 +3121,6 @@ ${JSON.stringify(error, null, 2)}
                             </a>
                         </span>
                         <span class="instance-badge ${instanceClass}">${ticket.instance}</span>
-                    </div>
-                    <div class="ticket-status-row" style="display: flex; gap: 6px; align-items: center; margin-bottom: 6px;">
-                        <span class="status-badge ${ticket.status}">${getStatusIcon(ticket.status)}${ticket.statusName}</span>
-                        ${ticket.priority ? `<span class="priority-badge ${priorityInfo.key}">${getPriorityIcon()}${priorityInfo.label}</span>` : ''}
                     </div>
                     
                     <div class="ticket-entity-mini" title="${ticket.entity}">${ticket.entity}</div>
@@ -3647,8 +3204,8 @@ ${JSON.stringify(error, null, 2)}
                 exportedAt: new Date().toISOString(),
                 totalTickets: tickets.length,
                 instances: {
-                    peta: tickets.filter(t => t.instance?.toLowerCase() === 'peta').length,
-                    gmx: tickets.filter(t => t.instance?.toLowerCase() === 'gmx').length
+                    peta: tickets.filter(t => t.instance === 'Peta').length,
+                    gmx: tickets.filter(t => t.instance === 'GMX').length
                 },
                 tickets: tickets
             };
@@ -3703,105 +3260,106 @@ ${JSON.stringify(error, null, 2)}
             input.click();
         }
 
-// Função para atualizar tickets com carregamento otimizado
+        // Função para atualizar tickets com carregamento híbrido
         async function refreshTickets() {
             if (isLoading) return;
+            
             isLoading = true;
-
             const refreshBtn = document.getElementById('refreshBtn');
             const syncBtn = document.getElementById('syncBtn');
             if (refreshBtn) refreshBtn.disabled = true;
             if (syncBtn) syncBtn.disabled = true;
-            showLoading('Carregando tickets do Supabase...');
+            showLoading('Carregando dados do Supabase...');
+            
+            console.log('🔄 Carregando tickets do Supabase...');
 
             try {
-                console.log('[Supabase] Carregando TODOS os tickets...');
+                // Buscar todos os tickets do Supabase
+                let query = window._sb
+                    .from('tickets_cache')
+                    .select('*')
+                    .order('date_mod', { ascending: false });
 
-                // Supabase has default limit of 1000, so we need to paginate
-                const allTickets = [];
-                let page = 0;
-                const pageSize = 1000;
-                let hasMore = true;
-
-                while (hasMore) {
-                    const { data, error } = await window._sb
-                        .from('tickets_cache')
-                        .select('*')
-                        .order('date_mod', { ascending: false })
-                        .range(page * pageSize, (page + 1) * pageSize - 1);
-
-                    if (error) throw new Error(error.message);
-
-                    if (data && data.length > 0) {
-                        allTickets.push(...data);
-                        console.log(`[Supabase] Página ${page + 1}: ${data.length} tickets (total: ${allTickets.length})`);
-                        page++;
-                        if (data.length < pageSize) {
-                            hasMore = false;
-                        }
-                    } else {
-                        hasMore = false;
-                    }
+                // Filtrar por instâncias selecionadas
+                if (selectedInstances.length > 0 && selectedInstances.length < 2) {
+                    const instance = selectedInstances[0];
+                    query = query.eq('instance', instance);
                 }
 
-                console.log(`[Supabase] Total carregado: ${allTickets.length} tickets`);
+                const { data, error } = await query;
 
-                // Mapear para formato do dashboard
-                tickets = allTickets.map(t => ({
-                    id: t.ticket_id,
-                    title: t.title,
-                    entity: t.entity,
-                    entityFull: t.entity_full,
-                    category: t.category,
-                    rootCategory: t.root_category,
-                    statusId: t.status_id,
-                    status: t.status_key || 'new',
-                    statusName: t.status_name,
-                    priorityId: t.priority_id || 1,
-                    priority: t.priority || '1-Baixa',
-                    group: lastGroupLabel(t.group_name || ''),
-                    groupFull: t.group_name,
-                    technician: t.technician || '',
-                    dateCreated: t.date_created,
-                    lastUpdate: t.date_mod,
-                    dueDate: t.due_date,
-                    isSlaLate: t.is_sla_late || false,
-                    isOverdueFirst: t.is_overdue_first || false,
-                    isOverdueResolve: t.is_overdue_resolve || false,
-                    timeToOwn: t.time_to_own,
-                    timeToResolve: t.time_to_resolve,
-                    instance: t.instance,
-                    instanceUrl: t.instance?.toLowerCase() === 'peta' 
-                        ? (window.APP_CONFIG?.GLPI_PETA_TICKET_URL || '') 
+                console.log(`Raw Supabase data: ${data?.length || 0} tickets, error: ${error?.message || 'none'}`);
+
+                if (error) {
+                    throw new Error(`Erro ao buscar tickets do Supabase: ${error.message}`);
+                }
+
+                tickets = (data || []).map(ticket => ({
+                    id: ticket.ticket_id,
+                    title: ticket.title,
+                    entity: ticket.entity,
+                    entityFull: ticket.entity_full,
+                    category: ticket.category,
+                    rootCategory: ticket.root_category,
+                    statusId: ticket.status_id,
+                    status: ticket.status_key,
+                    statusName: ticket.status_name,
+                    group: lastGroupLabel(ticket.group_name || ''),
+                    groupFull: ticket.group_name,
+                    technician: ticket.technician || '',
+                    dateCreated: ticket.date_created,
+                    lastUpdate: ticket.date_mod,
+                    dueDate: ticket.due_date,
+                    isSlaLate: ticket.is_sla_late || false,
+                    isOverdueFirst: ticket.is_overdue_first || false,
+                    isOverdueResolve: ticket.is_overdue_resolve || false,
+                    timeToOwn: ticket.time_to_own,
+                    timeToResolve: ticket.time_to_resolve,
+                    instance: ticket.instance,
+                    instanceUrl: ticket.instance === 'Peta' 
+                        ? (window.APP_CONFIG?.GLPI_PETA_TICKET_URL || '')
                         : (window.APP_CONFIG?.GLPI_GMX_TICKET_URL || ''),
                 }));
 
-                // Salvar apenas metadata no cache (não os tickets completos para evitar quota)
-                try {
-                    const cacheMeta = {
-                        count: tickets.length,
-                        timestamp: new Date().toISOString(),
-                        lastId: tickets.length > 0 ? tickets[0].id : null
-                    };
-                    localStorage.setItem(CACHE_TIMESTAMP_KEY, JSON.stringify(cacheMeta));
-                } catch (e) {
-                    console.warn('Não foi possível salvar metadata do cache:', e);
-                }
+                // Skip GLPI technician fetch for now (too slow with 3000+ tickets)
+                // tickets = await fetchTechniciansFromGLPI(tickets);
+                console.log('Skipping GLPI technician fetch for performance');
 
-                console.log(`[Supabase] Finalizado: ${tickets.length} tickets`);
-
-                window.currentTickets = tickets;
+                loadedCounts = { processing: INITIAL_LOAD, pending: INITIAL_LOAD, solved: INITIAL_LOAD, closed: INITIAL_LOAD };
+                console.log('Calling renderKanban...');
                 renderKanban(tickets);
-
-                // Atualizar UI
+                
+                // Dispatch event for Tailwind dashboard
+                const tally = window.DashboardUtils?.tallyTickets?.(tickets);
+                if (tally) {
+                    window.dispatchEvent(new CustomEvent('tickets-updated', { detail: tally }));
+                }
+                
+                // Atualizar última atualização
                 const lastUpdateEl = document.getElementById('lastUpdate');
-                if (lastUpdateEl) lastUpdateEl.textContent = `Atualizado: ${getCurrentTimeFormatted()}`;
+                if (lastUpdateEl) {
+                    lastUpdateEl.textContent = `Atualizado: ${getCurrentTimeFormatted()}`;
+                }
+                
+                // Reiniciar contador regressivo
                 startCountdown();
-
-                console.log(`✅ Carregamento concluído: ${tickets.length} tickets`);
+                
+                console.log(`✅ Atualização concluída: ${tickets.length} tickets carregados do Supabase`);
+                console.log(`✅ Dashboard rendered successfully`);
             } catch (error) {
-                console.error('[Supabase] Erro ao carregar tickets:', error);
-                showError('Falha ao carregar tickets', 'Verifique a conexão e tente novamente.', error);
+                console.error('❌ Erro na atualização:', error);
+                
+                // Se falhou, usar cache se disponível
+                if (tickets.length > 0) {
+                    console.log('📂 Usando dados do cache local...');
+                    renderKanban(tickets);
+                } else {
+                    showError(
+                        'Erro ao carregar tickets',
+                        'Verifique sua conexão com o Supabase ou tente novamente mais tarde.',
+                        { message: error.message }
+                    );
+                }
             } finally {
                 isLoading = false;
                 if (refreshBtn) refreshBtn.disabled = false;
@@ -3826,9 +3384,10 @@ ${JSON.stringify(error, null, 2)}
                     }
                 }
                 
-                console.log('✅ Sincronização com Supabase concluída');
+                alert('Sincronização com Supabase concluída!');
             } catch (error) {
                 console.error('❌ Erro na sincronização:', error);
+                alert('Erro ao sincronizar com Supabase');
             } finally {
                 if (syncBtn) {
                     syncBtn.disabled = false;
@@ -3847,29 +3406,18 @@ ${JSON.stringify(error, null, 2)}
                 console.log('✅ Supabase Cache inicializado');
             }
 
-            // initTheme() is now called by shared-header.js
+            initTheme();
             initInstanceDropdown();
             
-            // First sync from GLPI to Supabase cache
-            if (typeof syncToSupabase === 'function') {
-                syncToSupabase();
-            }
-            
-            // Then load and display tickets
-            setTimeout(() => {
-                refreshTickets();
-            }, 500);
+            // Always load from Supabase directly (no localStorage cache)
+            refreshTickets();
 
-            // Configurar atualização automática (apenas dados, sem recarregar página)
+            // Configurar atualização automática (recarrega a página)
             refreshTimer = setInterval(() => {
-                console.log('🔄 Atualizando dados automaticamente...');
-                refreshTickets();
+                console.log('🔄 Recarregando página automaticamente...');
+                location.reload();
             }, REFRESH_INTERVAL);
-            
-            // Usar o contador regressivo do shared-header.js
-            if (typeof window.startRefreshCountdown === 'function') {
-                window.startRefreshCountdown(REFRESH_INTERVAL);
-            }
+            startCountdown();
         });
 
         // Cleanup ao sair da página
@@ -3885,6 +3433,69 @@ ${JSON.stringify(error, null, 2)}
             if (!name) return '';
             const parts = String(name).split('>');
             return parts[parts.length - 1].trim();
+        }
+
+        // Fetch technician names from GLPI using Ticket_User API (type=2 for assigned)
+        async function fetchTechniciansFromGLPI(tickets) {
+            if (!tickets || tickets.length === 0) return tickets;
+            
+            const config = window.APP_CONFIG;
+            
+            for (let i = 0; i < tickets.length; i++) {
+                const ticket = tickets[i];
+                if (ticket.technician) continue;
+                
+                const instance = ticket.instance === 'Peta'
+                    ? { BASE_URL: config.GLPI_PETA_URL, USER_TOKEN: config.GLPI_PETA_USER_TOKEN, APP_TOKEN: config.GLPI_PETA_APP_TOKEN }
+                    : { BASE_URL: config.GLPI_GMX_URL, USER_TOKEN: config.GLPI_GMX_USER_TOKEN, APP_TOKEN: config.GLPI_GMX_APP_TOKEN };
+                
+                try {
+                    if (!window.sessionTokens?.[ticket.instance]) {
+                        await window.initSessionGLPI(ticket.instance);
+                    }
+                    
+                    const response = await fetch(
+                        `${instance.BASE_URL}/Ticket/${ticket.id}/Ticket_User`,
+                        {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Session-Token': window.sessionTokens[ticket.instance],
+                                'App-Token': instance.APP_TOKEN,
+                            },
+                        }
+                    );
+                    
+                    if (response.ok) {
+                        const actors = await response.json();
+                        const technician = actors?.find(a => a.type === 2);
+                        
+                        if (technician?.users_id) {
+                            const userResponse = await fetch(
+                                `${instance.BASE_URL}/User/${technician.users_id}`,
+                                {
+                                    method: 'GET',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Session-Token': window.sessionTokens[ticket.instance],
+                                        'App-Token': instance.APP_TOKEN,
+                                    },
+                                }
+                            );
+                            
+                            if (userResponse.ok) {
+                                const user = await userResponse.json();
+                                const name = [user.firstname, user.realname].filter(Boolean).join(' ') || user.name || technician.users_id.toString();
+                                tickets[i].technician = name;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.warn(`Failed to fetch technician for ticket ${ticket.id}:`, e);
+                }
+            }
+            
+            return tickets;
         }
     </script>
 </body>
