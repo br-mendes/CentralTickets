@@ -70,12 +70,26 @@
 
   function normalizeStatus(statusName) {
     if (!statusName) return 'new';
-    if (statusName.includes('Em atendimento') || statusName.includes('processando')) return 'processing';
-    if (statusName.includes('Pendente')) return 'pending';
-    if (statusName.includes('Solucionado')) return 'solved';
-    if (statusName.includes('Fechado')) return 'closed';
-    if (statusName.includes('Aprovação') || statusName.includes('Aprovacao')) return 'pending';
+    const s = statusName.toLowerCase();
+    if (s.includes('atendimento') || s.includes('processing')) return 'processing';
+    if (s.includes('pendente') || s.includes('pending')) return 'pending';
+    if (s.includes('solucionado') || s.includes('solved')) return 'solved';
+    if (s.includes('fechado') || s.includes('closed')) return 'closed';
+    if (s.includes('aprovação') || s.includes('aprovacao')) return 'pending';
     return 'new';
+  }
+
+  function getUnifiedStatus(status) {
+    return normalizeStatus(status);
+  }
+
+  function getStatusDisplayName(status) {
+    const s = normalizeStatus(status);
+    if (s === 'processing') return 'Em atendimento';
+    if (s === 'pending') return 'Pendente';
+    if (s === 'solved') return 'Solucionado';
+    if (s === 'closed') return 'Fechado';
+    return 'Novo';
   }
 
   function initTheme() {
@@ -130,6 +144,8 @@
   window.renderSharedHeader = renderSharedHeader;
   window.initTheme = initTheme;
   window.normalizeStatus = normalizeStatus;
+  window.getUnifiedStatus = getUnifiedStatus;
+  window.getStatusDisplayName = getStatusDisplayName;
   window.applyGlobalFilters = applyGlobalFilters;
   window.initGlobalFilters = initGlobalFilters;
 
