@@ -11,8 +11,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- shared-header carregado no <head> para evitar race conditions -->
-    <script src="config.js"></script>
-    <script src="shared-header.js"></script>
+    <script src="config.js" defer></script>
+    <script src="shared-header.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
@@ -1821,11 +1821,7 @@ ${JSON.stringify(error, null, 2)}
                 console.log('🔄 Atualizando dados automaticamente...');
                 refreshTickets();
             }, REFRESH_INTERVAL);
-            
-            // Usar o contador regressivo do shared-header.js
-            if (typeof window.startRefreshCountdown === 'function') {
-                window.startRefreshCountdown(REFRESH_INTERVAL);
-            }
+            // Countdown já iniciado via initSharedHeader({ refreshInterval })
         });
 
         // Cleanup ao sair da página

@@ -10,76 +10,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
-    <script src="config.js"></script>
-    <script src="shared-header.js"></script>
+    <script src="config.js" defer></script>
+    <script src="shared-header.js" defer></script>
 </head>
 <body>
     <div class="app">
-        <header class="header">
-            <div class="header-content">
-                <div class="header-left">
-                    <h1>
-                        <span class="header-logo">
-                            <img src="favicon-peta.png" alt="Logo" onerror="this.style.display='none'">
-                        </span>
-                        Relatórios
-                    </h1>
-                </div>
-                <nav class="header-nav">
-                    <a href="index.html" class="nav-link">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="3" width="7" height="9"/>
-                            <rect x="14" y="3" width="7" height="5"/>
-                            <rect x="14" y="12" width="7" height="9"/>
-                            <rect x="3" y="16" width="7" height="5"/>
-                        </svg>
-                        Dashboard
-                    </a>
-                    <a href="tickets-ativos.html" class="nav-link">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                            <polyline points="22 4 12 14.01 9 11.01"/>
-                        </svg>
-                        Ativos
-                    </a>
-                    <a href="tickets-em-espera.html" class="nav-link">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"/>
-                            <polyline points="12 6 12 12 16 14"/>
-                        </svg>
-                        Espera
-                    </a>
-                    <a href="aprovacao.html" class="nav-link">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                            <polyline points="14 2 14 8 20 8"/>
-                            <path d="M9 15l2 2 4-4"/>
-                        </svg>
-                        Aprovação
-                    </a>
-                    <a href="relatorios.html" class="nav-link active">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="18" y1="20" x2="18" y2="10"/>
-                            <line x1="12" y1="20" x2="12" y2="4"/>
-                            <line x1="6" y1="20" x2="6" y2="14"/>
-                        </svg>
-                        Relatórios
-                    </a>
-                    <a href="kanban.html" class="nav-link">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                            <line x1="9" y1="3" x2="9" y2="21"/>
-                            <line x1="15" y1="3" x2="15" y2="21"/>
-                        </svg>
-                        Kanban
-                    </a>
-                </nav>
-                <button class="theme-toggle" onclick="toggleTheme()">
-                    <svg id="sunIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
-                    <svg id="moonIcon" style="display:none;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-                </button>
-            </div>
-        </header>
+        <header class="header"></header>
 
         <main class="main">
             <div id="loadingIndicator" class="loading-container">
