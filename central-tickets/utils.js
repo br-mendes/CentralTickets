@@ -35,15 +35,6 @@ const ThemeManager = {
         localStorage.setItem(this.KEY, 'light');
         this.updateToggleIcon();
     },
-        localStorage.setItem(this.KEY, 'dark');
-        this.updateToggleIcon();
-    },
-    
-    setLight() {
-        document.documentElement.setAttribute('data-theme', 'light');
-        localStorage.setItem(this.KEY, 'light');
-        this.updateToggleIcon();
-    },
     
     updateToggleIcon() {
         const toggle = document.getElementById('themeToggle');
