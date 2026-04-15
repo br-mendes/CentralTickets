@@ -428,6 +428,9 @@ body {
     padding: 4px 10px;
     background: var(--background);
     border-radius: var(--radius-sm);
+    white-space: nowrap;
+    min-width: 140px;
+    text-align: center;
 }
 
 .last-update {

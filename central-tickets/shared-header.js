@@ -93,7 +93,7 @@
     const min = Math.floor(remaining / 60000);
     const sec = Math.floor((remaining % 60000) / 1000);
     const el = document.getElementById('refreshCountdown');
-    if (el) el.textContent = `Refresh em ${min}:${sec.toString().padStart(2, '0')}`;
+    if (el) el.textContent = `Próximo refresh em ${min}:${sec.toString().padStart(2, '0')}`;
   }
 
   // Expose functions
