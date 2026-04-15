@@ -1578,8 +1578,6 @@ tickets = await getAllTickets();
                     ? '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>'
                     : '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>';
                 
-                const priorityInfo = ticket.priority_id ? (TICKET_PRIORITY[ticket.priority_id] || TICKET_PRIORITY[1]) : TICKET_PRIORITY[1];
-                
                 // Alert class for SLA exceeded
                 const alertClass = ticket.isSlaLate ? 'sla-late' : '';
                 
@@ -1595,14 +1593,11 @@ tickets = await getAllTickets();
                         <td class="col-status">
                             <span class="status-badge ${ticket.status}">${statusIcon}${ticket.statusName}</span>
                         </td>
-                        <td class="col-priority">
-                            <span class="priority-badge ${priorityInfo.key}">${getPriorityIcon()}${priorityInfo.label}</span>
-                        </td>
                         <td class="col-group">${ticket.group}</td>
                         <td class="col-technician">${ticket.technician || '-'}</td>
-                        <td class="col-date">${formatDate(ticket.dateCreated)}</td>
+                        <td class="col-date">${formatDateTime(ticket.dateCreated)}</td>
                         <td class="col-date">${formatDateTime(ticket.lastUpdate)}</td>
-                        <td class="col-date">${formatDate(ticket.dueDate)}</td>
+                        <td class="col-date">${formatDateTime(ticket.dueDate)}</td>
                         <td class="col-sla">
                             <span class="sla-badge ${slaClass}">${slaIcon}${slaText}</span>
                         </td>
@@ -1619,7 +1614,6 @@ tickets = await getAllTickets();
                                 <th class="col-instance">Instância</th>
                                 <th class="col-entity">Entidade</th>
                                 <th class="col-status">Status</th>
-                                <th class="col-priority">Prioridade</th>
                                 <th class="col-group">Grupo Responsável</th>
                                 <th class="col-technician">Técnico</th>
                                 <th class="col-date">Abertura</th>
@@ -1629,7 +1623,7 @@ tickets = await getAllTickets();
                             </tr>
                         </thead>
                         <tbody>
-                            ${rowsHTML || '<tr><td colspan="11" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum ticket encontrado</td></tr>'}
+                            ${rowsHTML || '<tr><td colspan="10" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum ticket encontrado</td></tr>'}
                         </tbody>
                     </table>
                 </div>
