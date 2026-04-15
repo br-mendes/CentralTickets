@@ -126,7 +126,70 @@
   window.renderSharedHeader = renderSharedHeader;
   window.initTheme = initTheme;
   window.normalizeStatus = normalizeStatus;
+  window.applyGlobalFilters = applyGlobalFilters;
+  window.initGlobalFilters = initGlobalFilters;
 
   // Auto-init on DOMContentLoaded
   document.addEventListener('DOMContentLoaded', renderSharedHeader);
 })();
+
+// Filtros globais
+function applyGlobalFilters(tickets) {
+    let filtered = tickets;
+
+    // Busca global
+    const searchInput = document.getElementById('globalSearch');
+    const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    if (searchTerm) {
+        filtered = filtered.filter(t => 
+            String(t.id).includes(searchTerm) || 
+            (t.title && t.title.toLowerCase().includes(searchTerm))
+        );
+    }
+
+    // Filtro por período
+    const periodSelect = document.getElementById('periodFilter');
+    const days = periodSelect ? parseInt(periodSelect.value) : 0;
+    if (days) {
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - days);
+        filtered = filtered.filter(t => new Date(t.dateCreated) >= cutoff);
+    }
+
+    // Filtro por técnico
+    const techSelect = document.getElementById('technicianFilter');
+    const tech = techSelect ? techSelect.value : '';
+    if (tech) {
+        filtered = filtered.filter(t => t.technician === tech);
+    }
+
+    return filtered;
+}
+
+function populateTechnicianFilter(tickets) {
+    const select = document.getElementById('technicianFilter');
+    if (!select) return;
+    
+    const technicians = [...new Set(tickets.map(t => t.technician).filter(Boolean))].sort();
+    select.innerHTML = '<option value="">Todos os técnicos</option>' + 
+        technicians.map(tech => `<option value="${tech}">${tech}</option>`).join('');
+}
+
+function initGlobalFilters(tickets) {
+    if (!tickets || tickets.length === 0) return;
+    
+    populateTechnicianFilter(tickets);
+
+    const searchInput = document.getElementById('globalSearch');
+    const periodSelect = document.getElementById('periodFilter');
+    const techSelect = document.getElementById('technicianFilter');
+
+    const apply = () => {
+        const filtered = applyGlobalFilters(tickets);
+        window.dispatchEvent(new CustomEvent('tickets-filtered', { detail: filtered }));
+    };
+
+    if (searchInput) searchInput.addEventListener('input', apply);
+    if (periodSelect) periodSelect.addEventListener('change', apply);
+    if (techSelect) techSelect.addEventListener('change', apply);
+}
