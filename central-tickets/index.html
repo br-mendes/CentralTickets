@@ -3430,6 +3430,19 @@ ${JSON.stringify(error, null, 2)}
             
             mainContent.innerHTML = renderFullDashboard(tickets);
             console.log(`Dashboard rendered, innerHTML length: ${mainContent.innerHTML.length}`);
+            
+            // Initialize global filters
+            if (typeof initGlobalFilters === 'function') {
+                initGlobalFilters(tickets);
+            }
+            
+            // Listen for global filter events
+            window.addEventListener('tickets-filtered', (e) => {
+                console.log(`Filtered tickets: ${e.detail.length}`);
+                if (typeof renderFullDashboard === 'function') {
+                    document.getElementById('mainContent').innerHTML = renderFullDashboard(e.detail);
+                }
+            });
         }
 
         // Função para renderizar card de ticket
