@@ -1222,8 +1222,20 @@
                 const slaClass = ticket.isSlaLate ? 'late' : 'ok';
                 const slaText = ticket.isSlaLate ? 'SLA Excedido' : 'No Prazo';
                 
+                // Calculate hours since last update for alert
+                let hoursSinceUpdate = 0;
+                if (ticket.lastUpdate) {
+                    const lastUpdate = new Date(ticket.lastUpdate);
+                    hoursSinceUpdate = (Date.now() - lastUpdate.getTime()) / (1000 * 60 * 60);
+                }
+                
+                // Alert class based on time waiting
+                let alertClass = '';
+                if (hoursSinceUpdate > 72) alertClass = 'alert-red';
+                else if (hoursSinceUpdate > 24) alertClass = 'alert-yellow';
+                
                 return `
-                    <tr>
+                    <tr class="${alertClass}">
                         <td class="col-id">
                             <a href="${ticket.instanceUrl}${ticket.id}" target="_blank" title="${ticket.title}">#${ticket.id}</a>
                         </td>

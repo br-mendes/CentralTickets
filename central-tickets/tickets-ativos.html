@@ -1657,8 +1657,11 @@ tickets = await getAllTickets();
                 
                 const priorityInfo = ticket.priority_id ? (TICKET_PRIORITY[ticket.priority_id] || TICKET_PRIORITY[1]) : TICKET_PRIORITY[1];
                 
+                // Alert class for SLA exceeded
+                const alertClass = ticket.isSlaLate ? 'sla-late' : '';
+                
                 return `
-                    <tr>
+                    <tr class="${alertClass}">
                         <td class="col-id">
                             <a href="${ticket.instanceUrl}${ticket.id}" target="_blank" title="${ticket.title}">#${ticket.id}</a>
                         </td>
