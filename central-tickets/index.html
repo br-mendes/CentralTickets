@@ -2112,8 +2112,6 @@
 </main>
     </div>
 
-    <!-- Load env config from Vercel serverless function first -->
-    <script src="/api/env.js"></script>
     <script src="config.js"></script>
     <script src="glpi-technician.js"></script>
     <script src="shared-header.js"></script>
@@ -2121,33 +2119,15 @@
     <script src="supabase-cache.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // Wait for config to load, then initialize Supabase
-        async function initApp() {
-            // Wait a bit for config.js to run
-            await new Promise(resolve => setTimeout(resolve, 100));
-            
-            // Check if we have config
-            const supabaseUrl = window.APP_CONFIG?.SUPABASE_URL;
-            const supabaseKey = window.APP_CONFIG?.SUPABASE_ANON_KEY;
-            
-            if (!supabaseUrl || !supabaseKey) {
-                console.error('[APP] ERRO: Configuração do Supabase não encontrada');
-                document.getElementById('mainContent').innerHTML = `
-                    <div class="error-container">
-                        <h2>Configuração Incompleta</h2>
-                        <p>As variáveis de ambiente não foram configuradas corretamente.</p>
-                        <p>Configure SUPABASE_URL e SUPABASE_ANON_KEY no Vercel Dashboard.</p>
-                    </div>
-                `;
-                return;
-            }
+        // Auth temporarily disabled
 
-            console.log('[APP] Inicializando com Supabase:', supabaseUrl);
+        // Configuração do Supabase via Environment Variables
+        const SUPABASE_URL = window.APP_CONFIG?.SUPABASE_URL || '';
+        const SUPABASE_ANON_KEY = window.APP_CONFIG?.SUPABASE_ANON_KEY || '';
+        
+        const sbClient = window._sb || (window._sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
 
-            // Now initialize Supabase
-            const sbClient = window._sb || (window._sb = window.supabase.createClient(supabaseUrl, supabaseKey));
-
-            // Configuração da API GLPI via Environment Variables
+        // Configuração da API GLPI via Environment Variables
         const API_CONFIG = {
             BASE_URL: window.APP_CONFIG?.GLPI_PETA_URL || '',
             USER_TOKEN: window.APP_CONFIG?.GLPI_PETA_USER_TOKEN || '',
@@ -3864,9 +3844,6 @@ ${JSON.stringify(error, null, 2)}
             const parts = String(name).split('>');
             return parts[parts.length - 1].trim();
         }
-
-        // Initialize the app
-        initApp();
     </script>
 </body>
 </html>
