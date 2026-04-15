@@ -435,8 +435,15 @@ body {
     background: var(--background);
     border-radius: var(--radius-sm);
     white-space: nowrap;
-    min-width: 140px;
+    min-width: 170px;
+    max-width: 170px;
+    display: inline-block;
     text-align: center;
+}
+
+.refresh-countdown .countdown-value {
+    font-weight: 600;
+    color: var(--text-primary);
 }
 
 .last-update {

@@ -115,11 +115,15 @@
 
   function updateCountdown() {
     if (!nextRefreshTime) return;
+    
     const remaining = Math.max(0, nextRefreshTime - Date.now());
-    const min = Math.floor(remaining / 60000);
-    const sec = Math.floor((remaining % 60000) / 1000);
+    const minutes = Math.floor(remaining / 60000);
+    const seconds = Math.floor((remaining % 60000) / 1000);
+    
     const el = document.getElementById('refreshCountdown');
-    if (el) el.textContent = `Próximo refresh em ${min}:${sec.toString().padStart(2, '0')}`;
+    if (el) {
+        el.innerHTML = `Próximo refresh: <span class="countdown-value">${minutes}:${seconds.toString().padStart(2, '0')}</span>`;
+    }
   }
 
   // Expose functions
