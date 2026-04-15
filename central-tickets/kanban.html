@@ -22,10 +22,11 @@
             --text-muted: #94a3b8;
             
             --status-new: #3b82f6;
-            --status-processing: #f59e0b;
-            --status-pending: #8b5cf6;
-            --status-solved: #10b981;
-            --status-closed: #6b7280;
+            --status-processing: #22c55e;
+            --status-pending: #f97316;
+            --status-approval: #f97316;
+            --status-solved: #6b7280;
+            --status-closed: #1f2937;
             
             --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
             --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
@@ -850,6 +851,72 @@
         .instance-dropdown-option.gmx {
             color: #7c3aed;
         }
+
+        /* Status Badges */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+
+        .status-badge.new {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--status-new);
+        }
+
+        .status-badge.processing {
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--status-processing);
+        }
+
+        .status-badge.pending {
+            background: rgba(249, 115, 22, 0.15);
+            color: var(--status-pending);
+        }
+
+        .status-badge.pending-approval {
+            background: rgba(249, 115, 22, 0.15);
+            color: var(--status-pending);
+        }
+
+        .status-badge.solved {
+            background: rgba(107, 114, 128, 0.15);
+            color: var(--status-solved);
+        }
+
+        .status-badge.closed {
+            background: rgba(31, 41, 55, 0.25);
+            color: var(--status-closed);
+        }
+
+        /* Dark mode status badges */
+        [data-theme="dark"] .status-badge.new {
+            background: rgba(59, 130, 246, 0.25);
+            color: #60a5fa;
+        }
+        [data-theme="dark"] .status-badge.processing {
+            background: rgba(34, 197, 94, 0.25);
+            color: #4ade80;
+        }
+        [data-theme="dark"] .status-badge.pending,
+        [data-theme="dark"] .status-badge.pending-approval {
+            background: rgba(249, 115, 22, 0.25);
+            color: #fb923c;
+        }
+        [data-theme="dark"] .status-badge.solved {
+            background: rgba(107, 114, 128, 0.25);
+            color: #9ca3af;
+        }
+        [data-theme="dark"] .status-badge.closed {
+            background: rgba(31, 41, 55, 0.4);
+            color: #d1d5db;
+        }
     </style>
 </head>
 <body>
@@ -876,34 +943,50 @@
                 <nav class="header-nav">
                     <a href="index.html" class="nav-link">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="3" width="7" height="7"></rect>
-                            <rect x="14" y="3" width="7" height="7"></rect>
-                            <rect x="14" y="14" width="7" height="7"></rect>
-                            <rect x="3" y="14" width="7" height="7"></rect>
+                            <rect x="3" y="3" width="7" height="9"/>
+                            <rect x="14" y="3" width="7" height="5"/>
+                            <rect x="14" y="12" width="7" height="9"/>
+                            <rect x="3" y="16" width="7" height="5"/>
                         </svg>
                         Dashboard
                     </a>
-                    <a href="kanban.html" class="nav-link active">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                            <line x1="9" y1="3" x2="9" y2="21"></line>
-                            <line x1="15" y1="3" x2="15" y2="21"></line>
-                        </svg>
-                        Kanban
-                    </a>
                     <a href="tickets-ativos.html" class="nav-link">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                            <polyline points="22,6 12,13 2,6"></polyline>
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                            <polyline points="22 4 12 14.01 9 11.01"/>
                         </svg>
-                        Tickets Ativos
+                        Ativos
                     </a>
                     <a href="tickets-em-espera.html" class="nav-link">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <polyline points="12 6 12 12 16 14"></polyline>
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
                         </svg>
-                        Em Espera
+                        Espera
+                    </a>
+                    <a href="aprovacao.html" class="nav-link">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <path d="M9 15l2 2 4-4"/>
+                        </svg>
+                        Aprovação
+                    </a>
+                    <a href="relatorios.html" class="nav-link">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="20" x2="18" y2="10"/>
+                            <line x1="12" y1="20" x2="12" y2="4"/>
+                            <line x1="6" y1="20" x2="6" y2="14"/>
+                        </svg>
+                        Relatórios
+                    </a>
+                    <a href="kanban.html" class="nav-link active">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <line x1="9" y1="3" x2="9" y2="21"/>
+                            <line x1="15" y1="3" x2="15" y2="21"/>
+                        </svg>
+                        Kanban
                     </a>
                 </nav>
                 <div class="header-right">
@@ -993,11 +1076,12 @@
     </div>
 
     <script src="config.js"></script>
+    <script src="glpi-technician.js"></script>
     <script src="shared-header.js"></script>
+    <script src="utils.js"></script>
     <script src="incremental-loader.js"></script>
     <script src="dashboard-utils.js"></script>
     <script src="cache-manager.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-cache.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
@@ -1164,12 +1248,12 @@
         // Mapeamento de status do GLPI
         const TICKET_STATUS = {
             1: { name: 'Novo', key: 'new', color: '#3b82f6' },
-            2: { name: 'Em atendimento', key: 'processing', color: '#f59e0b' },
-            3: { name: 'Em atendimento', key: 'processing', color: '#f59e0b' },
-            4: { name: 'Pendente', key: 'pending', color: '#8b5cf6' },
-            5: { name: 'Solucionado', key: 'solved', color: '#10b981' },
-            6: { name: 'Fechado', key: 'closed', color: '#6b7280' },
-            7: { name: 'Aprovação', key: 'pending-approval', color: '#8b5cf6', waitText: 'Esperando por uma validação' },
+            2: { name: 'Em atendimento', key: 'processing', color: '#22c55e' },
+            3: { name: 'Em atendimento', key: 'processing', color: '#22c55e' },
+            4: { name: 'Pendente', key: 'pending', color: '#f97316' },
+            5: { name: 'Solucionado', key: 'solved', color: '#6b7280' },
+            6: { name: 'Fechado', key: 'closed', color: '#1f2937' },
+            7: { name: 'Aprovação', key: 'pending-approval', color: '#f97316', waitText: 'Esperando por uma validação' },
         };
 
         // Ordem dos status no Kanban (removido 'new')
@@ -1265,9 +1349,9 @@
             const checkPeta = document.getElementById('checkPeta');
             const checkGmx = document.getElementById('checkGmx');
             
-            checkPeta.checked = selectedInstances.includes('Peta');
-            checkGmx.checked = selectedInstances.includes('GMX');
-            updateInstanceSelection();
+            if (checkPeta) checkPeta.checked = selectedInstances.includes('Peta');
+            if (checkGmx) checkGmx.checked = selectedInstances.includes('GMX');
+            if (checkPeta || checkGmx) updateInstanceSelection();
         }
 
         // Estado da aplicação
@@ -1276,12 +1360,13 @@
         let ticketsByStatus = {};
         let isLoading = false;
         let selectedInstances = ['Peta', 'GMX'];
+        let isFiltered = false;
         let loadedCounts = { processing: 100, pending: 100, solved: 100, closed: 100 };
         const INITIAL_LOAD = 100;
         const LOAD_MORE = 50;
 
         // Intervalo de atualização automática (30 minutos)
-        const REFRESH_INTERVAL = 1800000;
+        const REFRESH_INTERVAL = 1800000; // 30 minutes
         let refreshTimer = null;
         let countdownTimer = null;
         let nextRefreshTime = null;
@@ -1519,94 +1604,305 @@
 
         // Função para buscar tickets de uma instância
         async function getTicketsFromInstance(instanceName) {
-            const instance = INSTANCES[instanceName];
-            
-            if (!sessionTokens[instanceName]) {
-                await initSession(instanceName);
-            }
-
             try {
-                const allTickets = [];
+                let allTickets = [];
                 let page = 0;
                 const pageSize = 100;
+                const maxTickets = 500;
                 let hasMore = true;
+                
+                console.log(`[${instanceName}] Carregando tickets para Kanban (max: ${maxTickets})...`);
 
-                while (hasMore) {
-                    const start = page * pageSize;
-                    const end = start + pageSize - 1;
+                while (hasMore && allTickets.length < maxTickets) {
+                    const remainingSlots = maxTickets - allTickets.length;
+                    const currentPageSize = Math.min(pageSize, remainingSlots);
+                    
+                    let query = window._sb
+                        .from('tickets_cache')
+                        .select('*')
+                        .eq('instance', instanceName.toUpperCase())
+                        .not('status_key', 'in', '("solved","closed")')
+                        .order('date_mod', { ascending: false })
+                        .range(page * pageSize, page * pageSize + currentPageSize - 1);
 
-                    const searchParams = new URLSearchParams({
-                        'range': `${start}-${end}`,
-                        'expand_dropdowns': 'true',
-                        'get_hateoas': 'false',
-                    });
+                    const { data, error } = await query;
 
-                    const response = await fetch(
-                        `${instance.BASE_URL}/search/Ticket?${searchParams.toString()}`,
-                        {
-                            method: 'GET',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Session-Token': sessionTokens[instanceName],
-                                'App-Token': instance.APP_TOKEN,
-                            },
-                        }
-                    );
-
-                    if (!response.ok) {
-                        throw new Error(`Erro ao buscar tickets de ${instanceName}: ${response.status}`);
+                    if (error) {
+                        console.error(`Erro ao buscar tickets de ${instanceName} do Supabase:`, error);
+                        return [];
                     }
 
-                    const data = await response.json();
-                    
-                    if (data.data) {
-                        const ticketsArray = Array.isArray(data.data) ? data.data : Object.values(data.data);
-                        
-                        if (ticketsArray.length === 0) {
-                            hasMore = false;
-                        } else {
-                            allTickets.push(...ticketsArray);
-                            page++;
-                            
-                            if (data.data.length < pageSize || page >= 20) {
-                                hasMore = false;
-                            }
-                        }
-                    } else {
+                    if (!data || data.length === 0) {
                         hasMore = false;
+                    } else {
+                        allTickets = [...allTickets, ...data];
+                        page++;
+                        console.log(`[${instanceName}] Carregados ${allTickets.length} tickets`);
+                        if (data.length < pageSize || allTickets.length >= maxTickets) {
+                            hasMore = false;
+                        }
                     }
                 }
 
-                return processTickets(allTickets, instanceName);
+                console.log(`[${instanceName}] Total carregado: ${allTickets.length} tickets (limite: ${maxTickets})`);
+                return allTickets || [];
+            } catch (error) {
+                console.error(`Erro na busca de tickets de ${instanceName}:`, error);
+                return [];
+            }
+        }
+
+        // Função para buscar tickets de todas as instâncias com renderização incremental
+        async function getAllTickets() {
+            const BATCH_SIZE = 50;
+            const allTickets = [];
+            
+            for (const instanceName of selectedInstances) {
+                try {
+                    const instanceTickets = await getTicketsFromInstance(instanceName);
+                    console.log(`${instanceName}: ${instanceTickets.length} tickets carregados do Supabase`);
+                    
+                    // Fetch technician names from GLPI API
+                    const ticketsWithTechnicians = await fetchTechniciansFromGLPI(instanceTickets, instanceName);
+                    
+                    const processedTickets = processTickets(ticketsWithTechnicians, instanceName);
+                    
+                    for (let i = 0; i < processedTickets.length; i += BATCH_SIZE) {
+                        const batch = processedTickets.slice(i, i + BATCH_SIZE);
+                        allTickets.push(...batch);
+                        
+                        if (window.renderKanban && typeof window.renderKanban === 'function') {
+                            window.renderKanbanIncremental(allTickets);
+                        }
+                    }
+                } catch (error) {
+                    console.error(`Falha ao carregar tickets de ${instanceName}:`, error);
+                }
+            }
+            
+            console.log(`Total de tickets carregados: ${allTickets.length}`);
+            return allTickets;
+        }
+
+        // Fetch technician names from GLPI using Ticket_User API (type=2 for assigned)
+        async function fetchTechniciansFromGLPI(tickets, instanceName) {
+            if (!tickets || tickets.length === 0) return tickets;
+            
+            const ticketsWithCache = tickets.map(ticket => ({
+                ...ticket,
+                technician: ticket.technician || ''
+            }));
+            
+            try {
+                const sessionToken = await initGLPISessionKanban(instanceName);
+                const instance = INSTANCES[instanceName];
+                
+                for (let i = 0; i < ticketsWithCache.length; i++) {
+                    const ticket = ticketsWithCache[i];
+                    
+                    if (ticket.technician) continue;
+                    
+                    try {
+                        const response = await fetch(
+                            `${instance.BASE_URL}/Ticket/${ticket.ticket_id}/Ticket_User`,
+                            {
+                                method: 'GET',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Session-Token': sessionToken,
+                                    'App-Token': instance.APP_TOKEN,
+                                },
+                            }
+                        );
+                        
+                        if (response.ok) {
+                            const actors = await response.json();
+                            const technician = actors?.find(a => a.type === 2);
+                            
+                            if (technician?.users_id) {
+                                const userResponse = await fetch(
+                                    `${instance.BASE_URL}/User/${technician.users_id}`,
+                                    {
+                                        method: 'GET',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'Session-Token': sessionToken,
+                                            'App-Token': instance.APP_TOKEN,
+                                        },
+                                    }
+                                );
+                                
+                                if (userResponse.ok) {
+                                    const user = await userResponse.json();
+                                    const name = [user.firstname, user.realname].filter(Boolean).join(' ') || user.name || technician.users_id.toString();
+                                    ticketsWithCache[i].technician = name;
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.warn(`Failed to fetch technician for ticket ${ticket.ticket_id}:`, e);
+                    }
+                }
+            } catch (e) {
+                console.error('Error fetching technicians from GLPI:', e);
+            }
+            
+            return ticketsWithCache;
+        }
+        
+        async function initGLPISessionKanban(instanceName) {
+            if (!sessionTokens[instanceName]) {
+                await initSession(instanceName);
+            }
+            return sessionTokens[instanceName];
+        }
+
+        // Helper: extract last segment of group label
+        function lastGroupLabel(name) {
+            if (!name) return '';
+            const parts = String(name).split('>');
+            return parts[parts.length - 1].trim();
+        }
+
+        function getStatusIcon(status) {
+            const icons = {
+                'new': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle></svg>',
+                'processing': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path></svg>',
+                'pending': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>',
+                'pending-approval': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>',
+                'solved': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>',
+                'closed': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line></svg>'
+            };
+            return icons[status] || '';
+        }
+
+        const REFRESH_INTERVAL = 1800000; // 30 minutes
+        let nextRefreshTime = null;
+        let countdownTimer = null;
+        let refreshTimer = null;
+
+        function startCountdown() {
+            if (countdownTimer) clearInterval(countdownTimer);
+            nextRefreshTime = Date.now() + REFRESH_INTERVAL;
+            updateCountdown();
+            countdownTimer = setInterval(updateCountdown, 1000);
+        }
+
+        function updateCountdown() {
+            const countdownEl = document.getElementById('refreshCountdown');
+            if (!countdownEl || !nextRefreshTime) return;
+            
+            const remaining = Math.max(0, nextRefreshTime - Date.now());
+            const minutes = Math.floor(remaining / 60000);
+            const seconds = Math.floor((remaining % 60000) / 1000);
+            countdownEl.textContent = `Próximo refresh: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+            
+            if (remaining <= 0) {
+                refreshTickets();
+            }
+        }
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        }
+
+        // Função para processar tickets do Supabase
+        function processTickets(rawTickets, instanceName) {
+            return rawTickets.map(ticket => {
+                const statusId = ticket.status_id || 1;
+                const statusKey = ticket.status_key || 'new';
+                const statusInfo = TICKET_STATUS[statusId] || TICKET_STATUS[1];
+                
+                let finalStatus = statusKey;
+                if (statusId === 7) finalStatus = 'pending-approval';
+                else if (!['processing', 'pending', 'solved', 'closed', 'pending-approval'].includes(finalStatus)) {
+                    finalStatus = statusInfo.key;
+                }
+                
+                return {
+                    id: ticket.ticket_id,
+                    title: ticket.title,
+                    entity: ticket.entity || 'Entidade não definida',
+                    category: ticket.category || 'Não categorizado',
+                    statusId: statusId,
+                    status: finalStatus,
+                    statusName: ticket.status_name || statusInfo.name,
+                    statusColor: statusInfo.color,
+                    dateCreated: ticket.date_created,
+                    lastUpdate: ticket.date_mod,
+                    dueDate: ticket.due_date,
+                    timePending: ticket.status_key === 'pending' ? calculatePendingTime(ticket) : null,
+                    isSlaLate: ticket.is_sla_late || ticket.is_overdue_resolve || false,
+                    isOverdueFirst: ticket.is_overdue_first || false,
+                    isOverdueResolve: ticket.is_overdue_resolve || false,
+                    timeToOwn: ticket.time_to_own,
+                    timeToResolve: ticket.time_to_resolve,
+                    group: lastGroupLabel(ticket.group_name || ''),
+                    technician: ticket.technician || '',
+                    instance: instanceName.toUpperCase(),
+                    instanceUrl: ticket.instance === 'PETA' 
+                        ? (window.APP_CONFIG?.GLPI_PETA_TICKET_URL || '')
+                        : (window.APP_CONFIG?.GLPI_GMX_TICKET_URL || ''),
+                };
+            });
+        }
+
+        function isSlaExceeded(dueDate) {
+            if (!dueDate) return false;
+            const dueDateObj = new Date(dueDate);
+            const now = new Date();
+            return dueDateObj < now;
+        }
+
+        // Função para calcular tempo em pendência
+        function calculatePendingTime(ticket) {
+            const lastUpdate = ticket.date_mod || ticket.date_created;
+            if (!lastUpdate) return null;
+
+            const updateDate = new Date(lastUpdate);
+            const now = new Date();
+            const diffMs = now - updateDate;
+
+            return formatDuration(diffMs);
+        }
+
+        async function getTicketsFromInstance(instanceName) {
+            try {
+                const { data, error } = await window._sb
+                    .from('tickets_cache')
+                    .select('*')
+                    .eq('instance', instanceName.toUpperCase())
+                    .not('status_key', 'in', '("solved","closed")')
+                    .order('date_mod', { ascending: false })
+                    .limit(500);
+
+                if (error) {
+                    console.error(`Erro ao buscar tickets de ${instanceName} do Supabase:`, error);
+                    return [];
+                }
+
+                console.log(`${instanceName}: ${(data || []).length} tickets carregados do Supabase`);
+                
+                // Use Supabase data directly (technician field is already populated by sync function)
+                return processTickets(data || [], instanceName);
             } catch (error) {
                 console.error(`Erro ao buscar tickets de ${instanceName}:`, error);
                 throw error;
             }
         }
 
-        // Função para buscar tickets de todas as instâncias com renderização incremental
         async function getAllTickets() {
-            const BATCH_SIZE = 50; // Process tickets in batches for incremental rendering
             const allTickets = [];
             
-            // Process each instance separately to show progress
+            // Process each instance separately
             for (const instanceName of selectedInstances) {
                 try {
                     const instanceTickets = await getTicketsFromInstance(instanceName);
-                    console.log(`${instanceName}: ${instanceTickets.length} tickets brutos carregados`);
-                    
-                    // Process tickets in batches for incremental rendering
-                    for (let i = 0; i < instanceTickets.length; i += BATCH_SIZE) {
-                        const batch = instanceTickets.slice(i, i + BATCH_SIZE);
-                        const resolvedBatch = await resolveTechnicianNamesForPage(batch, instanceName);
-                        allTickets.push(...resolvedBatch);
-                        
-                        // Update UI incrementally
-                        if (window.renderKanban && typeof window.renderKanban === 'function') {
-                            // Apply current sorting/filters to show partial results
-                            window.renderKanbanIncremental(allTickets);
-                        }
-                    }
+                    console.log(`${instanceName}: ${instanceTickets.length} tickets processados`);
+                    allTickets.push(...instanceTickets);
                 } catch (error) {
                     console.error(`Falha ao carregar tickets de ${instanceName}:`, error);
                 }
@@ -1916,33 +2212,7 @@ ${JSON.stringify(error, null, 2)}
             }
         }
 
-        async function loadKanbanIncremental() {
-            const sources = [
-              { name: 'Peta', fetcher: (p,b)=> fetchFromKanbanPaged('Peta', p, b) },
-              { name: 'GMX', fetcher: (p,b)=> fetchFromKanbanPaged('GMX', p, b) }
-            ];
-            if (typeof IncrementalLoader === 'undefined') { console.log('IncrementalLoader not found'); return; }
-            await IncrementalLoader.loadInBatches({
-              sources,
-              batchSize: 50,
-              onBatch: (ctx, all) => {
-                tickets = all;
-                renderKanbanIncremental(all);
-                const tally = window.DashboardUtils?.tallyTickets ? window.DashboardUtils.tallyTickets(all) : null;
-                if (tally) window.dispatchEvent(new CustomEvent('tickets-updated', { detail: tally }));
-              },
-              onDone: (all) => {
-                tickets = all;
-                renderKanbanIncremental(all);
-                const tally = window.DashboardUtils?.tallyTickets ? window.DashboardUtils.tallyTickets(all) : null;
-                if (tally) window.dispatchEvent(new CustomEvent('tickets-updated', { detail: tally }));
-              }
-            });
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-          if (typeof IncrementalLoader !== 'undefined') loadKanbanIncremental();
-        });
+        // Note: Kanban uses Supabase via refreshTickets() -> getTicketsFromInstance()
 
         function loadMore(status) {
             const allStatusTickets = ticketsByStatus[status] || [];
@@ -1997,6 +2267,10 @@ ${JSON.stringify(error, null, 2)}
                             </a>
                         </span>
                         <span class="instance-badge ${instanceClass}">${ticket.instance}</span>
+                    </div>
+                    
+                    <div class="ticket-status">
+                        <span class="status-badge ${ticket.status}">${getStatusIcon(ticket.status)}${ticket.statusName}</span>
                     </div>
                     ${ticket.dueDate ? `
                     <div class="sla-row">
@@ -2237,25 +2511,15 @@ ${JSON.stringify(error, null, 2)}
             initTheme();
             initInstanceDropdown();
             
-            // Tentar carregar do cache primeiro para carregamento rápido
-            const cachedTickets = loadCache();
-            if (cachedTickets && cachedTickets.length > 0) {
-                tickets = cachedTickets;
-                loadedCounts = { processing: INITIAL_LOAD, pending: INITIAL_LOAD, solved: INITIAL_LOAD, closed: INITIAL_LOAD };
-                renderKanban(tickets);
-                
-                const lastUpdateEl = document.getElementById('lastUpdate');
-                if (lastUpdateEl) {
-                    const cacheTime = getCacheTimestamp();
-                    lastUpdateEl.textContent = `Cache: ${cacheTime ? new Date(cacheTime).toLocaleString('pt-BR') : 'desconhecido'}`;
-                }
-                
-                // Atualizar em background
-                console.log('📂 Dados carregados do cache. Atualizando em background...');
-                refreshTickets();
-            } else {
-                refreshTickets();
+            // First sync from GLPI to Supabase cache
+            if (typeof syncToSupabase === 'function') {
+                syncToSupabase();
             }
+            
+            // Then load and display tickets
+            setTimeout(() => {
+                refreshTickets();
+            }, 500);
 
             // Configurar atualização automática
             refreshTimer = setInterval(refreshTickets, REFRESH_INTERVAL);
@@ -2276,9 +2540,3 @@ ${JSON.stringify(error, null, 2)}
     </script>
 </body>
 </html>
-        // Helper: extract last segment of group label (global utility across pages)
-        function lastGroupLabel(name) {
-            if (!name) return '';
-            const parts = String(name).split('>');
-            return parts[parts.length - 1].trim();
-        }

@@ -480,11 +480,11 @@
                 updateStatus('gmx', 'success', 100, syncStats.gmx.synced, syncStats.gmx.total);
                 log(`GMX: ${syncStats.gmx.synced} tickets sincronizados`, 'success');
 
-                // Atualizar sync_control
-                await supabase.from('sync_control').upsert([
-                    { instance: 'Peta', last_sync: new Date().toISOString(), status: 'success', tickets_count: syncStats.peta.synced },
-                    { instance: 'GMX', last_sync: new Date().toISOString(), status: 'success', tickets_count: syncStats.gmx.synced },
-                ], { onConflict: 'instance' });
+        // Atualizar sync_control
+        await supabase.from('sync_control').upsert([
+            { instance: 'PETA', last_sync: new Date().toISOString(), status: 'success', tickets_count: syncStats.peta.synced, last_page: 999, total_pages: 1 },
+            { instance: 'GMX', last_sync: new Date().toISOString(), status: 'success', tickets_count: syncStats.gmx.synced, last_page: 999, total_pages: 1 },
+        ], { onConflict: 'instance' });
 
                 // Mostrar resumo
                 document.getElementById('summary').style.display = 'grid';

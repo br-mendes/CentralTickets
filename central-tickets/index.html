@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Central de Tickets - Dashboard de Tickets GLPI">
     <title>Central de Tickets</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <script src="incremental-loader.js"></script>
-    <script src="dashboard-utils.js"></script>
     <link rel="icon" href="favicon-peta.png" type="image/png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -25,10 +23,11 @@
             --text-muted: #94a3b8;
             
             --status-new: #3b82f6;
-            --status-processing: #f59e0b;
-            --status-pending: #8b5cf6;
-            --status-solved: #10b981;
-            --status-closed: #6b7280;
+            --status-processing: #22c55e;
+            --status-pending: #f97316;
+            --status-approval: #f97316;
+            --status-solved: #6b7280;
+            --status-closed: #1f2937;
             
             --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
             --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
@@ -265,6 +264,64 @@
         }
 
         .loading-text {
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+
+        /* Skeleton Loading */
+        .skeleton {
+            background: linear-gradient(90deg, var(--border) 25%, var(--background) 50%, var(--border) 75%);
+            background-size: 200% 100%;
+            animation: skeleton-shimmer 1.5s ease-in-out infinite;
+            border-radius: var(--radius-sm);
+        }
+
+        @keyframes skeleton-shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .skeleton-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+        }
+
+        .skeleton-title {
+            height: 24px;
+            width: 60%;
+            margin-bottom: 16px;
+        }
+
+        .skeleton-text {
+            height: 16px;
+            width: 100%;
+            margin-bottom: 8px;
+        }
+
+        .skeleton-text-short {
+            height: 16px;
+            width: 40%;
+        }
+
+        .skeleton-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .skeleton-table-row {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+            gap: 16px;
+        }
+
+        .skeleton-table-row .skeleton {
+            height: 20px;
+        }
             color: var(--text-secondary);
             font-size: 1rem;
         }
@@ -604,7 +661,11 @@
             justify-content: space-between;
             align-items: flex-start;
             gap: 8px;
-            margin-bottom: 10px;
+            margin-bottom: 4px;
+        }
+
+        .ticket-status {
+            margin-bottom: 6px;
         }
 
         .ticket-id {
@@ -668,8 +729,8 @@
         }
 
         .pending-time {
-            background: rgba(139, 92, 246, 0.1);
-            color: var(--status-pending);
+            background: rgba(249, 115, 22, 0.15);
+            color: #f97316;
             padding: 6px 10px;
             border-radius: var(--radius-sm);
             font-size: 0.75rem;
@@ -731,9 +792,118 @@
             background: var(--status-pending);
         }
 
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+
+        .status-badge.new {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--status-new);
+        }
+
+        .status-badge.processing {
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--status-processing);
+        }
+
+        .status-badge.pending {
+            background: rgba(249, 115, 22, 0.15);
+            color: var(--status-pending);
+        }
+
         .status-badge.pending-approval {
-            background: rgba(139, 92, 246, 0.25);
-            color: #6b21a8;
+            background: rgba(249, 115, 22, 0.15);
+            color: var(--status-pending);
+        }
+
+        .status-badge.solved {
+            background: rgba(107, 114, 128, 0.15);
+            color: var(--status-solved);
+        }
+
+        .status-badge.closed {
+            background: rgba(31, 41, 55, 0.25);
+            color: var(--status-closed);
+        }
+
+        .status-badge svg {
+            width: 12px;
+            height: 12px;
+            flex-shrink: 0;
+        }
+
+        /* Dark mode status badges */
+        [data-theme="dark"] .status-badge.new {
+            background: rgba(59, 130, 246, 0.25);
+            color: #60a5fa;
+        }
+        [data-theme="dark"] .status-badge.processing {
+            background: rgba(34, 197, 94, 0.25);
+            color: #4ade80;
+        }
+        [data-theme="dark"] .status-badge.pending,
+        [data-theme="dark"] .status-badge.pending-approval {
+            background: rgba(249, 115, 22, 0.25);
+            color: #fb923c;
+        }
+        [data-theme="dark"] .status-badge.solved {
+            background: rgba(107, 114, 128, 0.25);
+            color: #9ca3af;
+        }
+        [data-theme="dark"] .status-badge.closed {
+            background: rgba(31, 41, 55, 0.4);
+            color: #d1d5db;
+        }
+
+        .priority-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+
+        .priority-badge.low {
+            background: rgba(107, 114, 128, 0.15);
+            color: #6b7280;
+        }
+
+        .priority-badge.medium {
+            background: rgba(59, 130, 246, 0.15);
+            color: #3b82f6;
+        }
+
+        .priority-badge.high {
+            background: rgba(249, 115, 22, 0.15);
+            color: #f97316;
+        }
+
+        .priority-badge.urgent {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+        }
+
+        .priority-badge.critical {
+            background: rgba(153, 27, 27, 0.2);
+            color: #991b1b;
+        }
+
+        .priority-badge svg {
+            width: 10px;
+            height: 10px;
+            flex-shrink: 0;
         }
 
         .ticket-card.urgent {
@@ -1370,10 +1540,10 @@
         }
 
         .status-item.new .status-item-value { color: #3b82f6; }
-        .status-item.processing .status-item-value { color: #f59e0b; }
-        .status-item.pending .status-item-value { color: #8b5cf6; }
-        .status-item.solved .status-item-value { color: #10b981; }
-        .status-item.closed .status-item-value { color: #6b7280; }
+        .status-item.processing .status-item-value { color: #22c55e; }
+        .status-item.pending .status-item-value { color: #f97316; }
+        .status-item.solved .status-item-value { color: #6b7280; }
+        .status-item.closed .status-item-value { color: #1f2937; }
 
         .instance-metrics {
             display: grid;
@@ -1784,54 +1954,11 @@
             transform: rotate(180deg);
         }
     </style>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body>
-  <!-- Dashboard (Tailwind-styled) -->
-  <section id="dashboard" class="py-6 px-6 bg-white rounded-lg shadow m-4" style="max-width: 1200px; margin: 20px auto;">
-    <div class="grid grid-cols-4 gap-6">
-      <div class="p-4 border rounded shadow">
-        <div class="text-xs text-gray-500">Total</div>
-        <div id="dash-total" class="text-xl font-semibold">0</div>
-      </div>
-      <div class="p-4 border rounded shadow">
-        <div class="text-xs text-gray-500">Em atendimento</div>
-        <div id="dash-processing" class="text-xl font-semibold">0</div>
-      </div>
-      <div class="p-4 border rounded shadow">
-        <div class="text-xs text-gray-500">Pendente</div>
-        <div id="dash-pending" class="text-xl font-semibold">0</div>
-      </div>
-      <div class="p-4 border rounded shadow">
-        <div class="text-xs text-gray-500">Aprovação</div>
-        <div id="dash-approval" class="text-xl font-semibold">0</div>
-      </div>
-    </div>
-  </section>
-  <script>
-    window.addEventListener('tickets-updated', (e) => {
-      const d = e.detail || {};
-      document.getElementById('dash-total')?.textContent = d.total ?? 0;
-      document.getElementById('dash-processing')?.textContent = d.processing ?? 0;
-      document.getElementById('dash-pending')?.textContent = d.pending ?? 0;
-      document.getElementById('dash-approval')?.textContent = d.approval ?? 0;
-    });
-
-    // Snapshot placeholder; will be replaced with real GLPI snapshot in a future patch
-    async function fetchDashboardSnapshot() {
-      try {
-        const t = window.tickets?.length ? window.tickets : [];
-        const tally = window.DashboardUtils?.tallyTickets ? window.DashboardUtils.tallyTickets(t) : null;
-        if (tally) {
-          window.dispatchEvent(new CustomEvent('tickets-updated', { detail: tally }));
-        }
-      } catch (err) {
-        console.log('Dashboard snapshot error', err);
-      }
-    }
-    document.addEventListener('DOMContentLoaded', fetchDashboardSnapshot);
-  </script>
-    <div class="app">
-        <header class="header">
+  <div class="app">
+      <header class="header">
             <div class="header-content">
                 <div class="header-left">
                     <h1>
@@ -1853,42 +1980,50 @@
                 <nav class="header-nav">
                     <a href="index.html" class="nav-link">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="3" width="7" height="7"></rect>
-                            <rect x="14" y="3" width="7" height="7"></rect>
-                            <rect x="14" y="14" width="7" height="7"></rect>
-                            <rect x="3" y="14" width="7" height="7"></rect>
+                            <rect x="3" y="3" width="7" height="9"/>
+                            <rect x="14" y="3" width="7" height="5"/>
+                            <rect x="14" y="12" width="7" height="9"/>
+                            <rect x="3" y="16" width="7" height="5"/>
                         </svg>
                         Dashboard
                     </a>
-                    <a href="kanban.html" class="nav-link">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                            <line x1="9" y1="3" x2="9" y2="21"></line>
-                            <line x1="15" y1="3" x2="15" y2="21"></line>
-                        </svg>
-                        Kanban
-                    </a>
                     <a href="tickets-ativos.html" class="nav-link">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                            <polyline points="22,6 12,13 2,6"></polyline>
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                            <polyline points="22 4 12 14.01 9 11.01"/>
                         </svg>
-                        Tickets Ativos
+                        Ativos
                     </a>
                     <a href="tickets-em-espera.html" class="nav-link">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <polyline points="12 6 12 12 16 14"></polyline>
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
                         </svg>
-                        Em Espera
+                        Espera
+                    </a>
+                    <a href="aprovacao.html" class="nav-link">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <path d="M9 15l2 2 4-4"/>
+                        </svg>
+                        Aprovação
                     </a>
                     <a href="relatorios.html" class="nav-link">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M3 3h18v18H3z"/>
-                            <path d="M7 7h10"/>
-                            <path d="M7 12h6"/>
+                            <line x1="18" y1="20" x2="18" y2="10"/>
+                            <line x1="12" y1="20" x2="12" y2="4"/>
+                            <line x1="6" y1="20" x2="6" y2="14"/>
                         </svg>
                         Relatórios
+                    </a>
+                    <a href="kanban.html" class="nav-link">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <line x1="9" y1="3" x2="9" y2="21"/>
+                            <line x1="15" y1="3" x2="15" y2="21"/>
+                        </svg>
+                        Kanban
                     </a>
                 </nav>
                 <div class="header-right">
@@ -1978,6 +2113,7 @@
     </div>
 
     <script src="config.js"></script>
+    <script src="glpi-technician.js"></script>
     <script src="shared-header.js"></script>
     <script src="cache-manager.js"></script>
     <script src="supabase-cache.js"></script>
@@ -2119,12 +2255,12 @@
         // Mapeamento de status do GLPI
         const TICKET_STATUS = {
             1: { name: 'Novo', nameLegacy:'Novo', key: 'new', color: '#3b82f6' },
-            2: { name: 'Em atendimento', key: 'processing', color: '#f59e0b' },
-            3: { name: 'Em atendimento', key: 'processing', color: '#f59e0b' },
-            4: { name: 'Pendente', key: 'pending', color: '#8b5cf6' },
-            5: { name: 'Solucionado', key: 'solved', color: '#10b981' },
-            6: { name: 'Fechado', key: 'closed', color: '#6b7280' },
-            7: { name: 'Aprovação', key: 'pending-approval', color: '#8b5cf6', waitText: 'Esperando por uma validação' },
+            2: { name: 'Em atendimento', key: 'processing', color: '#22c55e' },
+            3: { name: 'Em atendimento', key: 'processing', color: '#22c55e' },
+            4: { name: 'Pendente', key: 'pending', color: '#f97316' },
+            5: { name: 'Solucionado', key: 'solved', color: '#6b7280' },
+            6: { name: 'Fechado', key: 'closed', color: '#1f2937' },
+            7: { name: 'Aprovação', key: 'pending-approval', color: '#f97316', waitText: 'Esperando por uma validação' },
         };
 
         // Ordem dos status no Kanban (removido 'new')
@@ -2137,6 +2273,30 @@
             'solved': 'Solucionado',
             'closed': 'Fechado',
         };
+
+        const TICKET_PRIORITY = {
+            1: { label: 'Baixa', key: 'low', color: '#6b7280' },
+            2: { label: 'Média', key: 'medium', color: '#3b82f6' },
+            3: { label: 'Alta', key: 'high', color: '#f97316' },
+            4: { label: 'Urgente', key: 'urgent', color: '#ef4444' },
+            5: { label: 'Crítica', key: 'critical', color: '#991b1b' },
+        };
+
+        function getPriorityIcon() {
+            return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>';
+        }
+
+        function getStatusIcon(status) {
+            const icons = {
+                'new': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle></svg>',
+                'processing': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path></svg>',
+                'pending': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>',
+                'pending-approval': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>',
+                'solved': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>',
+                'closed': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line></svg>'
+            };
+            return icons[status] || '';
+        }
 
         function toggleTheme() {
             const html = document.documentElement;
@@ -2241,8 +2401,8 @@
         const INITIAL_LOAD = 100;
         const LOAD_MORE = 50;
 
-        // Intervalo de atualização automática (30 minutos)
-        const REFRESH_INTERVAL = 1800000;
+        // Intervalo de atualização automática (10 minutos = 600000ms)
+        const REFRESH_INTERVAL = 600000;
         let refreshTimer = null;
         let countdownTimer = null;
         let nextRefreshTime = null;
@@ -2607,13 +2767,42 @@
             });
         }
 
-        // Função para exibir tela de loading
+        // Função para exibir tela de loading com skeleton
         function showLoading(message = 'Carregando tickets...') {
             const mainContent = document.getElementById('mainContent');
             mainContent.innerHTML = `
-                <div class="loading-container">
-                    <div class="spinner"></div>
-                    <p class="loading-text">${message}</p>
+                <div style="padding: 24px;">
+                    <p class="loading-text" style="margin-bottom: 20px; font-weight: 500;">${message}</p>
+                    
+                    <!-- Skeleton Cards -->
+                    <div class="skeleton-grid" style="margin-bottom: 24px;">
+                        <div class="skeleton-card">
+                            <div class="skeleton skeleton-title"></div>
+                            <div class="skeleton skeleton-text"></div>
+                            <div class="skeleton skeleton-text-short"></div>
+                        </div>
+                        <div class="skeleton-card">
+                            <div class="skeleton skeleton-title"></div>
+                            <div class="skeleton skeleton-text"></div>
+                            <div class="skeleton skeleton-text-short"></div>
+                        </div>
+                        <div class="skeleton-card">
+                            <div class="skeleton skeleton-title"></div>
+                            <div class="skeleton skeleton-text"></div>
+                            <div class="skeleton skeleton-text-short"></div>
+                        </div>
+                        <div class="skeleton-card">
+                            <div class="skeleton skeleton-title"></div>
+                            <div class="skeleton skeleton-text"></div>
+                            <div class="skeleton skeleton-text-short"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Skeleton Table -->
+                    <div class="skeleton-card">
+                        <div class="skeleton skeleton-title" style="margin-bottom: 16px; width: 40%;"></div>
+                        ${Array(5).fill('<div class="skeleton-table-row"><div class="skeleton" style="width: 60px;"></div><div class="skeleton" style="flex: 1;"></div><div class="skeleton" style="width: 100px;"></div><div class="skeleton" style="width: 80px;"></div></div>').join('')}
+                    </div>
                 </div>
             `;
         }
@@ -2656,14 +2845,19 @@ ${JSON.stringify(error, null, 2)}
         }
 
         function getInstanceStats(tickets, instanceName) {
-            const instanceTickets = tickets.filter(t => t.instance === instanceName);
+            // Filter case-insensitive to handle 'Peta' and 'PETA'
+            const instanceTickets = tickets.filter(t => t.instance?.toLowerCase() === instanceName.toLowerCase());
+            
+            // Support both status (key) and status_key from Supabase
+            const getStatus = (t) => t.status || t.status_key || 'new';
+            
             return {
                 total: instanceTickets.length,
-                new: instanceTickets.filter(t => t.status === 'new').length,
-                processing: instanceTickets.filter(t => t.status === 'processing').length,
-                pending: instanceTickets.filter(t => t.status === 'pending').length,
-                solved: instanceTickets.filter(t => t.status === 'solved').length,
-                closed: instanceTickets.filter(t => t.status === 'closed').length,
+                new: instanceTickets.filter(t => getStatus(t) === 'new').length,
+                processing: instanceTickets.filter(t => getStatus(t) === 'processing').length,
+                pending: instanceTickets.filter(t => getStatus(t) === 'pending').length,
+                solved: instanceTickets.filter(t => getStatus(t) === 'solved').length,
+                closed: instanceTickets.filter(t => getStatus(t) === 'closed').length,
                 tickets: instanceTickets
             };
         }
@@ -2782,456 +2976,495 @@ ${JSON.stringify(error, null, 2)}
         }
 
         function renderFullDashboard(tickets) {
+            console.log(`renderFullDashboard received: ${tickets?.length || 0} tickets`);
+            
+            // Debug: ver valores únicos de instance
+            const uniqueInstances = [...new Set(tickets.map(t => t.instance))];
+            console.log('Unique instances:', uniqueInstances);
+            
+            const petaCount = tickets.filter(t => t.instance?.toLowerCase() === 'peta').length;
+            const gmxCount = tickets.filter(t => t.instance?.toLowerCase() === 'gmx').length;
+            console.log(`Peta: ${petaCount}, GMX: ${gmxCount}, Total: ${petaCount + gmxCount}`);
+            
             window.ticketsBySolution = null;
             const petaStats = getInstanceStats(tickets, 'Peta');
             const gmxStats = getInstanceStats(tickets, 'GMX');
             const petaAvgPending = getAvgPendingTime(petaStats.tickets);
             const gmxAvgPending = getAvgPendingTime(gmxStats.tickets);
-            const overallAvgPending = getAvgPendingTime(tickets);
-
-            const now = new Date();
-            const currentMonth = now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-
-            const currentMonthTickets = getTicketsByPeriod(tickets, 30);
-            const petaCurrentMonth = getTicketsByPeriod(petaStats.tickets, 30);
-            const gmxCurrentMonth = getTicketsByPeriod(gmxStats.tickets, 30);
-
-            const closedCurrentMonth = getTicketsClosedInPeriod(tickets, 30);
-            const petaClosedMonth = getTicketsClosedInPeriod(petaStats.tickets, 30);
-            const gmxClosedMonth = getTicketsClosedInPeriod(gmxStats.tickets, 30);
-
-            // Get SLA overdue tickets
             const slaOverdue = tickets.filter(t => t.isSlaLate);
+            const slaOverdueSorted = [...slaOverdue].sort((a, b) => new Date(a.dueDate || 0) - new Date(b.dueDate || 0));
 
-            // Get tickets by entity
             const ticketsByEntity = {};
             tickets.forEach(t => {
                 const entity = t.entity || 'Sem Entidade';
-                if (!ticketsByEntity[entity]) {
-                    ticketsByEntity[entity] = { total: 0, peta: 0, gmx: 0 };
-                }
+                if (!ticketsByEntity[entity]) ticketsByEntity[entity] = { total: 0, peta: 0, gmx: 0 };
                 ticketsByEntity[entity].total++;
-                if (t.instance === 'Peta') ticketsByEntity[entity].peta++;
-                if (t.instance === 'GMX') ticketsByEntity[entity].gmx++;
+                if (t.instance?.toLowerCase() === 'peta') ticketsByEntity[entity].peta++;
+                if (t.instance?.toLowerCase() === 'gmx') ticketsByEntity[entity].gmx++;
             });
 
-            // Get tickets by group
             window.ticketsByGroup = {};
             tickets.forEach(t => {
                 const group = t.group || 'Não atribuído';
-                if (!window.ticketsByGroup[group]) {
-                    window.ticketsByGroup[group] = { total: 0, peta: 0, gmx: 0 };
-                }
+                if (!window.ticketsByGroup[group]) window.ticketsByGroup[group] = { total: 0, peta: 0, gmx: 0 };
                 window.ticketsByGroup[group].total++;
-                if (t.instance === 'Peta') window.ticketsByGroup[group].peta++;
-                if (t.instance === 'GMX') window.ticketsByGroup[group].gmx++;
+                if (t.instance?.toLowerCase() === 'peta') window.ticketsByGroup[group].peta++;
+                if (t.instance?.toLowerCase() === 'gmx') window.ticketsByGroup[group].gmx++;
             });
             const ticketsByGroup = window.ticketsByGroup;
 
-            // Get tickets by category (full name)
             const ticketsByCategory = {};
             tickets.forEach(t => {
                 const cat = t.category || 'Sem Categoria';
-                if (!ticketsByCategory[cat]) {
-                    ticketsByCategory[cat] = { total: 0, peta: 0, gmx: 0 };
-                }
+                if (!ticketsByCategory[cat]) ticketsByCategory[cat] = { total: 0, peta: 0, gmx: 0 };
                 ticketsByCategory[cat].total++;
-                if (t.instance === 'Peta') ticketsByCategory[cat].peta++;
-                if (t.instance === 'GMX') ticketsByCategory[cat].gmx++;
+                if (t.instance?.toLowerCase() === 'peta') ticketsByCategory[cat].peta++;
+                if (t.instance?.toLowerCase() === 'gmx') ticketsByCategory[cat].gmx++;
             });
 
-            // Get tickets by solution/root category ITIL
             window.ticketsBySolution = {};
             tickets.forEach(t => {
                 const rootCat = getRootCategory(t.category) || 'Sem Categoria';
-                if (!window.ticketsBySolution[rootCat]) {
-                    window.ticketsBySolution[rootCat] = { total: 0, peta: 0, gmx: 0, fullPath: t.category };
-                }
+                if (!window.ticketsBySolution[rootCat]) window.ticketsBySolution[rootCat] = { total: 0, peta: 0, gmx: 0 };
                 window.ticketsBySolution[rootCat].total++;
-                if (t.instance === 'Peta') window.ticketsBySolution[rootCat].peta++;
-                if (t.instance === 'GMX') window.ticketsBySolution[rootCat].gmx++;
+                if (t.instance?.toLowerCase() === 'peta') window.ticketsBySolution[rootCat].peta++;
+                if (t.instance?.toLowerCase() === 'gmx') window.ticketsBySolution[rootCat].gmx++;
             });
             const ticketsBySolution = window.ticketsBySolution;
 
-            // Sort SLA overdue by most overdue
-            const slaOverdueSorted = [...slaOverdue].sort((a, b) => {
-                if (!a.dueDate) return 1;
-                if (!b.dueDate) return -1;
-                return new Date(a.dueDate) - new Date(b.dueDate);
+            // Tickets por Técnico
+            const ticketsByTechnician = {};
+            tickets.forEach(t => {
+                const tech = t.technician || 'Não atribuído';
+                const status = t.status || t.status_key || 'new';
+                if (!ticketsByTechnician[tech]) {
+                    ticketsByTechnician[tech] = { 
+                        total: 0, 
+                        processing: 0, 
+                        pending: 0, 
+                        solved: 0, 
+                        closed: 0,
+                        peta: 0,
+                        gmx: 0 
+                    };
+                }
+                ticketsByTechnician[tech].total++;
+                if (status === 'processing') ticketsByTechnician[tech].processing++;
+                if (status === 'pending') ticketsByTechnician[tech].pending++;
+                if (status === 'solved') ticketsByTechnician[tech].solved++;
+                if (status === 'closed') ticketsByTechnician[tech].closed++;
+                if (t.instance?.toLowerCase() === 'peta') ticketsByTechnician[tech].peta++;
+                if (t.instance?.toLowerCase() === 'gmx') ticketsByTechnician[tech].gmx++;
             });
+            const technicianStats = Object.entries(ticketsByTechnician)
+                .sort((a, b) => b[1].total - a[1].total);
 
-            const renderSlaTicketItem = (ticket) => {
-                const overdueDays = ticket.dueDate ? Math.floor((new Date() - new Date(ticket.dueDate)) / (1000 * 60 * 60 * 24)) : 0;
-                const overdueText = overdueDays > 0 ? `${overdueDays}d atrasado` : 'Atrasado';
-                return `
-                    <div class="sla-ticket-item">
-                        <div class="sla-ticket-info">
-                            <a class="sla-ticket-id" href="${ticket.instanceUrl}${ticket.id}" target="_blank">#${ticket.id}</a>
-                            <span class="sla-ticket-title" title="${ticket.title}">${ticket.title}</span>
-                            <span class="category-full-name">${ticket.category}</span>
-                        </div>
-                        <div class="sla-ticket-meta">
-                            <span class="sla-ticket-status ${ticket.status}">${ticket.statusName}</span>
-                            <span class="sla-ticket-due">${overdueText}</span>
-                        </div>
-                    </div>
-                `;
+            // Build HTML sections using helper functions
+            const htmlPeta = renderTailwindInstanceSummary('Peta', petaStats, petaAvgPending, 'blue');
+            const htmlGmx = renderTailwindInstanceSummary('GMX', gmxStats, gmxAvgPending, 'orange');
+            const htmlSla = renderSlaSection(slaOverdue);
+            const htmlTechnician = renderTechnicianCards(ticketsByTechnician);
+            const htmlEntity = renderEntityCards(ticketsByEntity);
+            const htmlGroup = renderGroupBars(ticketsByGroup);
+            const htmlSolution = renderSolutionBars(ticketsBySolution);
+            const htmlCategory = renderCategoryCards(ticketsByCategory);
+            const htmlPeriod = renderTailwindPeriodContent(tickets, 30);
+
+            // Set default period button - show ALL tickets by default
+            setTimeout(() => {
+                const defaultBtn = document.querySelector('[data-period="total"]');
+                if (defaultBtn) {
+                    document.querySelectorAll('.period-btn').forEach(b => {
+                        b.classList.remove('bg-blue-600', 'text-white');
+                        b.classList.add('bg-gray-200', 'text-gray-700');
+                    });
+                    defaultBtn.classList.remove('bg-gray-200', 'text-gray-700');
+                    defaultBtn.classList.add('bg-blue-600', 'text-white');
+                }
+            }, 100);
+
+            return '<div class="p-6">' +
+                '<div class="bg-white rounded-lg shadow p-6 mb-6">' +
+                    '<h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">' +
+                        '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>' +
+                        'Resumo por Instância' +
+                    '</h2>' +
+                    '<div class="grid grid-cols-1 md:grid-cols-2 gap-6">' + htmlPeta + htmlGmx + '</div>' +
+                '</div>' +
+                '<div class="bg-white rounded-lg shadow p-6 mb-6">' +
+                    '<h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">' +
+                        '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>' +
+                        'Tickets por Técnico' +
+                    '</h2>' +
+                    '<div class="overflow-x-auto">' + htmlTechnician + '</div>' +
+                '</div>' +
+                htmlSla +
+                '<div class="bg-white rounded-lg shadow p-6 mb-6">' +
+                    '<h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">' +
+                        '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>' +
+                        'Tickets por Entidade' +
+                    '</h2>' +
+                    '<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">' + htmlEntity + '</div>' +
+                '</div>' +
+                '<div class="bg-white rounded-lg shadow p-6 mb-6">' +
+                    '<h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">' +
+                        '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>' +
+                        'Tickets por Grupo Responsável' +
+                    '</h2>' +
+                    '<div class="space-y-3">' + htmlGroup + '</div>' +
+                '</div>' +
+                '<div class="bg-white rounded-lg shadow p-6 mb-6">' +
+                    '<h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">' +
+                        '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>' +
+                        'Tickets por Solução (Raiz ITIL)' +
+                    '</h2>' +
+                    '<div class="space-y-3">' + htmlSolution + '</div>' +
+                '</div>' +
+                '<div class="bg-white rounded-lg shadow p-6 mb-6">' +
+                    '<h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">' +
+                        '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>' +
+                        'Tickets por Categoria (ITIL Completa)' +
+                    '</h2>' +
+                    '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">' + htmlCategory + '</div>' +
+                '</div>' +
+                '<div class="bg-white rounded-lg shadow p-6 mb-6">' +
+                    '<h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">' +
+                        '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>' +
+                        'Tickets por Período' +
+                    '</h2>' +
+                    '<div class="flex gap-2 mb-6" id="periodButtons">' +
+                        '<button class="period-btn px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors" data-period="total" onclick="filterPeriod(this)">Total</button>' +
+                        '<button class="period-btn px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors" data-period="30" onclick="filterPeriod(this)">Últimos 30 dias</button>' +
+                        '<button class="period-btn px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors" data-period="60" onclick="filterPeriod(this)">Últimos 60 dias</button>' +
+                        '<button class="period-btn px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors" data-period="90" onclick="filterPeriod(this)">Últimos 90 dias</button>' +
+                        '<button class="period-btn px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors" data-period="365" onclick="filterPeriod(this)">Este Ano</button>' +
+                    '</div>' +
+                    '<div id="periodContent">' + htmlPeriod + '</div>' +
+                '</div>' +
+                '<div class="bg-white rounded-lg shadow p-6">' +
+                    '<h2 class="text-xl font-bold text-gray-800 mb-4">Ações Rápidas</h2>' +
+                    '<div class="flex gap-4 flex-wrap">' +
+                        '<a href="kanban.html" class="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100">Visualizar Kanban</a>' +
+                        '<a href="tickets-ativos.html" class="flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100">Tickets Ativos</a>' +
+                        '<a href="tickets-em-espera.html" class="flex items-center gap-2 px-4 py-2 bg-orange-50 text-orange-700 rounded-lg hover:bg-orange-100">Tickets em Espera</a>' +
+                        '<a href="aprovacao.html" class="flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100">Aprovação</a>' +
+                        '<a href="relatorios.html" class="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">Relatórios</a>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+        }
+
+        function renderSlaSection(slaOverdue) {
+            const petaCount = slaOverdue.filter(t => t.instance?.toLowerCase() === 'peta').length;
+            const gmxCount = slaOverdue.filter(t => t.instance?.toLowerCase() === 'gmx').length;
+            const pendingCount = slaOverdue.filter(t => t.status === 'pending').length;
+            const processingCount = slaOverdue.filter(t => t.status === 'processing').length;
+            
+            let tableHtml = '';
+            if (slaOverdue.length > 0) {
+                const rows = slaOverdue.slice(0, 15).map(ticket => {
+                    const overdueDays = ticket.dueDate ? Math.floor((new Date() - new Date(ticket.dueDate)) / (1000 * 60 * 60 * 24)) : 0;
+                    const statusClass = ticket.status === 'pending' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700';
+                    return '<tr class="border-t hover:bg-gray-50">' +
+                        '<td class="px-3 py-2"><a href="' + ticket.instanceUrl + ticket.id + '" target="_blank" class="text-blue-600 hover:underline">#' + ticket.id + '</a></td>' +
+                        '<td class="px-3 py-2 max-w-xs truncate">' + (ticket.title || '') + '</td>' +
+                        '<td class="px-3 py-2 text-gray-600">' + (ticket.entity || '-') + '</td>' +
+                        '<td class="px-3 py-2"><span class="px-2 py-1 rounded text-xs font-medium ' + statusClass + '">' + (ticket.statusName || '') + '</span></td>' +
+                        '<td class="px-3 py-2 text-red-600 font-medium">' + overdueDays + 'd</td>' +
+                    '</tr>';
+                }).join('');
+                
+                tableHtml = '<div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr>' +
+                    '<th class="px-3 py-2 text-left font-medium text-gray-600">ID</th>' +
+                    '<th class="px-3 py-2 text-left font-medium text-gray-600">Título</th>' +
+                    '<th class="px-3 py-2 text-left font-medium text-gray-600">Entidade</th>' +
+                    '<th class="px-3 py-2 text-left font-medium text-gray-600">Status</th>' +
+                    '<th class="px-3 py-2 text-left font-medium text-gray-600">Atraso</th>' +
+                    '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+                if (slaOverdue.length > 15) {
+                    tableHtml += '<div class="text-center py-2 text-gray-500 text-sm">Mostrando 15 de ' + slaOverdue.length + ' tickets</div>';
+                }
+            } else {
+                tableHtml = '<div class="text-center py-8 text-gray-500">Nenhum ticket com SLA atrasado</div>';
+            }
+            
+            return '<div class="bg-white rounded-lg shadow p-6 mb-6">' +
+                '<h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">' +
+                    '<svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>' +
+                    'Tickets com SLA Fora do Prazo' +
+                '</h2>' +
+                '<div class="flex gap-4 mb-4">' +
+                    '<div class="flex-1 bg-red-50 border border-red-200 rounded-lg p-4 text-center">' +
+                        '<div class="text-3xl font-bold text-red-600">' + slaOverdue.length + '</div>' +
+                        '<div class="text-sm text-red-700">Total SLA Excedido</div>' +
+                        '<div class="text-xs mt-1"><span class="text-blue-600">Peta: ' + petaCount + '</span> · <span class="text-orange-600">GMX: ' + gmxCount + '</span></div>' +
+                    '</div>' +
+                    '<div class="flex-1 bg-amber-50 border border-amber-200 rounded-lg p-4 text-center">' +
+                        '<div class="text-3xl font-bold text-amber-600">' + pendingCount + '</div>' +
+                        '<div class="text-sm text-amber-700">Aguardando Ação</div>' +
+                    '</div>' +
+                    '<div class="flex-1 bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">' +
+                        '<div class="text-3xl font-bold text-blue-600">' + processingCount + '</div>' +
+                        '<div class="text-sm text-blue-700">Em Atendimento</div>' +
+                    '</div>' +
+                '</div>' +
+                tableHtml +
+            '</div>';
+        }
+
+        function renderEntityCards(ticketsByEntity) {
+            const sorted = Object.entries(ticketsByEntity).sort((a, b) => b[1].total - a[1].total).slice(0, 12);
+            return sorted.map(([entity, stats]) => 
+                '<div class="border rounded-lg p-4 hover:shadow-md transition-shadow">' +
+                    '<div class="text-sm font-medium text-gray-700 truncate">' + entity + '</div>' +
+                    '<div class="text-2xl font-bold text-gray-800 mt-1">' + stats.total + '</div>' +
+                    '<div class="text-xs mt-1 flex justify-between"><span class="text-blue-600">Peta: ' + stats.peta + '</span><span class="text-orange-600">GMX: ' + stats.gmx + '</span></div>' +
+                '</div>'
+            ).join('');
+        }
+
+        function renderGroupBars(ticketsByGroup) {
+            const sorted = Object.entries(ticketsByGroup).sort((a, b) => b[1].total - a[1].total).slice(0, 15);
+            const maxTotal = Math.max(...sorted.map(([, s]) => s.total), 1);
+            return sorted.map(([group, stats]) => {
+                const pct = (stats.total / maxTotal * 100);
+                const barColor = (stats.peta > 0 && stats.gmx === 0) ? 'bg-blue-500' : ((stats.gmx > 0 && stats.peta === 0) ? 'bg-orange-500' : 'bg-gradient-to-r from-blue-500 to-orange-500');
+                return '<div class="flex items-center gap-3">' +
+                    '<div class="w-32 truncate text-sm font-medium text-gray-700">' + group + '</div>' +
+                    '<div class="flex-1 h-6 bg-gray-100 rounded-full overflow-hidden">' +
+                        '<div class="' + barColor + ' h-full rounded-full flex items-center justify-end pr-2" style="width: ' + pct + '%">' +
+                            '<span class="text-xs font-bold text-white">' + stats.total + '</span>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="w-16 text-xs text-gray-500 text-right"><span class="text-blue-600">' + stats.peta + '</span> · <span class="text-orange-600">' + stats.gmx + '</span></div>' +
+                '</div>';
+            }).join('');
+        }
+
+        function renderSolutionBars(ticketsBySolution) {
+            const sorted = Object.entries(ticketsBySolution).sort((a, b) => b[1].total - a[1].total).slice(0, 15);
+            const maxTotal = Math.max(...sorted.map(([, s]) => s.total), 1);
+            return sorted.map(([rootCat, stats]) => {
+                const pct = (stats.total / maxTotal * 100);
+                const barColor = (stats.peta > 0 && stats.gmx === 0) ? 'bg-purple-500' : ((stats.gmx > 0 && stats.peta === 0) ? 'bg-green-500' : 'bg-gradient-to-r from-purple-500 to-green-500');
+                return '<div class="flex items-center gap-3">' +
+                    '<div class="w-40 truncate text-sm font-medium text-gray-700">' + rootCat + '</div>' +
+                    '<div class="flex-1 h-6 bg-gray-100 rounded-full overflow-hidden">' +
+                        '<div class="' + barColor + ' h-full rounded-full flex items-center justify-end pr-2" style="width: ' + pct + '%">' +
+                            '<span class="text-xs font-bold text-white">' + stats.total + '</span>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="w-16 text-xs text-gray-500 text-right"><span class="text-blue-600">' + stats.peta + '</span> · <span class="text-orange-600">' + stats.gmx + '</span></div>' +
+                '</div>';
+            }).join('');
+        }
+
+        function renderCategoryCards(ticketsByCategory) {
+            const sorted = Object.entries(ticketsByCategory).sort((a, b) => b[1].total - a[1].total).slice(0, 18);
+            return sorted.map(([cat, stats]) => {
+                const shortCat = cat.length > 45 ? cat.substring(0, 45) + '...' : cat;
+                return '<div class="border rounded-lg p-3 hover:shadow-md transition-shadow">' +
+                    '<div class="text-sm font-medium text-gray-700 truncate">' + shortCat + '</div>' +
+                    '<div class="flex items-center justify-between mt-2">' +
+                        '<div class="text-xl font-bold text-gray-800">' + stats.total + '</div>' +
+                        '<div class="text-xs flex gap-2"><span class="px-2 py-1 bg-blue-100 text-blue-700 rounded">P: ' + stats.peta + '</span><span class="px-2 py-1 bg-orange-100 text-orange-700 rounded">G: ' + stats.gmx + '</span></div>' +
+                    '</div>' +
+                '</div>';
+            }).join('');
+        }
+
+        function renderTechnicianCards(ticketsByTechnician) {
+            const sorted = Object.entries(ticketsByTechnician).sort((a, b) => b[1].total - a[1].total);
+            if (sorted.length === 0) {
+                return '<div class="text-gray-500 text-center py-4">Nenhum técnico encontrado</div>';
+            }
+            return '<table class="min-w-full divide-y divide-gray-200">' +
+                '<thead class="bg-gray-50">' +
+                    '<tr>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Técnico</th>' +
+                        '<th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Total</th>' +
+                        '<th class="px-4 py-3 text-center text-xs font-medium text-blue-600">Em Andamento</th>' +
+                        '<th class="px-4 py-3 text-center text-xs font-medium text-orange-600">Pendente</th>' +
+                        '<th class="px-4 py-3 text-center text-xs font-medium text-green-600">Solucionado</th>' +
+                        '<th class="px-4 py-3 text-center text-xs font-medium text-gray-600">Fechado</th>' +
+                        '<th class="px-4 py-3 text-center text-xs font-medium text-gray-500">PETA · GMX</th>' +
+                    '</tr>' +
+                '</thead>' +
+                '<tbody class="bg-white divide-y divide-gray-200">' +
+                sorted.slice(0, 20).map(([tech, stats]) => {
+                    return '<tr class="hover:bg-gray-50">' +
+                        '<td class="px-4 py-3 text-sm font-medium text-gray-900">' + tech + '</td>' +
+                        '<td class="px-4 py-3 text-center text-sm font-bold text-gray-800">' + stats.total + '</td>' +
+                        '<td class="px-4 py-3 text-center text-sm">' +
+                            (stats.processing > 0 ? '<span class="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">' + stats.processing + '</span>' : '<span class="text-gray-400">0</span>') +
+                        '</td>' +
+                        '<td class="px-4 py-3 text-center text-sm">' +
+                            (stats.pending > 0 ? '<span class="px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-medium">' + stats.pending + '</span>' : '<span class="text-gray-400">0</span>') +
+                        '</td>' +
+                        '<td class="px-4 py-3 text-center text-sm">' +
+                            (stats.solved > 0 ? '<span class="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">' + stats.solved + '</span>' : '<span class="text-gray-400">0</span>') +
+                        '</td>' +
+                        '<td class="px-4 py-3 text-center text-sm">' +
+                            (stats.closed > 0 ? '<span class="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">' + stats.closed + '</span>' : '<span class="text-gray-400">0</span>') +
+                        '</td>' +
+                        '<td class="px-4 py-3 text-center text-xs text-gray-500"><span class="text-blue-600">' + stats.peta + '</span> · <span class="text-orange-600">' + stats.gmx + '</span></td>' +
+                    '</tr>';
+                }).join('') +
+                '</tbody>' +
+            '</table>';
+        }
+
+        function renderTailwindInstanceSummary(instanceName, stats, avgPending, color) {
+            const colorClasses = {
+                blue: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-600', dark: 'text-blue-800' },
+                orange: { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-600', dark: 'text-orange-800' }
             };
-
+            const c = colorClasses[color];
             return `
-                <div class="dashboard-section">
-                    <h2 class="dashboard-section-title">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                            <line x1="8" y1="21" x2="16" y2="21"></line>
-                            <line x1="12" y1="17" x2="12" y2="21"></line>
-                        </svg>
-                        Resumo por Instância
-                    </h2>
-                    <div class="instance-row">
-                        ${renderInstanceSummary('Peta', petaStats, petaAvgPending, '#2563eb')}
-                        ${renderInstanceSummary('GMX', gmxStats, gmxAvgPending, '#ea580c')}
+                <div class="border rounded-xl p-5 ${c.bg}">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold text-lg ${c.dark}">${instanceName === 'Peta' ? 'Peta' : 'GMX Tecnologia'}</h3>
+                        <span class="px-2 py-1 bg-white rounded text-xs font-medium ${c.text}">${instanceName.toUpperCase()}</span>
                     </div>
-                </div>
-
-                <div class="dashboard-section">
-                    <h2 class="dashboard-section-title">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="12" y1="8" x2="12" y2="12"></line>
-                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                        </svg>
-                        Tickets com SLA Fora do Prazo
-                    </h2>
-                    <div class="sla-alert-cards">
-                        <div class="sla-alert-card late">
-                            <div class="sla-alert-value">${slaOverdue.length}</div>
-                            <div class="sla-alert-label">Total SLA Excedido</div>
-                            <div class="sla-alert-detail">
-                                <span style="color: #2563eb;">Peta: ${slaOverdue.filter(t => t.instance === 'Peta').length}</span> · 
-                                <span style="color: #ea580c;">GMX: ${slaOverdue.filter(t => t.instance === 'GMX').length}</span>
-                            </div>
+                    <div class="grid grid-cols-5 gap-2 mb-4">
+                        <div class="text-center">
+                            <div class="text-xl font-bold ${c.text}">${stats.new}</div>
+                            <div class="text-xs text-gray-600">Novos</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-xl font-bold ${c.text}">${stats.processing}</div>
+                            <div class="text-xs text-gray-600">Em Att</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-xl font-bold ${c.text}">${stats.pending}</div>
+                            <div class="text-xs text-gray-600">Pendente</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-xl font-bold ${c.text}">${stats.solved}</div>
+                            <div class="text-xs text-gray-600">Solucionado</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-xl font-bold ${c.text}">${stats.closed}</div>
+                            <div class="text-xs text-gray-600">Fechado</div>
                         </div>
                     </div>
-                    ${slaOverdue.length > 0 ? `
-                    <div class="sla-list" style="margin-top: 16px;">
-                        ${slaOverdueSorted.slice(0, 20).map(renderSlaTicketItem).join('')}
-                        ${slaOverdue.length > 20 ? `<div style="text-align: center; padding: 12px; color: var(--text-muted); font-size: 0.8rem;">Mostrando 20 de ${slaOverdue.length} tickets</div>` : ''}
-                    </div>
-                    ` : ''}
-                </div>
-
-                <div class="dashboard-section">
-                    <h2 class="dashboard-section-title">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
-                        </svg>
-                        Tickets por Entidade
-                    </h2>
-                    <div class="stats-grid">
-                        ${Object.entries(ticketsByEntity)
-                            .sort((a, b) => b[1].total - a[1].total)
-                            .slice(0, 10)
-                            .map(([entity, stats]) => `
-                                <div class="stat-card-full" title="${entity}">
-                                    <div class="stat-name">${entity}</div>
-                                    <div class="stat-value">${stats.total}</div>
-                                    <div class="stat-meta">
-                                        <span style="color: #2563eb;">P: ${stats.peta}</span> · 
-                                        <span style="color: #ea580c;">G: ${stats.gmx}</span>
-                                    </div>
-                                </div>
-                            `).join('')}
-                    </div>
-                </div>
-
-                <div class="dashboard-section">
-                    <h2 class="dashboard-section-title">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="9" cy="7" r="4"></circle>
-                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                        </svg>
-                        Tickets por Grupo Responsável
-                    </h2>
-                    <div class="bar-legend">
-                        <div class="bar-legend-item">
-                            <span class="bar-legend-dot peta"></span>
-                            <span>Peta</span>
+                    <div class="grid grid-cols-2 gap-3 pt-3 border-t border-${color}-200">
+                        <div class="text-center">
+                            <div class="text-2xl font-bold ${c.dark}">${stats.total}</div>
+                            <div class="text-xs text-gray-500">Total</div>
                         </div>
-                        <div class="bar-legend-item">
-                            <span class="bar-legend-dot gmx"></span>
-                            <span>GMX</span>
+                        <div class="text-center">
+                            <div class="text-2xl font-bold ${c.dark}">${avgPending.time}</div>
+                            <div class="text-xs text-gray-500">Tmp. Médio</div>
                         </div>
-                    </div>
-                    <div class="bar-chart">
-                        ${(() => {
-                            const sorted = Object.entries(ticketsByGroup).sort((a, b) => b[1].total - a[1].total);
-                            const maxTotal = Math.max(...sorted.map(([, s]) => s.total), 1);
-                            const top20 = sorted.slice(0, 20);
-                            return `
-                                ${top20.map(([group, stats]) => {
-                                    const widthPct = maxTotal > 0 ? (stats.total / maxTotal * 100) : 0;
-                                    const hasPeta = stats.peta > 0;
-                                    const hasGmx = stats.gmx > 0;
-                                    const barClass = hasPeta && hasGmx ? 'mixed' : (hasPeta ? 'peta' : 'gmx');
-                                    return `
-                                        <div class="bar-item" title="Grupo: ${group} | Total: ${stats.total} (P: ${stats.peta}, G: ${stats.gmx})">
-                                            <span class="bar-label">${group}</span>
-                                            <div class="bar-container">
-                                                <div class="bar-fill ${barClass}" style="width: ${widthPct}%">
-                                                    <span class="bar-value">${stats.total}</span>
-                                                </div>
-                                            </div>
-                                            <span class="bar-total">${stats.total}</span>
-                                        </div>
-                                    `;
-                                }).join('')}
-                                ${sorted.length > 20 ? `
-                                    <div id="groupExpandBtn" class="expand-btn" onclick="toggleGroupChart(this)">
-                                        <span>Ver todos os ${sorted.length} grupos</span>
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <polyline points="6 9 12 15 18 9"></polyline>
-                                        </svg>
-                                    </div>
-                                    <div id="groupExtraItems" style="display: none;">
-                                        ${sorted.slice(20).map(([group, stats]) => {
-                                            const widthPct = maxTotal > 0 ? (stats.total / maxTotal * 100) : 0;
-                                            const hasPeta = stats.peta > 0;
-                                            const hasGmx = stats.gmx > 0;
-                                            const barClass = hasPeta && hasGmx ? 'mixed' : (hasPeta ? 'peta' : 'gmx');
-                                            return `
-                                                <div class="bar-item" title="Grupo: ${group} | Total: ${stats.total} (P: ${stats.peta}, G: ${stats.gmx})">
-                                                    <span class="bar-label">${group}</span>
-                                                    <div class="bar-container">
-                                                        <div class="bar-fill ${barClass}" style="width: ${widthPct}%">
-                                                            <span class="bar-value">${stats.total}</span>
-                                                        </div>
-                                                    </div>
-                                                    <span class="bar-total">${stats.total}</span>
-                                                </div>
-                                            `;
-                                        }).join('')}
-                                    </div>
-                                ` : ''}
-                            `;
-                        })()}
-                    </div>
-                </div>
-
-                <div class="dashboard-section">
-                    <h2 class="dashboard-section-title">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline>
-                            <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
-                        </svg>
-                        Tickets por Solução (Raiz da Categoria ITIL)
-                    </h2>
-                    <div class="bar-legend">
-                        <div class="bar-legend-item">
-                            <span class="bar-legend-dot peta"></span>
-                            <span>Peta</span>
-                        </div>
-                        <div class="bar-legend-item">
-                            <span class="bar-legend-dot gmx"></span>
-                            <span>GMX</span>
-                        </div>
-                    </div>
-                    <div class="bar-chart" id="solutionChart">
-                        ${(() => {
-                            const sorted = Object.entries(ticketsBySolution).sort((a, b) => b[1].total - a[1].total);
-                            const maxTotal = Math.max(...sorted.map(([, s]) => s.total));
-                            const top20 = sorted.slice(0, 20);
-                            return `
-                                ${top20.map(([rootCat, stats]) => {
-                                    const widthPct = maxTotal > 0 ? (stats.total / maxTotal * 100) : 0;
-                                    const hasPeta = stats.peta > 0;
-                                    const hasGmx = stats.gmx > 0;
-                                    const barClass = hasPeta && hasGmx ? 'mixed' : (hasPeta ? 'peta' : 'gmx');
-                                    return `
-                                        <div class="bar-item" title="Raiz: ${rootCat} | Total: ${stats.total} (P: ${stats.peta}, G: ${stats.gmx})">
-                                            <span class="bar-label">${rootCat}</span>
-                                            <div class="bar-container">
-                                                <div class="bar-fill ${barClass}" style="width: ${widthPct}%">
-                                                    <span class="bar-value">${stats.total}</span>
-                                                </div>
-                                            </div>
-                                            <span class="bar-total">${stats.total}</span>
-                                        </div>
-                                    `;
-                                }).join('')}
-                                ${sorted.length > 20 ? `
-                                    <div id="solutionExpandBtn" class="expand-btn" onclick="toggleSolutionChart(this)">
-                                        <span>Ver todas as ${sorted.length} categorias</span>
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <polyline points="6 9 12 15 18 9"></polyline>
-                                        </svg>
-                                    </div>
-                                    <div id="solutionExtraItems" style="display: none;">
-                                        ${sorted.slice(20).map(([rootCat, stats]) => {
-                                            const widthPct = maxTotal > 0 ? (stats.total / maxTotal * 100) : 0;
-                                            const hasPeta = stats.peta > 0;
-                                            const hasGmx = stats.gmx > 0;
-                                            const barClass = hasPeta && hasGmx ? 'mixed' : (hasPeta ? 'peta' : 'gmx');
-                                            return `
-                                                <div class="bar-item" title="Raiz: ${rootCat} | Total: ${stats.total} (P: ${stats.peta}, G: ${stats.gmx})">
-                                                    <span class="bar-label">${rootCat}</span>
-                                                    <div class="bar-container">
-                                                        <div class="bar-fill ${barClass}" style="width: ${widthPct}%">
-                                                            <span class="bar-value">${stats.total}</span>
-                                                        </div>
-                                                    </div>
-                                                    <span class="bar-total">${stats.total}</span>
-                                                </div>
-                                            `;
-                                        }).join('')}
-                                    </div>
-                                ` : ''}
-                            `;
-                        })()}
-                    </div>
-                </div>
-
-                <div class="dashboard-section">
-                    <h2 class="dashboard-section-title">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="8" y1="6" x2="21" y2="6"></line>
-                            <line x1="8" y1="12" x2="21" y2="12"></line>
-                            <line x1="8" y1="18" x2="21" y2="18"></line>
-                            <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                            <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                            <line x1="3" y1="18" x2="3.01" y2="18"></line>
-                        </svg>
-                        Tickets por Categoria (ITIL Completa)
-                    </h2>
-                    <div class="stats-grid">
-                        ${Object.entries(ticketsByCategory)
-                            .sort((a, b) => b[1].total - a[1].total)
-                            .slice(0, 15)
-                            .map(([cat, stats]) => `
-                                <div class="stat-card-full" title="${cat}">
-                                    <div class="stat-name">${cat.length > 40 ? cat.substring(0, 40) + '...' : cat}</div>
-                                    <div class="stat-value">${stats.total}</div>
-                                    <div class="stat-meta">
-                                        <span style="color: #2563eb;">P: ${stats.peta}</span> · 
-                                        <span style="color: #ea580c;">G: ${stats.gmx}</span>
-                                    </div>
-                                </div>
-                            `).join('')}
-                    </div>
-                </div>
-
-                <div class="dashboard-section">
-                    <h2 class="dashboard-section-title">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                            <line x1="16" y1="2" x2="16" y2="6"></line>
-                            <line x1="8" y1="2" x2="8" y2="6"></line>
-                            <line x1="3" y1="10" x2="21" y2="10"></line>
-                        </svg>
-                        Tickets por Período
-                    </h2>
-                    <div class="period-filter">
-                        <button class="period-btn active" data-period="30" onclick="updatePeriodFilter(this, tickets)">Este Mês</button>
-                        <button class="period-btn" data-period="60" onclick="updatePeriodFilter(this, tickets)">Últimos 60 dias</button>
-                        <button class="period-btn" data-period="90" onclick="updatePeriodFilter(this, tickets)">Últimos 90 dias</button>
-                    </div>
-                    <div id="periodContent">
-                        ${renderPeriodContent(tickets, 30)}
-                    </div>
-                </div>
-
-                <div class="dashboard-section">
-                    <h2 class="dashboard-section-title">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-                        </svg>
-                        Ações Rápidas
-                    </h2>
-                    <div class="quick-actions">
-                        <a href="kanban.html" class="quick-action">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="3" y="3" width="7" height="7"></rect>
-                                <rect x="14" y="3" width="7" height="7"></rect>
-                                <rect x="14" y="14" width="7" height="7"></rect>
-                                <rect x="3" y="14" width="7" height="7"></rect>
-                            </svg>
-                            Visualizar Kanban
-                        </a>
-                        <a href="tickets-ativos.html" class="quick-action">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                                <polyline points="22,6 12,13 2,6"></polyline>
-                            </svg>
-                            Tickets Ativos
-                        </a>
                     </div>
                 </div>
             `;
         }
 
-        function renderPeriodContent(tickets, days) {
+        function renderTailwindPeriodContent(tickets, days) {
             const periodTickets = getTicketsByPeriod(tickets, days);
             const closedTickets = getTicketsClosedInPeriod(tickets, days);
-
-            const petaPeriod = getTicketsByPeriod(periodTickets.filter(t => t.instance === 'Peta'), days);
-            const gmxPeriod = getTicketsByPeriod(periodTickets.filter(t => t.instance === 'GMX'), days);
-            const petaClosed = getTicketsClosedInPeriod(closedTickets.filter(t => t.instance === 'Peta'), days);
-            const gmxClosed = getTicketsClosedInPeriod(closedTickets.filter(t => t.instance === 'GMX'), days);
-
-            const periodLabel = days === 30 ? 'Este Mês' : `Últimos ${days} dias`;
-
+            const petaPeriod = periodTickets.filter(t => t.instance?.toLowerCase() === 'peta');
+            const gmxPeriod = periodTickets.filter(t => t.instance?.toLowerCase() === 'gmx');
+            const petaClosed = closedTickets.filter(t => t.instance?.toLowerCase() === 'peta');
+            const gmxClosed = closedTickets.filter(t => t.instance?.toLowerCase() === 'gmx');
+            
+            const petaClosedCount = petaClosed.length;
+            const gmxClosedCount = gmxClosed.length;
+            const totalOpened = periodTickets.length;
+            const totalClosed = closedTickets.length;
+            const closureRate = totalOpened > 0 ? Math.round((totalClosed / totalOpened) * 100) : 0;
+            
             return `
-                <div class="period-summary">
-                    <div class="period-card">
-                        <div class="period-card-header">
-                            <span class="period-card-title">Abertos</span>
-                        </div>
-                        <div class="period-card-value">${periodTickets.length}</div>
-                        <div class="period-card-meta">
-                            <span style="color: #2563eb;">Peta: ${petaPeriod.length}</span> · 
-                            <span style="color: #ea580c;">GMX: ${gmxPeriod.length}</span>
-                        </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-gray-50 rounded-lg p-4 text-center">
+                        <div class="text-3xl font-bold text-gray-800">${totalOpened}</div>
+                        <div class="text-sm text-gray-600">Abertos no Período</div>
+                        <div class="text-xs mt-1 text-blue-600">Peta: ${petaPeriod.length}</div>
+                        <div class="text-xs text-orange-600">GMX: ${gmxPeriod.length}</div>
                     </div>
-                    <div class="period-card">
-                        <div class="period-card-header">
-                            <span class="period-card-title">Fechados</span>
-                        </div>
-                        <div class="period-card-value">${closedTickets.length}</div>
-                        <div class="period-card-meta">
-                            <span style="color: #2563eb;">Peta: ${petaClosed.length}</span> · 
-                            <span style="color: #ea580c;">GMX: ${gmxClosed.length}</span>
-                        </div>
+                    <div class="bg-gray-50 rounded-lg p-4 text-center">
+                        <div class="text-3xl font-bold text-green-600">${totalClosed}</div>
+                        <div class="text-sm text-gray-600">Fechados no Período</div>
+                        <div class="text-xs mt-1 text-blue-600">Peta: ${petaClosedCount}</div>
+                        <div class="text-xs text-orange-600">GMX: ${gmxClosedCount}</div>
                     </div>
-                    <div class="period-card">
-                        <div class="period-card-header">
-                            <span class="period-card-title">Em Aberto</span>
-                        </div>
-                        <div class="period-card-value">${periodTickets.length - closedTickets.length}</div>
-                        <div class="period-card-meta">
-                            Saldo do período
-                        </div>
+                    <div class="bg-gray-50 rounded-lg p-4 text-center">
+                        <div class="text-3xl font-bold text-purple-600">${closureRate}%</div>
+                        <div class="text-sm text-gray-600">Taxa de Fechamento</div>
+                        <div class="text-xs mt-1 text-gray-500">Fechados / Abertos</div>
                     </div>
-                    <div class="period-card">
-                        <div class="period-card-header">
-                            <span class="period-card-title">Taxa Fechamento</span>
-                        </div>
-                        <div class="period-card-value">${periodTickets.length > 0 ? Math.round(closedTickets.length / periodTickets.length * 100) : 0}%</div>
-                        <div class="period-card-meta">
-                            Fechados / Abertos
-                        </div>
+                    <div class="bg-gray-50 rounded-lg p-4 text-center">
+                        <div class="text-3xl font-bold text-blue-600">${Math.round(totalOpened * 30 / days)}</div>
+                        <div class="text-sm text-gray-600">Média Mensal</div>
+                        <div class="text-xs mt-1 text-gray-500">Tickets/mês</div>
                     </div>
                 </div>
             `;
         }
 
         function updatePeriodFilter(btn, tickets) {
-            document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            const days = parseInt(btn.dataset.period);
-            document.getElementById('periodContent').innerHTML = renderPeriodContent(tickets, days);
+            document.querySelectorAll('.period-btn').forEach(b => {
+                b.classList.remove('bg-blue-600', 'text-white');
+                b.classList.add('bg-gray-200', 'text-gray-700');
+            });
+            btn.classList.remove('bg-gray-200', 'text-gray-700');
+            btn.classList.add('bg-blue-600', 'text-white');
+            
+            const days = btn.dataset.period;
+            const contentDiv = document.getElementById('periodContent');
+            
+            if (days === 'total') {
+                // Show all tickets (no date filter)
+                const totalOpened = tickets.length;
+                const closedTickets = tickets.filter(t => t.status === 'closed' || t.status === 'solved');
+                const totalClosed = closedTickets.length;
+                const petaCount = tickets.filter(t => t.instance?.toLowerCase() === 'peta').length;
+                const gmxCount = tickets.filter(t => t.instance?.toLowerCase() === 'gmx').length;
+                const petaClosed = closedTickets.filter(t => t.instance?.toLowerCase() === 'peta').length;
+                const gmxClosed = closedTickets.filter(t => t.instance?.toLowerCase() === 'gmx').length;
+                const closureRate = totalOpened > 0 ? Math.round((totalClosed / totalOpened) * 100) : 0;
+                
+                contentDiv.innerHTML = renderTailwindPeriodContentAll(totalOpened, totalClosed, petaCount, gmxCount, petaClosed, gmxClosed, closureRate);
+            } else {
+                const daysNum = parseInt(days);
+                contentDiv.innerHTML = renderTailwindPeriodContent(tickets, daysNum);
+            }
+        }
+
+        function renderTailwindPeriodContentAll(totalOpened, totalClosed, petaCount, gmxCount, petaClosed, gmxClosed, closureRate) {
+            return `
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-gray-50 rounded-lg p-4 text-center">
+                        <div class="text-3xl font-bold text-gray-800">${totalOpened}</div>
+                        <div class="text-sm text-gray-600">Total de Tickets</div>
+                        <div class="text-xs mt-1 text-blue-600">Peta: ${petaCount}</div>
+                        <div class="text-xs text-orange-600">GMX: ${gmxCount}</div>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-4 text-center">
+                        <div class="text-3xl font-bold text-green-600">${totalClosed}</div>
+                        <div class="text-sm text-gray-600">Fechados/Solucionados</div>
+                        <div class="text-xs mt-1 text-blue-600">Peta: ${petaClosed}</div>
+                        <div class="text-xs text-orange-600">GMX: ${gmxClosed}</div>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-4 text-center">
+                        <div class="text-3xl font-bold text-purple-600">${closureRate}%</div>
+                        <div class="text-sm text-gray-600">Taxa de Fechamento</div>
+                        <div class="text-xs mt-1 text-gray-500">Fechados / Total</div>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-4 text-center">
+                        <div class="text-3xl font-bold text-blue-600">${totalOpened - totalClosed}</div>
+                        <div class="text-sm text-gray-600">Em Aberto</div>
+                        <div class="text-xs mt-1 text-gray-500">Total - Fechados</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Global function for period buttons
+        function filterPeriod(btn) {
+            updatePeriodFilter(btn, window.currentTickets || []);
         }
 
         function toggleSolutionChart(btn) {
@@ -3250,7 +3483,13 @@ ${JSON.stringify(error, null, 2)}
 
         function renderKanban(tickets) {
             const mainContent = document.getElementById('mainContent');
+            console.log(`renderKanban received: ${tickets.length} tickets`);
+            
+            // Store tickets globally for filter functions
+            window.currentTickets = tickets;
+            
             mainContent.innerHTML = renderFullDashboard(tickets);
+            console.log(`Dashboard rendered, innerHTML length: ${mainContent.innerHTML.length}`);
         }
 
         // Função para renderizar card de ticket
@@ -3268,7 +3507,9 @@ ${JSON.stringify(error, null, 2)}
                 `;
             }
             
-            const urgentClass = isFiltered ? 'urgent' : '';
+            const priorityInfo = ticket.priority_id ? (TICKET_PRIORITY[ticket.priority_id] || TICKET_PRIORITY[1]) : TICKET_PRIORITY[1];
+            const isUrgent = priorityInfo.key === 'urgent' || priorityInfo.key === 'critical';
+            const urgentClass = isFiltered || isUrgent ? 'urgent' : '';
             const instanceClass = ticket.instance ? ticket.instance.toLowerCase() : '';
             const cardClass = `ticket-card ${ticket.status} ${urgentClass}`.trim();
 
@@ -3281,6 +3522,10 @@ ${JSON.stringify(error, null, 2)}
                             </a>
                         </span>
                         <span class="instance-badge ${instanceClass}">${ticket.instance}</span>
+                    </div>
+                    <div class="ticket-status-row" style="display: flex; gap: 6px; align-items: center; margin-bottom: 6px;">
+                        <span class="status-badge ${ticket.status}">${getStatusIcon(ticket.status)}${ticket.statusName}</span>
+                        ${ticket.priority ? `<span class="priority-badge ${priorityInfo.key}">${getPriorityIcon()}${priorityInfo.label}</span>` : ''}
                     </div>
                     
                     <div class="ticket-entity-mini" title="${ticket.entity}">${ticket.entity}</div>
@@ -3364,8 +3609,8 @@ ${JSON.stringify(error, null, 2)}
                 exportedAt: new Date().toISOString(),
                 totalTickets: tickets.length,
                 instances: {
-                    peta: tickets.filter(t => t.instance === 'Peta').length,
-                    gmx: tickets.filter(t => t.instance === 'GMX').length
+                    peta: tickets.filter(t => t.instance?.toLowerCase() === 'peta').length,
+                    gmx: tickets.filter(t => t.instance?.toLowerCase() === 'gmx').length
                 },
                 tickets: tickets
             };
@@ -3420,77 +3665,105 @@ ${JSON.stringify(error, null, 2)}
             input.click();
         }
 
-        // Função para atualizar tickets com carregamento híbrido
+// Função para atualizar tickets com carregamento otimizado
         async function refreshTickets() {
             if (isLoading) return;
-            
             isLoading = true;
+
             const refreshBtn = document.getElementById('refreshBtn');
             const syncBtn = document.getElementById('syncBtn');
             if (refreshBtn) refreshBtn.disabled = true;
             if (syncBtn) syncBtn.disabled = true;
-            showLoading('Carregando dados...');
-            
-            console.log('🔄 Iniciando atualização híbrida de tickets...');
 
             try {
-                // Verificar se há cache local válido
-                const cachedTickets = loadCache();
-                const cacheValid = cachedTickets && cachedTickets.length > 0;
-                
-                if (cacheValid) {
-                    tickets = cachedTickets;
-                    renderKanban(tickets);
-                    console.log(`📂 Cache local carregado: ${tickets.length} tickets`);
+                console.log('[Supabase] Iniciando carregamento completo de tickets...');
+
+                let allTickets = [];
+                let page = 0;
+                const pageSize = 2000;
+                let hasMore = true;
+
+                while (hasMore) {
+                    const from = page * pageSize;
+                    const to = from + pageSize - 1;
+
+                    const { data, error } = await window._sb
+                        .from('tickets_cache')
+                        .select('*')
+                        .order('date_mod', { ascending: false })
+                        .range(from, to);
+
+                    if (error) throw new Error(`Erro na página ${page}: ${error.message}`);
+
+                    if (!data || data.length === 0) {
+                        hasMore = false;
+                    } else {
+                        allTickets = [...allTickets, ...data];
+                        page++;
+                        console.log(`[Supabase] Página ${page} → Total: ${allTickets.length}`);
+                        
+                        showLoading(`Carregando tickets... ${allTickets.length} registros`);
+                    }
                 }
 
-                // Carregar tickets diretamente do GLPI (sem limite)
-                const result = await HybridLoader.loadTickets({
-                    instances: selectedInstances,
-                    instanceConfigs: INSTANCES,
-                    onProgress: (progress) => {
-                        if (progress.stage === 'glpi') {
-                            showLoading(`GLPI: ${progress.message}`);
-                        }
-                    },
-                    useCache: false,
-                    glpiLimit: 10000 // Buscar todos os tickets (alta contagem)
-                });
+                console.log(`[Supabase] Total carregado do Supabase: ${allTickets.length}`);
 
-                tickets = result.tickets;
-                loadedCounts = { processing: INITIAL_LOAD, pending: INITIAL_LOAD, solved: INITIAL_LOAD, closed: INITIAL_LOAD };
+                // Mapear para formato do dashboard
+                tickets = allTickets.map(t => ({
+                    id: t.ticket_id,
+                    title: t.title,
+                    entity: t.entity,
+                    entityFull: t.entity_full,
+                    category: t.category,
+                    rootCategory: t.root_category,
+                    statusId: t.status_id,
+                    status: t.status_key || 'new',
+                    statusName: t.status_name,
+                    priorityId: t.priority_id || 1,
+                    priority: t.priority || '1-Baixa',
+                    group: lastGroupLabel(t.group_name || ''),
+                    groupFull: t.group_name,
+                    technician: t.technician || '',
+                    dateCreated: t.date_created,
+                    lastUpdate: t.date_mod,
+                    dueDate: t.due_date,
+                    isSlaLate: t.is_sla_late || false,
+                    isOverdueFirst: t.is_overdue_first || false,
+                    isOverdueResolve: t.is_overdue_resolve || false,
+                    timeToOwn: t.time_to_own,
+                    timeToResolve: t.time_to_resolve,
+                    instance: t.instance,
+                    instanceUrl: t.instance?.toLowerCase() === 'peta' 
+                        ? (window.APP_CONFIG?.GLPI_PETA_TICKET_URL || '') 
+                        : (window.APP_CONFIG?.GLPI_GMX_TICKET_URL || ''),
+                }));
+
+                // Salvar apenas metadata no cache (não os tickets completos para evitar quota)
+                try {
+                    const cacheMeta = {
+                        count: tickets.length,
+                        timestamp: new Date().toISOString(),
+                        lastId: tickets.length > 0 ? tickets[0].id : null
+                    };
+                    localStorage.setItem(CACHE_TIMESTAMP_KEY, JSON.stringify(cacheMeta));
+                } catch (e) {
+                    console.warn('Não foi possível salvar metadata do cache:', e);
+                }
+
+                console.log(`[Supabase] Finalizado: ${tickets.length} tickets`);
+
+                window.currentTickets = tickets;
                 renderKanban(tickets);
-                
-                // Dispatch event for Tailwind dashboard
-                const tally = window.DashboardUtils?.tallyTickets?.(tickets);
-                if (tally) {
-                    window.dispatchEvent(new CustomEvent('tickets-updated', { detail: tally }));
-                }
-                
-                // Atualizar última atualização
+
+                // Atualizar UI
                 const lastUpdateEl = document.getElementById('lastUpdate');
-                if (lastUpdateEl) {
-                    lastUpdateEl.textContent = `Atualizado: ${getCurrentTimeFormatted()}`;
-                }
-                
-                // Reiniciar contador regressivo
+                if (lastUpdateEl) lastUpdateEl.textContent = `Atualizado: ${getCurrentTimeFormatted()}`;
                 startCountdown();
-                
-                console.log(`✅ Atualização concluída: ${result.summary.total} tickets (${result.summary.fromCache} cache, ${result.summary.fromGlpi} GLPI)`);
+
+                console.log(`✅ Carregamento concluído: ${tickets.length} tickets`);
             } catch (error) {
-                console.error('❌ Erro na atualização:', error);
-                
-                // Se falhou, usar cache se disponível
-                if (tickets.length > 0) {
-                    console.log('📂 Usando dados do cache local...');
-                    renderKanban(tickets);
-                } else {
-                    showError(
-                        'Erro ao carregar tickets',
-                        'Verifique sua conexão, credenciais ou tente novamente mais tarde.',
-                        { message: error.message }
-                    );
-                }
+                console.error('[Supabase] Erro ao carregar tickets:', error);
+                showError('Falha ao carregar tickets', 'Verifique a conexão e tente novamente.', error);
             } finally {
                 isLoading = false;
                 if (refreshBtn) refreshBtn.disabled = false;
@@ -3515,10 +3788,9 @@ ${JSON.stringify(error, null, 2)}
                     }
                 }
                 
-                alert('Sincronização com Supabase concluída!');
+                console.log('✅ Sincronização com Supabase concluída');
             } catch (error) {
                 console.error('❌ Erro na sincronização:', error);
-                alert('Erro ao sincronizar com Supabase');
             } finally {
                 if (syncBtn) {
                     syncBtn.disabled = false;
@@ -3540,30 +3812,20 @@ ${JSON.stringify(error, null, 2)}
             initTheme();
             initInstanceDropdown();
             
-            // Tentar carregar do cache primeiro para carregamento rápido
-            const cachedTickets = loadCache();
-            if (cachedTickets && cachedTickets.length > 0) {
-                tickets = cachedTickets;
-                loadedCounts = { processing: INITIAL_LOAD, pending: INITIAL_LOAD, solved: INITIAL_LOAD, closed: INITIAL_LOAD };
-                renderKanban(tickets);
-                
-                const lastUpdateEl = document.getElementById('lastUpdate');
-                if (lastUpdateEl) {
-                    const cacheTime = getCacheTimestamp();
-                    lastUpdateEl.textContent = `Cache: ${cacheTime ? new Date(cacheTime).toLocaleString('pt-BR') : 'desconhecido'}`;
-                }
-                
-                // Atualizar em background
-                console.log('📂 Dados carregados do cache. Atualizando em background...');
-                refreshTickets();
-            } else {
-                refreshTickets();
+            // First sync from GLPI to Supabase cache
+            if (typeof syncToSupabase === 'function') {
+                syncToSupabase();
             }
+            
+            // Then load and display tickets
+            setTimeout(() => {
+                refreshTickets();
+            }, 500);
 
-            // Configurar atualização automática (recarrega a página)
+            // Configurar atualização automática (apenas dados, sem recarregar página)
             refreshTimer = setInterval(() => {
-                console.log('🔄 Recarregando página automaticamente...');
-                location.reload();
+                console.log('🔄 Atualizando dados automaticamente...');
+                refreshTickets();
             }, REFRESH_INTERVAL);
             startCountdown();
         });

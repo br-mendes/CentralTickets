@@ -19,11 +19,14 @@
             --text-primary: #1e293b;
             --text-secondary: #64748b;
             --text-muted: #94a3b8;
-            --status-processing: #f59e0b;
-            --status-pending: #8b5cf6;
+            --status-processing: #22c55e;
+            --status-pending: #f97316;
+            --status-approval: #f97316;
+            --status-solved: #6b7280;
+            --status-closed: #1f2937;
             --status-new: #3b82f6;
-            --sla-ok: #10b981;
-            --sla-late: #ef4444;
+            --sla-ok: #22c55e;
+            --sla-late: #dc2626;
             --radius-sm: 6px;
             --radius-md: 8px;
         }
@@ -376,17 +379,33 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
             align-items: center;
             gap: 6px;
             padding: 4px 10px;
-            border-radius: var(--radius-sm);
+            border-radius: 20px;
             font-size: 0.75rem;
-            font-weight: 500;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
         }
 
-        .status-badge.new { background: rgba(59, 130, 246, 0.12); color: #2563eb; }
-        .status-badge.processing { background: rgba(59, 130, 246, 0.12); color: #1e3a8a; }
-        .status-badge.pending { background: rgba(245, 158, 11, 0.12); color: #d97706; }
-        .status-badge.solved { background: rgba(107, 114, 128, 0.20); color: #374151; }
-        .status-badge.closed { background: rgba(0, 0, 0, 0.12); color: #000; }
-        .status-badge.pending-approval { background: rgba(139, 92, 246, 0.25); color: #6b21a8; }
+        .status-badge svg {
+            width: 12px;
+            height: 12px;
+            flex-shrink: 0;
+        }
+
+        .status-badge.new { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+        .status-badge.processing, .status-badge.em-atendimento { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
+        .status-badge.pending { background: rgba(249, 115, 22, 0.15); color: #f97316; }
+        .status-badge.pending-approval, .status-badge.aprovacao { background: rgba(249, 115, 22, 0.15); color: #f97316; }
+        .status-badge.solved { background: rgba(107, 114, 128, 0.15); color: #6b7280; }
+        .status-badge.closed { background: rgba(31, 41, 55, 0.25); color: #1f2937; }
+
+        /* Dark mode status badges */
+        [data-theme="dark"] .status-badge.new { background: rgba(59, 130, 246, 0.25); color: #60a5fa; }
+        [data-theme="dark"] .status-badge.processing, [data-theme="dark"] .status-badge.em-atendimento { background: rgba(34, 197, 94, 0.25); color: #4ade80; }
+        [data-theme="dark"] .status-badge.pending { background: rgba(249, 115, 22, 0.25); color: #fb923c; }
+        [data-theme="dark"] .status-badge.pending-approval, [data-theme="dark"] .status-badge.aprovacao { background: rgba(249, 115, 22, 0.25); color: #fb923c; }
+        [data-theme="dark"] .status-badge.solved { background: rgba(107, 114, 128, 0.25); color: #9ca3af; }
+        [data-theme="dark"] .status-badge.closed { background: rgba(31, 41, 55, 0.4); color: #d1d5db; }
 
         .sla-badge {
             padding: 2px 8px;
@@ -394,8 +413,8 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
             font-size: 0.75rem;
             font-weight: 500;
         }
-        .sla-badge.sla-ok { background: rgba(16, 185, 129, 0.12); color: #059669; }
-        .sla-badge.sla-late { background: rgba(239, 68, 68, 0.12); color: #dc2626; }
+        .sla-badge.sla-ok { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
+        .sla-badge.sla-late { background: rgba(239, 68, 68, 0.15); color: #dc2626; }
 
         .empty-state {
             text-align: center;
@@ -440,6 +459,34 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         @keyframes spin {
             to { transform: rotate(360deg); }
+        }
+
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 48px;
+            gap: 16px;
+            text-align: center;
+        }
+
+        .loading-hint {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        .error-state {
+            padding: 16px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: var(--radius-md);
+            color: #dc2626;
+        }
+
+        [data-theme="dark"] .error-state {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
         }
 
         .results-actions {
@@ -505,24 +552,51 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                 </div>
                 <nav class="header-nav">
                     <a href="index.html" class="nav-link">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="7" height="9"/>
+                            <rect x="14" y="3" width="7" height="5"/>
+                            <rect x="14" y="12" width="7" height="9"/>
+                            <rect x="3" y="16" width="7" height="5"/>
+                        </svg>
                         Dashboard
                     </a>
-                    <a href="kanban.html" class="nav-link">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line></svg>
-                        Kanban
-                    </a>
                     <a href="tickets-ativos.html" class="nav-link">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-                        Tickets
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                            <polyline points="22 4 12 14.01 9 11.01"/>
+                        </svg>
+                        Ativos
                     </a>
                     <a href="tickets-em-espera.html" class="nav-link">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                        </svg>
                         Espera
                     </a>
+                    <a href="aprovacao.html" class="nav-link">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <path d="M9 15l2 2 4-4"/>
+                        </svg>
+                        Aprovação
+                    </a>
                     <a href="relatorios.html" class="nav-link active">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="20" x2="18" y2="10"/>
+                            <line x1="12" y1="20" x2="12" y2="4"/>
+                            <line x1="6" y1="20" x2="6" y2="14"/>
+                        </svg>
                         Relatórios
+                    </a>
+                    <a href="kanban.html" class="nav-link">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <line x1="9" y1="3" x2="9" y2="21"/>
+                            <line x1="15" y1="3" x2="15" y2="21"/>
+                        </svg>
+                        Kanban
                     </a>
                 </nav>
                 <button class="theme-toggle" onclick="toggleTheme()">
@@ -533,7 +607,13 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         </header>
 
         <main class="main">
-            <div class="filters-card">
+            <div id="loadingIndicator" class="loading-container">
+                <div class="spinner"></div>
+                <p>Carregando tickets do Supabase...</p>
+                <p class="loading-hint">Isso pode levar alguns segundos...</p>
+            </div>
+
+            <div id="filtersSection" class="filters-card" style="display: none;">
                 <div class="filters-header">
                     <h2 class="filters-title">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
@@ -636,7 +716,9 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     </div>
 
     <script src="config.js"></script>
+    <script src="glpi-technician.js"></script>
     <script src="shared-header.js"></script>
+    <script src="utils.js"></script>
     <script src="incremental-loader.js"></script>
     <script src="dashboard-utils.js"></script>
     <script src="cache-manager.js"></script>
@@ -662,10 +744,11 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         const STATUS_CONFIG = {
             1: { name: 'Novo', key: 'new' },
             2: { name: 'Em atendimento', key: 'processing' },
-            3: { name: 'Em atendimento', key: 'processing' },
+            3: { name: 'Processando', key: 'processing' },
             4: { name: 'Pendente', key: 'pending' },
             5: { name: 'Solucionado', key: 'solved' },
             6: { name: 'Fechado', key: 'closed' },
+            7: { name: 'Aguardando aprovação', key: 'approval' },
         };
 
         const MONTHS = [
@@ -725,300 +808,14 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         }
 
         async function getTicketsFromInstance(instanceName) {
-            const instance = INSTANCES[instanceName];
-            if (!sessionTokens[instanceName]) {
-                await initSession(instanceName);
-            }
-
-            const allTickets = [];
-            let page = 0;
-            const pageSize = 100;
-            let hasMore = true;
-
-            while (hasMore) {
-                const start = page * pageSize;
-                const end = start + pageSize - 1;
-                const searchParams = new URLSearchParams({
-                    'range': `${start}-${end}`,
-                    'expand_dropdowns': 'true',
-                    'get_hateoas': 'false',
-                });
-
-                const response = await fetch(
-                    `${instance.BASE_URL}/search/Ticket?${searchParams.toString()}`,
-                    {
-                        method: 'GET',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Session-Token': sessionTokens[instanceName],
-                            'App-Token': instance.APP_TOKEN,
-                        },
-                    }
-                );
-
-                if (!response.ok) {
-                    if (response.status === 401) {
-                        sessionTokens[instanceName] = null;
-                        await initSession(instanceName);
-                        continue;
-                    }
-                    throw new Error(`Erro ao buscar tickets: ${response.status}`);
-                }
-
-                const data = await response.json();
-                if (data.data) {
-                    const ticketsArray = Array.isArray(data.data) ? data.data : Object.values(data.data);
-                    if (ticketsArray.length === 0) {
-                        hasMore = false;
-                    } else {
-                        allTickets.push(...ticketsArray);
-                        page++;
-                        if (ticketsArray.length < pageSize || page >= 100) {
-                            hasMore = false;
-                        }
-                    }
-                } else {
-                    hasMore = false;
-                }
-            }
-
-            return processTickets(allTickets, instanceName);
-        }
-
-        // Cache de nomes de usuários para evitar múltiplas chamadas
-        const userNameCache = {};
-
-        // Função para buscar nome de usuário pelo ID usando a API de busca
-        async function getUserName(userId, instanceName) {
-            if (!userId) return '';
-            
-            const cacheKey = `${instanceName}_${userId}`;
-            if (userNameCache[cacheKey]) {
-                return userNameCache[cacheKey];
-            }
-
             try {
-                const instance = INSTANCES[instanceName];
+                let allTickets = [];
+                let page = 0;
+                const pageSize = 100;
+                const maxTickets = 1000;
+                let hasMore = true;
                 
-                // Verificar se sessão ainda é válida
-                if (!sessionTokens[instanceName]) {
-                    await initSession(instanceName);
-                }
-                
-                // Usar a API de busca para buscar usuário por ID
-                const searchParams = new URLSearchParams({
-                    'criteria[0][link]': 'AND',
-                    'criteria[0][field]': '1', // ID field
-                    'criteria[0][searchtype]': 'equals',
-                    'criteria[0][value]': userId.toString(),
-                    'range': '0-0',
-                    'uid_cols': 'true',
-                });
-
-                const response = await fetch(
-                    `${instance.BASE_URL}/search/User?${searchParams.toString()}`,
-                    {
-                        method: 'GET',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Session-Token': sessionTokens[instanceName],
-                            'App-Token': instance.APP_TOKEN,
-                        },
-                    }
-                );
-
-                if (!response.ok) return userId.toString();
-
-                const data = await response.json();
-                
-                // O resultado vem com chaves como "User.name" ou "2" (id)
-                // Primeiro tenta buscar pelo nome completo (campo 2 = name)
-                // Campo 2 = Name, Campo 5 = Realname, Campo 1 = ID
-                let userName = userId.toString();
-                
-                if (data.data && data.data[0]) {
-                    // Tentar diferentes campos de nome
-                    const userData = data.data[0];
-                    if (userData['2']) {
-                        userName = userData['2'].toString();
-                    } else if (userData['User.name']) {
-                        userName = userData['User.name'].toString();
-                    } else if (userData['5']) {
-                        // Tentar campo 5 (realname)
-                        userName = userData['5'].toString();
-                    }
-                }
-                
-                userNameCache[cacheKey] = userName;
-                return userName;
-            } catch (error) {
-                console.error(`Erro ao buscar usuário ${userId}:`, error);
-                return userId.toString();
-            }
-        }
-
-        // Função para buscar nomes de técnicos de uma lista de tickets
-        async function resolveTechnicianNames(tickets, instanceName) {
-            const userIds = new Set();
-            
-            // Coletar todos os IDs de usuários únicos
-            tickets.forEach(ticket => {
-                const assigned = ticket[4];
-                if (assigned) {
-                    if (Array.isArray(assigned)) {
-                        assigned.forEach(id => userIds.add(id));
-                    } else {
-                        userIds.add(assigned);
-                    }
-                }
-            });
-
-            // Buscar nomes em paralelo para os IDs únicos
-            await Promise.all(Array.from(userIds).map(userId => 
-                getUserName(userId, instanceName)
-            ));
-
-            // Atualizar os tickets com nomes resolvidos
-            return tickets.map(ticket => {
-                const assigned = ticket[4];
-                let technicianName = '';
-                
-                if (assigned) {
-                    if (Array.isArray(assigned) && assigned.length > 0) {
-                        technicianName = userNameCache[`${instanceName}_${assigned[0]}`] || assigned[0].toString();
-                    } else {
-                        technicianName = userNameCache[`${instanceName}_${assigned}`] || assigned.toString();
-                    }
-                }
-
-                return {
-                    ...ticket,
-                    _technicianName: technicianName
-                };
-            });
-        }
-
-        // Função para extrair técnico do ticket
-        // Campo 5 = requester (solicitante)
-        // Campo 4 = assignee (atribuído) - pode ser array de IDs
-        function getTechnicianFromTicket(ticket) {
-            // Tentar campo 4 (atribuído) primeiro - pode ser array ou número
-            const assigned = ticket[4];
-            if (assigned) {
-                if (Array.isArray(assigned) && assigned.length > 0) {
-                    return assigned[0]; // Retorna primeiro usuário atribuído
-                }
-                return assigned.toString();
-            }
-            // Fallback para campo 5 (solicitante)
-            return ticket[5] ? ticket[5].toString() : '';
-        }
-
-        function processTickets(rawTickets, instanceName) {
-            return rawTickets.map(ticket => {
-                const statusId = parseInt(ticket[12]) || 1;
-                const statusInfo = STATUS_CONFIG[statusId] || STATUS_CONFIG[1];
-                const statusName = (statusId === 7 && statusInfo?.waitText) ? statusInfo.waitText : (statusInfo?.name || '');
-                
-                const entityFull = ticket[80] || '';
-                let entityShort = entityFull;
-                
-                if (instanceName === 'Peta') {
-                    entityShort = entityFull.replace(/^PETA GRUPO\s*>\s*/i, '').trim();
-                } else if (instanceName === 'GMX') {
-                    entityShort = entityFull.replace(/^GMX\s*TECNOLOGIA\s*>\s*/i, '').trim();
-                }
-                entityShort = entityShort || entityFull;
-
-                let category = ticket[7] || 'Não categorizado';
-                const dateCreated = ticket.date_creation || ticket[15] || ticket.date;
-                const lastUpdate = ticket.date_mod || ticket[19] || ticket[91] || dateCreated;
-
-                // SLA - tempo para adquirir (primeira resposta)
-                const timeToOwn = ticket.time_to_own || null;
-                const isSlaOwnOverdue = ticket.is_late === '1' || (timeToOwn && timeToOwn <= 0);
-                
-                // SLA - tempo para resolver
-                const timeToResolve = ticket.time_to_resolve || null;
-                const isSlaResolveOverdue = ticket.is_late === '1' || (timeToResolve && timeToResolve <= 0);
-
-                return {
-                    id: ticket[2] || ticket.id,
-                    entity: entityShort,
-                    category: category,
-                    status: statusInfo.key,
-                    statusName: statusName,
-                    group: (function(){ var g = ticket[8] || 'Não atribuído'; if (g) { var parts = String(g).split('>'); return parts[parts.length-1].trim(); } return g; })(),
-                    technician: ticket._technicianName || getTechnicianFromTicket(ticket),
-                    slaAtendimento: isSlaOwnOverdue ? 'Fora do prazo' : 'No prazo',
-                    slaSolucao: isSlaResolveOverdue ? 'Fora do prazo' : 'No prazo',
-                    dateCreated: dateCreated,
-                    lastUpdate: lastUpdate,
-                    instance: instanceName,
-                };
-            });
-        }
-
-        async function loadAllTickets() {
-            if (isLoading) return;
-            isLoading = true;
-        
-            const content = document.getElementById('resultsContent');
-            content.innerHTML = `
-                <div class="loading-overlay">
-                    <div class="spinner"></div>
-                    <p>Carregando tickets...</p>
-                </div>
-            `;
-        
-            try {
-                allTickets = [];
-                const BATCH_SIZE = 50; // Process tickets in batches for incremental rendering
-                
-                // Carregar PETA
-                try {
-                    const petaTickets = await getTicketsFromInstance('Peta');
-                    console.log(`Peta: ${petaTickets.length} tickets brutos carregados`);
-                    
-                    // Process tickets in batches for incremental rendering
-                    for (let i = 0; i < petaTickets.length; i += BATCH_SIZE) {
-                        const batch = petaTickets.slice(i, i + BATCH_SIZE);
-                        const resolvedBatch = await resolveTechnicianNames(batch, 'Peta');
-                        allTickets.push(...resolvedBatch);
-                        
-                        // Update UI incrementally
-                        if (window.renderResults && typeof window.renderResults === 'function') {
-                            // Apply current filters to show partial results
-                            window.applyFiltersToPartialResults(allTickets);
-                        }
-                    }
-                } catch (error) {
-                    console.error(`Falha ao carregar PETA:`, error);
-                }
-                
-                // Carregar GMX
-                try {
-                    const gmxTickets = await getTicketsFromInstance('GMX');
-                    console.log(`GMX: ${gmxTickets.length} tickets brutos carregados`);
-                    
-                    // Process tickets in batches for incremental rendering
-                    for (let i = 0; i < gmxTickets.length; i += BATCH_SIZE) {
-                        const batch = gmxTickets.slice(i, i + BATCH_SIZE);
-                        const resolvedBatch = await resolveTechnicianNames(batch, 'GMX');
-                        allTickets.push(...resolvedBatch);
-                        
-                        // Update UI incrementally
-                        if (window.renderResults && typeof window.renderResults === 'function') {
-                            // Apply current filters to show partial results
-                            window.applyFiltersToPartialResults(allTickets);
-                        }
-                    }
-                } catch (error) {
-                    console.error(`Falha ao carregar GMX:`, error);
-                }
-                
-                populateYearFilter();
-                populateEntityFilter();
+                console.log(`[${instanceName}] Total carregado: ${allTickets.length} tickets (limite: ${maxTickets})`);
                 console.log(`Total de tickets carregados: ${allTickets.length}`);
             } catch (error) {
                 console.error('Erro ao carregar tickets:', error);
@@ -1081,6 +878,44 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
             } catch {
                 return '';
             }
+        }
+
+        const REFRESH_INTERVAL = 3 * 60 * 1000; // 3 minutes
+        let nextRefreshTime = null;
+        let countdownTimer = null;
+        let refreshTimer = null;
+
+        function startCountdown() {
+            if (countdownTimer) clearInterval(countdownTimer);
+            nextRefreshTime = Date.now() + REFRESH_INTERVAL;
+            updateCountdown();
+            countdownTimer = setInterval(updateCountdown, 1000);
+        }
+
+        function updateCountdown() {
+            const countdownEl = document.getElementById('refreshCountdown');
+            if (!countdownEl || !nextRefreshTime) return;
+            
+            const remaining = Math.max(0, nextRefreshTime - Date.now());
+            const minutes = Math.floor(remaining / 60000);
+            const seconds = Math.floor((remaining % 60000) / 1000);
+            countdownEl.textContent = `Próximo refresh: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+            
+            if (remaining <= 0) {
+                loadReport();
+            }
+        }
+
+        function getStatusIcon(status) {
+            const icons = {
+                'new': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle></svg>',
+                'processing': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path></svg>',
+                'pending': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>',
+                'pending-approval': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>',
+                'solved': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>',
+                'closed': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line></svg>'
+            };
+            return icons[status] || '';
         }
 
         // Função para aplicar filtros e renderizar resultados parciais (durante carregamento incremental)
@@ -1149,25 +984,6 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
             renderResults();
         }
 
-            filteredTickets = allTickets.filter(ticket => {
-                const dateToCheck = dateType === 'opening' ? ticket.dateCreated : ticket.lastUpdate;
-                if (!dateToCheck) return false;
-
-                const date = new Date(dateToCheck);
-                if (isNaN(date.getTime())) return false;
-
-                if (year && date.getFullYear() !== parseInt(year)) return false;
-                if (month && (date.getMonth() + 1) !== parseInt(month)) return false;
-                if (instance && ticket.instance !== instance) return false;
-                if (entity && ticket.entity !== entity) return false;
-                if (status && ticket.status !== status) return false;
-
-                return true;
-            });
-
-            renderResults();
-        }
-
         function renderResults() {
             const content = document.getElementById('resultsContent');
             const countEl = document.getElementById('resultsCount');
@@ -1189,21 +1005,24 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                 return;
             }
 
-            const rows = filteredTickets.map(t => `
+            const rowsArray = filteredTickets.map(t => `
                 <tr>
                     <td class="col-id">#${t.id}</td>
                     <td class="col-instance"><span class="instance-badge ${t.instance.toLowerCase()}">${t.instance}</span></td>
                     <td class="col-entity" title="${t.entity}">${t.entity}</td>
                     <td class="col-category" title="${t.category}">${t.category}</td>
-                    <td><span class="status-badge ${t.status}">${t.statusName}</span></td>
+                    <td><span class="status-badge ${t.status}">${getStatusIcon(t.status)}${t.statusName}</span></td>
                     <td class="col-group" title="${t.group}">${t.group}</td>
                     <td>${t.technician || 'Não atribuído'}</td>
                     <td><span class="sla-badge ${t.slaAtendimento === 'No prazo' ? 'sla-ok' : 'sla-late'}">${t.slaAtendimento}</span></td>
                     <td><span class="sla-badge ${t.slaSolucao === 'No prazo' ? 'sla-ok' : 'sla-late'}">${t.slaSolucao}</span></td>
                     <td>${formatDate(t.dateCreated)}</td>
                     <td>${formatDateTime(t.lastUpdate)}</td>
+                    <td>${t.date_solved ? formatDateTime(t.date_solved) : '-'}</td>
                 </tr>
-            `).join('');
+            `);
+            
+            const rows = rowsArray.join('');
 
             content.innerHTML = `
                 <div class="table-container">
@@ -1220,6 +1039,7 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                                 <th>SLA Solução</th>
                                 <th>Abertura</th>
                                 <th>Última Atualização</th>
+                                <th>Data/Hora Solução</th>
                             </tr>
                         </thead>
                         <tbody>${rows}</tbody>
@@ -1242,7 +1062,8 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                 'SLA Atendimento': t.slaAtendimento || '',
                 'SLA Solução': t.slaSolucao || '',
                 'Data de Abertura': formatDate(t.dateCreated),
-                'Última Atualização': formatDateTime(t.lastUpdate)
+                'Última Atualização': formatDateTime(t.lastUpdate),
+                'Data/Hora Solução': t.date_solved ? formatDateTime(t.date_solved) : '-'
             }));
 
             const ws = XLSX.utils.json_to_sheet(data);
@@ -1262,8 +1083,139 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         document.addEventListener('DOMContentLoaded', () => {
             initTheme();
-            loadAllTickets();
+            loadTicketsFromSupabase();
         });
+
+        // Load tickets from Supabase
+        async function loadTicketsFromSupabase() {
+            const loadingEl = document.getElementById('loadingIndicator');
+            if (loadingEl) loadingEl.style.display = 'block';
+
+            try {
+                console.log('[Relatórios] Carregando tickets do Supabase...');
+                
+                let allData = [];
+                let page = 0;
+                const pageSize = 2000;
+                let hasMore = true;
+
+                while (hasMore) {
+                    const { data, error } = await window._sb
+                        .from('tickets_cache')
+                        .select('*')
+                        .order('date_mod', { ascending: false })
+                        .range(page * pageSize, (page + 1) * pageSize - 1);
+
+                    if (error) throw new Error(`Erro na página ${page}: ${error.message}`);
+
+                    if (!data || data.length === 0) {
+                        hasMore = false;
+                    } else {
+                        allData = [...allData, ...data];
+                        page++;
+                        console.log(`[Relatórios] Página ${page} → Total: ${allData.length}`);
+                    }
+                }
+
+                // Transform to app format
+                allTickets = allData.map(t => ({
+                    id: t.ticket_id,
+                    title: t.title,
+                    entity: t.entity,
+                    entityFull: t.entity_full,
+                    category: t.category,
+                    rootCategory: t.root_category,
+                    status: t.status_key || 'new',
+                    statusName: t.status_name,
+                    statusId: t.status_id,
+                    group: t.group_name ? t.group_name.split('>').pop().trim() : '',
+                    groupFull: t.group_name,
+                    technician: t.technician || '',
+                    dateCreated: t.date_created,
+                    lastUpdate: t.date_mod,
+                    dueDate: t.due_date,
+                    isSlaLate: t.is_sla_late || false,
+                    instance: t.instance,
+                    instanceUrl: t.instance === 'PETA' 
+                        ? (window.APP_CONFIG?.GLPI_PETA_TICKET_URL || '')
+                        : (window.APP_CONFIG?.GLPI_GMX_TICKET_URL || ''),
+                }));
+
+                console.log(`[Relatórios] Total carregado: ${allTickets.length} tickets`);
+
+                // Populate filter dropdowns
+                populateFilters();
+
+                // Hide loading, show filters
+                if (loadingEl) loadingEl.style.display = 'none';
+                document.getElementById('filtersSection').style.display = 'block';
+
+                // Auto-load report with default filters
+                loadReport();
+
+            } catch (error) {
+                console.error('[Relatórios] Erro ao carregar tickets:', error);
+                if (loadingEl) loadingEl.innerHTML = `<div class="error-state">Erro ao carregar dados: ${error.message}</div>`;
+            }
+        }
+
+        // Populate filter dropdowns with available options
+        function populateFilters() {
+            // Instances
+            const instanceSet = new Set(allTickets.map(t => t.instance).filter(Boolean));
+            const instanceFilter = document.getElementById('instanceFilter');
+            instanceFilter.innerHTML = '<option value="">Todas as instâncias</option>';
+            instanceSet.forEach(inst => {
+                instanceFilter.innerHTML += `<option value="${inst}">${inst}</option>`;
+            });
+
+            // Entities
+            const entitySet = new Set(allTickets.map(t => t.entity).filter(Boolean));
+            const entityFilter = document.getElementById('entityFilter');
+            entityFilter.innerHTML = '<option value="">Todas as entidades</option>';
+            [...entitySet].sort().forEach(ent => {
+                entityFilter.innerHTML += `<option value="${ent}">${ent}</option>`;
+            });
+
+            // Status
+            const statusFilter = document.getElementById('statusFilter');
+            statusFilter.innerHTML = '<option value="">Todos os status</option>';
+            const statuses = [
+                { key: 'new', name: 'Novo' },
+                { key: 'processing', name: 'Em andamento' },
+                { key: 'pending', name: 'Pendente' },
+                { key: 'solved', name: 'Solucionado' },
+                { key: 'closed', name: 'Fechado' },
+                { key: 'pending-approval', name: 'Aprovação' }
+            ];
+            statuses.forEach(s => {
+                statusFilter.innerHTML += `<option value="${s.key}">${s.name}</option>`;
+            });
+
+            // Years - from ticket dates
+            const years = new Set();
+            allTickets.forEach(t => {
+                if (t.dateCreated) {
+                    const d = new Date(t.dateCreated);
+                    if (!isNaN(d.getTime())) years.add(d.getFullYear());
+                }
+            });
+            const yearFilter = document.getElementById('yearFilter');
+            yearFilter.innerHTML = '<option value="">Selecione o ano</option>';
+            [...years].sort((a, b) => b - a).forEach(y => {
+                yearFilter.innerHTML += `<option value="${y}">${y}</option>`;
+            });
+
+            // Set default year to current year
+            const currentYear = new Date().getFullYear();
+            if (years.has(currentYear)) {
+                yearFilter.value = currentYear;
+            }
+        }
+
+        function startCountdown() {
+            // No auto-refresh for reports
+        }
     </script>
 </body>
 </html>
