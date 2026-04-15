@@ -579,13 +579,6 @@
     <script src="config.js"></script>
     <script src="glpi-technician.js"></script>
     <script src="shared-header.js"></script>
-    <script>
-      document.addEventListener('DOMContentLoaded', () => {
-        if (typeof window.renderSharedHeader === 'function') window.renderSharedHeader();
-        if (typeof window.initTheme === 'function') window.initTheme();
-        if (typeof window.startRefreshCountdown === 'function') window.startRefreshCountdown();
-      });
-    </script>
     <script src="utils.js"></script>
     <script src="incremental-loader.js"></script>
     <script src="dashboard-utils.js"></script>
@@ -1021,13 +1014,6 @@
             return icons[status] || '';
         }
 
-        function initTheme() {
-            const savedTheme = localStorage.getItem('theme') || 'light';
-            if (savedTheme === 'dark') {
-                document.documentElement.setAttribute('data-theme', 'dark');
-            }
-        }
-
         function renderTable(data) {
             const mainContent = document.getElementById('mainContent');
             
@@ -1283,8 +1269,7 @@
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
-            if (typeof renderSharedHeader === 'function') renderSharedHeader();
-            // initTheme() is now called by shared-header.js
+            // renderSharedHeader and initTheme are auto-called by shared-header.js
             refreshTickets();
             refreshTimer = setInterval(refreshTickets, REFRESH_INTERVAL);
             

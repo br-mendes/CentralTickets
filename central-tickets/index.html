@@ -2024,7 +2024,6 @@
                         </svg>
                     </button>
                     <span class="last-update" id="lastUpdate"></span>
-                    <span class="refresh-countdown" id="refreshCountdown"></span>
                     <button class="btn btn-primary" id="refreshBtn" onclick="refreshTickets()">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M21 2v6h-6"></path>
@@ -2049,13 +2048,6 @@
     <script src="config.js"></script>
     <script src="glpi-technician.js"></script>
     <script src="shared-header.js"></script>
-    <script>
-      document.addEventListener('DOMContentLoaded', () => {
-        if (typeof window.renderSharedHeader === 'function') window.renderSharedHeader();
-        if (typeof window.initTheme === 'function') window.initTheme();
-        if (typeof window.startRefreshCountdown === 'function') window.startRefreshCountdown();
-      });
-    </script>
     <script src="cache-manager.js"></script>
     <script src="supabase-cache.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -2239,32 +2231,6 @@
             return icons[status] || '';
         }
 
-        function toggleTheme() {
-            const html = document.documentElement;
-            const isDark = html.getAttribute('data-theme') === 'dark';
-            
-            if (isDark) {
-                html.removeAttribute('data-theme');
-                localStorage.setItem('theme', 'light');
-                document.getElementById('sunIcon').style.display = 'block';
-                document.getElementById('moonIcon').style.display = 'none';
-            } else {
-                html.setAttribute('data-theme', 'dark');
-                localStorage.setItem('theme', 'dark');
-                document.getElementById('sunIcon').style.display = 'none';
-                document.getElementById('moonIcon').style.display = 'block';
-            }
-        }
-
-        function initTheme() {
-            const savedTheme = localStorage.getItem('theme') || 'light';
-            if (savedTheme === 'dark') {
-                document.documentElement.setAttribute('data-theme', 'dark');
-                document.getElementById('sunIcon').style.display = 'none';
-                document.getElementById('moonIcon').style.display = 'block';
-            }
-        }
-
         function toggleInstanceDropdown() {
             const container = document.getElementById('instanceDropdownContainer');
             const isOpen = container.classList.contains('open');
@@ -2345,31 +2311,6 @@
         // Intervalo de atualização automática (10 minutos = 600000ms)
         const REFRESH_INTERVAL = 600000;
         let refreshTimer = null;
-        let countdownTimer = null;
-        let nextRefreshTime = null;
-
-        // Função para atualizar o contador regressivo
-        function updateCountdown() {
-            if (!nextRefreshTime) return;
-            
-            const now = Date.now();
-            const remaining = Math.max(0, nextRefreshTime - now);
-            const minutes = Math.floor(remaining / 60000);
-            const seconds = Math.floor((remaining % 60000) / 1000);
-            
-            const countdownEl = document.getElementById('refreshCountdown');
-            if (countdownEl) {
-                countdownEl.textContent = `Próximo refresh: ${minutes}:${seconds.toString().padStart(2, '0')}`;
-            }
-        }
-
-        // Função para iniciar o contador regressivo
-        function startCountdown() {
-            nextRefreshTime = Date.now() + REFRESH_INTERVAL;
-            updateCountdown();
-            if (countdownTimer) clearInterval(countdownTimer);
-            countdownTimer = setInterval(updateCountdown, 1000);
-        }
 
         // Função para alternar entre visualizações
         function setView(view) {
@@ -3829,7 +3770,7 @@ ${JSON.stringify(error, null, 2)}
                 // Atualizar UI
                 const lastUpdateEl = document.getElementById('lastUpdate');
                 if (lastUpdateEl) lastUpdateEl.textContent = `Atualizado: ${getCurrentTimeFormatted()}`;
-                startCountdown();
+                // startCountdown removido - usar window.startRefreshCountdown() do shared-header.js
 
                 console.log(`✅ Carregamento concluído: ${tickets.length} tickets`);
             } catch (error) {

@@ -14,14 +14,15 @@ const SupabaseCache = {
         return this.supabase;
     },
 
-    async getAllTickets(instance = null) {
+    async getAllTickets(instance = null, limit = 2000) {
         if (!this.supabase) return [];
-        
+
         try {
             let query = this.supabase
                 .from('tickets_cache')
                 .select('*')
-                .order('date_mod', { ascending: false });
+                .order('date_mod', { ascending: false })
+                .limit(limit);
 
             if (instance) {
                 query = query.eq('instance', instance);
@@ -48,7 +49,7 @@ const SupabaseCache = {
             const { data, error } = await this.supabase
                 .from('tickets_cache')
                 .select('*')
-                .not('status_key', 'in', '("solved","closed")')
+                .not('status_key', 'in', '(solved,closed)')
                 .order('date_mod', { ascending: false });
 
             if (error) {
@@ -72,7 +73,7 @@ const SupabaseCache = {
             const { data, error } = await this.supabase
                 .from('tickets_cache')
                 .select('*')
-                .not('status_key', 'in', '("solved","closed")')
+                .not('status_key', 'in', '(solved,closed)')
                 .lt('date_mod', threshold)
                 .order('date_mod', { ascending: true });
 

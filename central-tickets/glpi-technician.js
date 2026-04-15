@@ -111,41 +111,62 @@ window.GLPIUtils = {
         }
     },
     
-    // Batch fetch technicians for multiple tickets
-    async fetchTechniciansForTickets(tickets, instanceName) {
+    // Batch fetch technicians for multiple tickets (concurrent, max 5 at a time)
+    async fetchTechniciansForTickets(tickets, instanceName, concurrency = 5) {
         const results = {};
-        
-        for (const ticket of tickets) {
-            if (ticket.id && !ticket.technician) {
-                const techName = await this.getTechnicianFromTicket(ticket.id, instanceName);
-                results[ticket.id] = techName;
-            }
+        const pending = tickets.filter(t => t.id && !t.technician);
+
+        for (let i = 0; i < pending.length; i += concurrency) {
+            const batch = pending.slice(i, i + concurrency);
+            const batchResults = await Promise.all(
+                batch.map(async ticket => {
+                    const techName = await this.getTechnicianFromTicket(ticket.id, instanceName);
+                    return { id: ticket.id, techName };
+                })
+            );
+            batchResults.forEach(({ id, techName }) => { results[id] = techName; });
         }
-        
+
         return results;
     }
 };
 
-// Initialize session for GLPI if not exists
+// Initialize session for GLPI if not exists (race-condition safe via pending promise cache)
+if (!window._glpiSessionPending) window._glpiSessionPending = {};
+
 window.initSessionGLPI = async function(instanceName) {
     if (!window.sessionTokens) window.sessionTokens = {};
     if (window.sessionTokens[instanceName]) return window.sessionTokens[instanceName];
-    
+
+    // If a session request is already in-flight, wait for it instead of firing a second one
+    if (window._glpiSessionPending[instanceName]) {
+        return window._glpiSessionPending[instanceName];
+    }
+
     const config = window.APP_CONFIG;
-    const instance = instanceName === 'Peta' 
+    const instance = instanceName === 'Peta'
         ? { BASE_URL: config.GLPI_PETA_URL, USER_TOKEN: config.GLPI_PETA_USER_TOKEN, APP_TOKEN: config.GLPI_PETA_APP_TOKEN }
         : { BASE_URL: config.GLPI_GMX_URL, USER_TOKEN: config.GLPI_GMX_USER_TOKEN, APP_TOKEN: config.GLPI_GMX_APP_TOKEN };
-    
-    const response = await fetch(`${instance.BASE_URL}/initSession`, {
+
+    const sessionPromise = fetch(`${instance.BASE_URL}/initSession`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `user_token ${instance.USER_TOKEN}`,
             'App-Token': instance.APP_TOKEN,
         },
-    });
-    
-    const data = await response.json();
-    window.sessionTokens[instanceName] = data.session_token;
-    return data.session_token;
+    })
+        .then(r => r.json())
+        .then(data => {
+            window.sessionTokens[instanceName] = data.session_token;
+            delete window._glpiSessionPending[instanceName];
+            return data.session_token;
+        })
+        .catch(err => {
+            delete window._glpiSessionPending[instanceName];
+            throw err;
+        });
+
+    window._glpiSessionPending[instanceName] = sessionPromise;
+    return sessionPromise;
 };

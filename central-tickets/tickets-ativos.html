@@ -1151,7 +1151,6 @@
                     </svg>
                 </button>
                 <span class="last-update" id="lastUpdate"></span>
-                <span class="refresh-countdown" id="refreshCountdown"></span>
                 <button class="btn btn-primary" id="refreshBtn" onclick="refreshTickets()">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 2v6h-6"></path>
@@ -1288,17 +1287,10 @@
 
     <script src="config.js"></script>
     <script src="glpi-technician.js"></script>
+    <script src="shared-header.js"></script>
     <script src="incremental-loader.js"></script>
     <script src="dashboard-utils.js"></script>
     <script src="cache-manager.js"></script>
-    <script src="shared-header.js"></script>
-    <script>
-      document.addEventListener('DOMContentLoaded', () => {
-        if (typeof window.renderSharedHeader === 'function') window.renderSharedHeader();
-        if (typeof window.initTheme === 'function') window.initTheme();
-        if (typeof window.startRefreshCountdown === 'function') window.startRefreshCountdown();
-      });
-    </script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-cache.js"></script>
     <script>
@@ -1533,7 +1525,7 @@ async function refreshTickets() {
             try {
 tickets = await getAllTickets();
                 renderTable(tickets);
-                startCountdown();
+                // startCountdown removido - usar window.startRefreshCountdown() do shared-header.js
             } catch (error) {
                 console.error('Erro ao carregar tickets:', error);
             } finally {
@@ -1549,27 +1541,6 @@ tickets = await getAllTickets();
                     <p class="loading-text">Carregando tickets ativos...</p>
                 </div>
             `;
-        }
-
-        function startCountdown() {
-            if (countdownTimer) clearInterval(countdownTimer);
-            nextRefreshTime = Date.now() + REFRESH_INTERVAL;
-            updateCountdown();
-            countdownTimer = setInterval(updateCountdown, 1000);
-        }
-
-        function updateCountdown() {
-            const countdownEl = document.getElementById('refreshCountdown');
-            if (!countdownEl || !nextRefreshTime) return;
-            
-            const remaining = Math.max(0, nextRefreshTime - Date.now());
-            const minutes = Math.floor(remaining / 60000);
-            const seconds = Math.floor((remaining % 60000) / 1000);
-            countdownEl.textContent = `Próximo refresh: ${minutes}:${seconds.toString().padStart(2, '0')}`;
-            
-            if (remaining <= 0) {
-                refreshTickets();
-            }
         }
 
         // Funções de filtro
@@ -1669,31 +1640,18 @@ tickets = await getAllTickets();
             console.log(`GMX: ${gmxCount} tickets (${gmxLate} SLA fora)`);
         }
 
-        let nextRefreshTime = null;
-        let countdownTimer = null;
         let refreshTimer = null;
-
-        function initTheme() {
-            const savedTheme = localStorage.getItem('theme') || 'light';
-            if (savedTheme === 'dark') {
-                document.documentElement.setAttribute('data-theme', 'dark');
-            }
-        }
 
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', () => {
-            if (typeof renderSharedHeader === 'function') renderSharedHeader();
-            // initTheme() is now called by shared-header.js
-            
+            // renderSharedHeader and initTheme are auto-called by shared-header.js
+
             // First sync from GLPI to Supabase cache
             if (typeof syncToSupabase === 'function') {
                 syncToSupabase();
             }
-            
-            // Then load and display tickets
-            setTimeout(() => {
-                refreshTickets();
-            }, 500);
+
+            refreshTickets();
             
             refreshTimer = setInterval(refreshTickets, REFRESH_INTERVAL);
             
@@ -1705,7 +1663,6 @@ tickets = await getAllTickets();
 
         window.addEventListener('beforeunload', () => {
             if (refreshTimer) clearInterval(refreshTimer);
-            if (countdownTimer) clearInterval(countdownTimer);
         });
     </script>
 </body>

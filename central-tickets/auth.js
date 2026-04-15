@@ -10,7 +10,7 @@ window.AUTH_CONFIG = {
 };
 
 function checkAuth() {
-    const currentPage = window.location.href.split('/').pop() || 'index.html';
+    const currentPage = (window.location.pathname.split('/').pop() || 'index.html').split('?')[0].split('#')[0];
     const userId = localStorage.getItem('userId');
     const userRole = localStorage.getItem('userRole');
     const userEmail = localStorage.getItem('userEmail');
