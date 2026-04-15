@@ -1235,10 +1235,10 @@
                             <span class="status-badge ${ticket.status}">${statusIcon}${ticket.statusName}</span>
                         </td>
                         <td class="col-group">${ticket.group}</td>
-                        <td>${ticket.technician || '-'}</td>
-                        <td class="date col-date">${formatDate(ticket.dateCreated)}</td>
-                        <td class="date col-date">${formatDateTime(ticket.lastUpdate)}</td>
-                        <td class="date col-date">${formatDate(ticket.dueDate)}</td>
+                        <td class="col-technician">${ticket.technician || '-'}</td>
+                        <td class="col-date">${formatDate(ticket.dateCreated)}</td>
+                        <td class="col-date">${formatDateTime(ticket.lastUpdate)}</td>
+                        <td class="col-date">${formatDate(ticket.dueDate)}</td>
                         <td class="col-sla">
                             <span class="sla-badge ${slaClass}">${slaText}</span>
                         </td>
@@ -1247,7 +1247,7 @@
             }).join('');
 
             document.getElementById('mainContent').innerHTML = `
-                <div class="table-container">
+                <div class="table-responsive">
                     <table>
                         <thead>
                             <tr>
@@ -1256,7 +1256,7 @@
                                 <th class="col-entity">Entidade</th>
                                 <th class="col-status">Status</th>
                                 <th class="col-group">Grupo Responsável</th>
-                                <th>Técnico</th>
+                                <th class="col-technician">Técnico</th>
                                 <th class="col-date">Abertura</th>
                                 <th class="col-date">Última Atualização</th>
                                 <th class="col-date">Previsto</th>

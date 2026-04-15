@@ -1011,35 +1011,35 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                     <td class="col-instance"><span class="instance-badge ${t.instance.toLowerCase()}">${t.instance}</span></td>
                     <td class="col-entity" title="${t.entity}">${t.entity}</td>
                     <td class="col-category" title="${t.category}">${t.category}</td>
-                    <td><span class="status-badge ${t.status}">${getStatusIcon(t.status)}${t.statusName}</span></td>
+                    <td class="col-status"><span class="status-badge ${t.status}">${getStatusIcon(t.status)}${t.statusName}</span></td>
                     <td class="col-group" title="${t.group}">${t.group}</td>
-                    <td>${t.technician || 'Não atribuído'}</td>
+                    <td class="col-technician">${t.technician || 'Não atribuído'}</td>
                     <td><span class="sla-badge ${t.slaAtendimento === 'No prazo' ? 'sla-ok' : 'sla-late'}">${t.slaAtendimento}</span></td>
                     <td><span class="sla-badge ${t.slaSolucao === 'No prazo' ? 'sla-ok' : 'sla-late'}">${t.slaSolucao}</span></td>
-                    <td>${formatDate(t.dateCreated)}</td>
-                    <td>${formatDateTime(t.lastUpdate)}</td>
-                    <td>${t.date_solved ? formatDateTime(t.date_solved) : '-'}</td>
+                    <td class="col-date">${formatDate(t.dateCreated)}</td>
+                    <td class="col-date">${formatDateTime(t.lastUpdate)}</td>
+                    <td class="col-date">${t.date_solved ? formatDateTime(t.date_solved) : '-'}</td>
                 </tr>
             `);
             
             const rows = rowsArray.join('');
 
             content.innerHTML = `
-                <div class="table-container">
+                <div class="table-responsive">
                     <table>
                         <thead>
                                 <th class="col-id">ID</th>
                                 <th class="col-instance">Instância</th>
                                 <th class="col-entity">Entidade</th>
                                 <th class="col-category">Categoria</th>
-                                <th>Status</th>
+                                <th class="col-status">Status</th>
                                 <th class="col-group">Grupo Responsável</th>
-                                <th>Técnico</th>
+                                <th class="col-technician">Técnico</th>
                                 <th>SLA Atendimento</th>
                                 <th>SLA Solução</th>
-                                <th>Abertura</th>
-                                <th>Última Atualização</th>
-                                <th>Data/Hora Solução</th>
+                                <th class="col-date">Abertura</th>
+                                <th class="col-date">Última Atualização</th>
+                                <th class="col-date">Data/Hora Solução</th>
                             </tr>
                         </thead>
                         <tbody>${rows}</tbody>

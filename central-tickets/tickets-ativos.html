@@ -1659,7 +1659,7 @@ tickets = await getAllTickets();
                 
                 return `
                     <tr>
-                        <td class="ticket-id">
+                        <td class="col-id">
                             <a href="${ticket.instanceUrl}${ticket.id}" target="_blank" title="${ticket.title}">#${ticket.id}</a>
                         </td>
                         <td class="col-instance">
@@ -1673,10 +1673,10 @@ tickets = await getAllTickets();
                             <span class="priority-badge ${priorityInfo.key}">${getPriorityIcon()}${priorityInfo.label}</span>
                         </td>
                         <td class="col-group">${ticket.group}</td>
-                        <td>${ticket.technician || '-'}</td>
-                        <td class="date col-date">${formatDate(ticket.dateCreated)}</td>
-                        <td class="date col-date">${formatDateTime(ticket.lastUpdate)}</td>
-                        <td class="date col-date">${formatDate(ticket.dueDate)}</td>
+                        <td class="col-technician">${ticket.technician || '-'}</td>
+                        <td class="col-date">${formatDate(ticket.dateCreated)}</td>
+                        <td class="col-date">${formatDateTime(ticket.lastUpdate)}</td>
+                        <td class="col-date">${formatDate(ticket.dueDate)}</td>
                         <td class="col-sla">
                             <span class="sla-badge ${slaClass}">${slaIcon}${slaText}</span>
                         </td>
@@ -1685,7 +1685,7 @@ tickets = await getAllTickets();
             }).join('');
 
             document.getElementById('mainContent').innerHTML = `
-                <div class="table-container">
+                <div class="table-responsive">
                     <table>
                         <thead>
                             <tr>
@@ -1695,7 +1695,7 @@ tickets = await getAllTickets();
                                 <th class="col-status">Status</th>
                                 <th class="col-priority">Prioridade</th>
                                 <th class="col-group">Grupo Responsável</th>
-                                <th>Técnico</th>
+                                <th class="col-technician">Técnico</th>
                                 <th class="col-date">Abertura</th>
                                 <th class="col-date">Última Atualização</th>
                                 <th class="col-date">Previsto</th>
@@ -1703,7 +1703,7 @@ tickets = await getAllTickets();
                             </tr>
                         </thead>
                         <tbody>
-                            ${rowsHTML || '<tr><td colspan="10" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum ticket encontrado</td></tr>'}
+                            ${rowsHTML || '<tr><td colspan="11" style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum ticket encontrado</td></tr>'}
                         </tbody>
                     </table>
                 </div>
