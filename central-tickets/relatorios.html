@@ -10,6 +10,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="config.js"></script>
+    <script src="shared-header.js"></script>
 </head>
 <body>
     <div class="app">
@@ -188,19 +190,7 @@
         </main>
     </div>
 
-    <script src="config.js"></script>
     <script src="glpi-technician.js"></script>
-    <script src="shared-header.js"></script>
-    <script>
-      // startRefreshCountdown não é chamado no DOMContentLoaded principal desta página
-      document.addEventListener('DOMContentLoaded', () => {
-            if (window.initSharedHeader) {
-                window.initSharedHeader();
-            }
-
-        if (typeof window.startRefreshCountdown === 'function') window.startRefreshCountdown(3 * 60 * 1000);
-      });
-    </script>
     <script src="utils.js"></script>
     <script src="incremental-loader.js"></script>
     <script src="dashboard-utils.js"></script>
@@ -339,30 +329,8 @@
         }
 
         const REFRESH_INTERVAL = 3 * 60 * 1000; // 3 minutes
-        let nextRefreshTime = null;
-        let countdownTimer = null;
         let refreshTimer = null;
-
-        function startCountdown() {
-            if (countdownTimer) clearInterval(countdownTimer);
-            nextRefreshTime = Date.now() + REFRESH_INTERVAL;
-            updateCountdown();
-            countdownTimer = setInterval(updateCountdown, 1000);
-        }
-
-        function updateCountdown() {
-            const countdownEl = document.getElementById('refreshCountdown');
-            if (!countdownEl || !nextRefreshTime) return;
-            
-            const remaining = Math.max(0, nextRefreshTime - Date.now());
-            const minutes = Math.floor(remaining / 60000);
-            const seconds = Math.floor((remaining % 60000) / 1000);
-            countdownEl.textContent = `Próximo refresh: ${minutes}:${seconds.toString().padStart(2, '0')}`;
-            
-            if (remaining <= 0) {
-                loadReport();
-            }
-        }
+        // Countdown gerenciado pelo shared-header.js
 
         function getStatusIcon(status) {
             const icons = {
@@ -544,10 +512,8 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             if (window.initSharedHeader) {
-                window.initSharedHeader();
+                window.initSharedHeader({ refreshInterval: 3 * 60 * 1000 }); // 3 minutos
             }
-
-            // initTheme() is now called by shared-header.js
             loadTicketsFromSupabase();
         });
 
@@ -678,9 +644,7 @@
             }
         }
 
-        function startCountdown() {
-            // No auto-refresh for reports
-        }
+        // Countdown gerenciado pelo shared-header.js via initSharedHeader()
     </script>
 </body>
 </html>

@@ -5,21 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Central de Tickets - Dashboard de Tickets GLPI">
 <title>Central de Tickets</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-        tailwind.config = {
-            content: ["./**/*.html"],
-            theme: { extend: {} }
-        };
-    </script>
-    <script src="incremental-loader.js"></script>
     <link rel="icon" href="favicon-peta.png" type="image/png">
     <link rel="stylesheet" href="global.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- shared-header carregado no <head> para evitar race conditions -->
+    <script src="config.js"></script>
+    <script src="shared-header.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
   <div class="app">
@@ -30,10 +24,9 @@
                 <p class="loading-text">Carregando tickets...</p>
             </div>
         </main>
+  </div>
 
-    <script src="config.js"></script>
     <script src="glpi-technician.js"></script>
-    <script src="shared-header.js"></script>
     <script src="cache-manager.js"></script>
     <script src="supabase-cache.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1799,15 +1792,18 @@ ${JSON.stringify(error, null, 2)}
 
         // Inicialização
         document.addEventListener('DOMContentLoaded', () => {
+            // Header, tema e countdown via shared-header.js
+            if (window.initSharedHeader) {
+                window.initSharedHeader({ refreshInterval: REFRESH_INTERVAL });
+            }
+
             // Inicializar Supabase cache
             const supabaseUrl = window.APP_CONFIG?.SUPABASE_URL || '';
             const supabaseKey = window.APP_CONFIG?.SUPABASE_ANON_KEY || '';
             if (supabaseUrl && supabaseKey) {
                 SupabaseCache.init(supabaseUrl, supabaseKey);
-                console.log('✅ Supabase Cache inicializado');
             }
 
-            // initTheme() is now called by shared-header.js
             initInstanceDropdown();
             
             // First sync from GLPI to Supabase cache
@@ -1846,15 +1842,6 @@ ${JSON.stringify(error, null, 2)}
             const parts = String(name).split('>');
             return parts[parts.length - 1].trim();
         }
-    </script>
-
-    <!-- Initialize shared header AFTER all other scripts -->
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            if (window.initSharedHeader) {
-                window.initSharedHeader({ refreshInterval: 600000 }); // 10 minutes
-            }
-        });
     </script>
 </body>
 </html>

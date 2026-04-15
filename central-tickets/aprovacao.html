@@ -9,6 +9,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="config.js"></script>
+    <script src="shared-header.js"></script>
 </head>
 <body>
     <div class="app">
@@ -127,9 +129,7 @@
         </main>
     </div>
 
-    <script src="config.js"></script>
     <script src="glpi-technician.js"></script>
-    <script src="shared-header.js"></script>
     <script src="utils.js"></script>
     <script src="incremental-loader.js"></script>
     <script src="dashboard-utils.js"></script>
@@ -731,24 +731,7 @@
             `;
         }
 
-        let nextRefreshTime = null;
-        let countdownTimer = null;
-
-        function startCountdown() {
-            if (countdownTimer) clearInterval(countdownTimer);
-            nextRefreshTime = Date.now() + REFRESH_INTERVAL;
-            
-            countdownTimer = setInterval(() => {
-                const remaining = Math.max(0, nextRefreshTime - Date.now());
-                const minutes = Math.floor(remaining / 60000);
-                const seconds = Math.floor((remaining % 60000) / 1000);
-                
-                const countdownEl = document.getElementById('refreshCountdown');
-                if (countdownEl) {
-                    countdownEl.textContent = `Atualiza em ${minutes}:${seconds.toString().padStart(2, '0')}`;
-                }
-            }, 1000);
-        }
+        // Countdown gerenciado pelo shared-header.js via initSharedHeader()
 
         async function approveTicket(ticketId, instanceName) {
             if (!confirm(`Aprovar ticket #${ticketId}?`)) return;
@@ -821,17 +804,10 @@
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             if (window.initSharedHeader) {
-                window.initSharedHeader();
+                window.initSharedHeader({ refreshInterval: REFRESH_INTERVAL });
             }
-
-            // renderSharedHeader and initTheme are auto-called by shared-header.js
             refreshTickets();
             refreshTimer = setInterval(refreshTickets, REFRESH_INTERVAL);
-            
-            // Usar o contador regressivo do shared-header.js
-            if (typeof window.startRefreshCountdown === 'function') {
-                window.startRefreshCountdown(REFRESH_INTERVAL);
-            }
         });
     </script>
 </body>

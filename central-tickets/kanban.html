@@ -10,6 +10,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="config.js"></script>
+    <script src="shared-header.js"></script>
 </head>
 <body>
     <div class="app">
@@ -22,9 +24,7 @@
         </main>
     </div>
 
-    <script src="config.js"></script>
     <script src="glpi-technician.js"></script>
-    <script src="shared-header.js"></script>
     <script src="utils.js"></script>
     <script src="incremental-loader.js"></script>
     <script src="dashboard-utils.js"></script>
@@ -289,31 +289,7 @@
         // Intervalo de atualização automática (30 minutos)
         const REFRESH_INTERVAL = 1800000; // 30 minutes
         let refreshTimer = null;
-        let countdownTimer = null;
-        let nextRefreshTime = null;
-
-        // Função para atualizar o contador regressivo
-        function updateCountdown() {
-            if (!nextRefreshTime) return;
-            
-            const now = Date.now();
-            const remaining = Math.max(0, nextRefreshTime - now);
-            const minutes = Math.floor(remaining / 60000);
-            const seconds = Math.floor((remaining % 60000) / 1000);
-            
-            const countdownEl = document.getElementById('refreshCountdown');
-            if (countdownEl) {
-                countdownEl.textContent = `Próximo refresh: ${minutes}:${seconds.toString().padStart(2, '0')}`;
-            }
-        }
-
-        // Função para iniciar o contador regressivo
-        function startCountdown() {
-            nextRefreshTime = Date.now() + REFRESH_INTERVAL;
-            updateCountdown();
-            if (countdownTimer) clearInterval(countdownTimer);
-            countdownTimer = setInterval(updateCountdown, 1000);
-        }
+        // Countdown gerenciado pelo shared-header.js
 
         // Função para iniciar sessão na API - tenta diferentes endpoints
         async function initSession() {
@@ -697,31 +673,8 @@
             return icons[status] || '';
         }
 
-        const REFRESH_INTERVAL = 1800000; // 30 minutes
-        let nextRefreshTime = null;
-        let countdownTimer = null;
+        let slaTimer = null;    // timer para atualização visual dos SLAs
         let refreshTimer = null;
-
-        function startCountdown() {
-            if (countdownTimer) clearInterval(countdownTimer);
-            nextRefreshTime = Date.now() + REFRESH_INTERVAL;
-            updateCountdown();
-            countdownTimer = setInterval(updateCountdown, 1000);
-        }
-
-        function updateCountdown() {
-            const countdownEl = document.getElementById('refreshCountdown');
-            if (!countdownEl || !nextRefreshTime) return;
-            
-            const remaining = Math.max(0, nextRefreshTime - Date.now());
-            const minutes = Math.floor(remaining / 60000);
-            const seconds = Math.floor((remaining % 60000) / 1000);
-            countdownEl.textContent = `Próximo refresh: ${minutes}:${seconds.toString().padStart(2, '0')}`;
-            
-            if (remaining <= 0) {
-                refreshTickets();
-            }
-        }
 
         // Função para processar tickets do Supabase
         function processTickets(rawTickets, instanceName) {
@@ -1351,8 +1304,7 @@ ${JSON.stringify(error, null, 2)}
                     lastUpdateEl.textContent = `Última atualização: ${getCurrentTimeFormatted()}`;
                 }
                 
-                // Reiniciar contador regressivo
-                startCountdown();
+                // Countdown gerenciado pelo shared-header.js
                 
                 console.log('✅ Atualização concluída com sucesso');
             } catch (error) {
@@ -1414,8 +1366,9 @@ ${JSON.stringify(error, null, 2)}
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            // Header, tema e countdown em uma chamada — idempotente
             if (window.initSharedHeader) {
-                window.initSharedHeader();
+                window.initSharedHeader({ refreshInterval: REFRESH_INTERVAL });
             }
 
             // Inicializar Supabase cache
@@ -1423,40 +1376,22 @@ ${JSON.stringify(error, null, 2)}
             const supabaseKey = window.APP_CONFIG?.SUPABASE_ANON_KEY || '';
             if (supabaseUrl && supabaseKey) {
                 SupabaseCache.init(supabaseUrl, supabaseKey);
-                console.log('✅ Supabase Cache inicializado');
             }
 
-            // initTheme() is now called by shared-header.js
             initInstanceDropdown();
-            
-            // First sync from GLPI to Supabase cache
-            if (typeof syncToSupabase === 'function') {
-                syncToSupabase();
-            }
-            
-            // Then load and display tickets
-            setTimeout(() => {
-                refreshTickets();
-            }, 500);
 
-            // Configurar atualização automática
+            if (typeof syncToSupabase === 'function') syncToSupabase();
+
+            setTimeout(() => refreshTickets(), 500);
+
             refreshTimer = setInterval(refreshTickets, REFRESH_INTERVAL);
-            countdownTimer = setInterval(updateSlaCountdowns, 1000);
-            
-            // Usar o contador regressivo do shared-header.js
-            if (typeof window.startRefreshCountdown === 'function') {
-                window.startRefreshCountdown(REFRESH_INTERVAL);
-            }
+            slaTimer = setInterval(updateSlaCountdowns, 1000);
         });
 
         // Cleanup ao sair da página
         window.addEventListener('beforeunload', () => {
-            if (refreshTimer) {
-                clearInterval(refreshTimer);
-            }
-            if (countdownTimer) {
-                clearInterval(countdownTimer);
-            }
+            if (refreshTimer) clearInterval(refreshTimer);
+            if (slaTimer) clearInterval(slaTimer);
             killSession();
         });
     </script>

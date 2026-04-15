@@ -9,46 +9,47 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- shared-header e config no <head> para evitar race conditions -->
+    <script src="config.js"></script>
+    <script src="shared-header.js"></script>
 </head>
 <body>
-        <header class="header"></header>
-
-        <div class="filters-bar">
-            <div class="search-box">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                </svg>
-                <input type="text" id="searchInput" placeholder="Buscar por ID, título, entidade..." oninput="applyFilters()">
-            </div>
-            <select class="filter-select" id="statusFilter" onchange="applyFilters()">
-                <option value="">Todos os status</option>
-                <option value="new">Novo</option>
-                <option value="processing">Em atendimento</option>
-                <option value="pending">Pendente</option>
-                <option value="solved">Solucionado</option>
-                <option value="closed">Fechado</option>
-            </select>
-            <select class="filter-select" id="waitingFilter" onchange="applyFilters()">
-                <option value="">Qualquer espera</option>
-                <option value="warning">> 24 horas</option>
-                <option value="danger">> 72 horas</option>
-            </select>
+  <div class="app">
+    <header class="header"></header>
+    <main class="main" id="mainContent">
+      <div class="filters-bar">
+        <div class="search-box">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="searchInput" placeholder="Buscar por ID, título, entidade..." oninput="applyFilters()">
         </div>
-
+        <select class="filter-select" id="statusFilter" onchange="applyFilters()">
+          <option value="">Todos os status</option>
+          <option value="new">Novo</option>
+          <option value="processing">Em atendimento</option>
+          <option value="pending">Pendente</option>
+          <option value="solved">Solucionado</option>
+          <option value="closed">Fechado</option>
+        </select>
+        <select class="filter-select" id="waitingFilter" onchange="applyFilters()">
+          <option value="">Qualquer espera</option>
+          <option value="warning">> 24 horas</option>
+          <option value="danger">> 72 horas</option>
+        </select>
         <span class="results-count" id="resultsCount"></span>
+      </div>
+      <div id="ticketContent">
+        <div class="loading-container" id="loadingState">
+          <div class="spinner"></div>
+          <p class="loading-text">Carregando tickets...</p>
+        </div>
+      </div>
+    </main>
+  </div>
 
-        <main class="main" id="mainContent">
-            <div class="loading-container" id="loadingState">
-                <div class="spinner"></div>
-                <p class="loading-text">Carregando tickets...</p>
-            </div>
-        </main>
-    </div>
-
-    <script src="config.js"></script>
     <script src="glpi-technician.js"></script>
-    <script src="shared-header.js"></script>
     <script src="utils.js"></script>
     <script src="incremental-loader.js"></script>
     <script src="dashboard-utils.js"></script>
@@ -286,7 +287,7 @@
                 `;
             }).join('');
 
-            document.getElementById('mainContent').innerHTML = `
+            document.getElementById('ticketContent').innerHTML = `
                 <div class="table-responsive">
                     <table>
                         <thead>
@@ -333,7 +334,7 @@
         }
 
         function showLoading() {
-            document.getElementById('mainContent').innerHTML = `
+            document.getElementById('ticketContent').innerHTML = `
                 <div class="loading-container">
                     <div class="spinner"></div>
                     <p class="loading-text">Carregando tickets...</p>
