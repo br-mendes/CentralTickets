@@ -216,15 +216,16 @@
         };
 
         // Função para alternar dropdown de instância
+        function toggleInstanceDropdown() {
             const container = document.getElementById('instanceDropdownContainer');
             const isOpen = container.classList.contains('open');
-            
+
             if (isOpen) {
                 container.classList.remove('open');
             } else {
                 container.classList.add('open');
             }
-            
+
             document.addEventListener('click', closeInstanceDropdownOnClickOutside);
         }
 
@@ -674,7 +675,7 @@
         }
 
         let slaTimer = null;    // timer para atualização visual dos SLAs
-        let refreshTimer = null;
+        // refreshTimer já declarado acima (linha ~291)
 
         // Função para processar tickets do Supabase
         function processTickets(rawTickets, instanceName) {

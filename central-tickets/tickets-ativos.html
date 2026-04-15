@@ -364,20 +364,23 @@
 
         // ========== REFRESH TICKETS ==========
         
-async function refreshTickets() {
+        async function refreshTickets() {
             if (isLoading) return;
-            
             isLoading = true;
             const refreshBtn = document.getElementById('refreshBtn');
             if (refreshBtn) refreshBtn.disabled = true;
             showLoading();
 
             try {
-tickets = await getAllTickets();
-                renderTable(tickets);
-                // startCountdown removido - usar window.startRefreshCountdown() do shared-header.js
+                tickets = await getAllTickets();
+                filteredTickets = [...tickets];
+                populateDropdownOptions();
+                renderTable(filteredTickets);
             } catch (error) {
                 console.error('Erro ao carregar tickets:', error);
+                document.getElementById('mainContent').innerHTML =
+                    `<div class="empty-state"><h3>Erro ao carregar</h3><p>${error.message}</p>
+                    <button class="btn btn-primary" onclick="refreshTickets()">Tentar novamente</button></div>`;
             } finally {
                 isLoading = false;
                 if (refreshBtn) refreshBtn.disabled = false;
@@ -394,24 +397,144 @@ tickets = await getAllTickets();
         }
 
         // Funções de filtro
+        // Entidades/Categorias/Grupos selecionados via dropdowns customizados
+        let selectedEntities = new Set();
+        let selectedCategories = new Set();
+        let selectedGroups = new Set();
+        let activeQuickFilters = new Set();
+
         function applyFilters() {
             const searchTerm = (document.getElementById('searchInput')?.value || '').toLowerCase();
             const statusFilter = document.getElementById('statusFilter')?.value || '';
-            const entityFilter = document.getElementById('entityFilter')?.value || '';
-            
+            const slaFilter = document.getElementById('slaFilter')?.value || '';
+
             filteredTickets = tickets.filter(ticket => {
-                if (searchTerm && !String(ticket.id).includes(searchTerm) && 
+                if (searchTerm && !String(ticket.id).includes(searchTerm) &&
                     !ticket.title?.toLowerCase().includes(searchTerm) &&
                     !ticket.entity?.toLowerCase().includes(searchTerm)) {
                     return false;
                 }
                 if (statusFilter && ticket.status !== statusFilter) return false;
-                if (entityFilter && ticket.entity !== entityFilter) return false;
+                if (slaFilter === 'ok' && ticket.isSlaLate) return false;
+                if (slaFilter === 'late' && !ticket.isSlaLate) return false;
+                if (selectedEntities.size > 0 && !selectedEntities.has(ticket.entity)) return false;
+                if (selectedCategories.size > 0 && !selectedCategories.has(ticket.category)) return false;
+                if (selectedGroups.size > 0 && !selectedGroups.has(ticket.group)) return false;
+                if (activeQuickFilters.has('slaLate') && !ticket.isSlaLate) return false;
+                if (activeQuickFilters.has('pending') && ticket.status !== 'pending') return false;
+                if (selectedInstances.length > 0 && !selectedInstances.includes(ticket.instance === 'PETA' ? 'Peta' : 'GMX')) return false;
                 return true;
             });
-            
+
             renderTable(filteredTickets);
             updateCounts();
+        }
+
+        function toggleQuickFilter(name) {
+            if (activeQuickFilters.has(name)) activeQuickFilters.delete(name);
+            else activeQuickFilters.add(name);
+            document.getElementById('btn' + name.charAt(0).toUpperCase() + name.slice(1))?.classList.toggle('active');
+            applyFilters();
+        }
+
+        function clearAllFilters() {
+            selectedEntities.clear();
+            selectedCategories.clear();
+            selectedGroups.clear();
+            activeQuickFilters.clear();
+            const searchEl = document.getElementById('searchInput');
+            if (searchEl) searchEl.value = '';
+            const statusEl = document.getElementById('statusFilter');
+            if (statusEl) statusEl.value = '';
+            const slaEl = document.getElementById('slaFilter');
+            if (slaEl) slaEl.value = '';
+            document.querySelectorAll('.quick-filter-btn').forEach(b => b.classList.remove('active'));
+            applyFilters();
+        }
+
+        function toggleEntityDropdown() {
+            document.getElementById('entityDropdown')?.classList.toggle('open');
+        }
+        function toggleCategoryDropdown() {
+            document.getElementById('categoryDropdown')?.classList.toggle('open');
+        }
+        function toggleGroupDropdown() {
+            document.getElementById('groupDropdown')?.classList.toggle('open');
+        }
+        function toggleInstanceDropdown() {
+            document.getElementById('instanceDropdownMenu')?.classList.toggle('open');
+        }
+
+        function toggleAllEntities(cb) {
+            if (cb.checked) selectedEntities.clear();
+            else document.querySelectorAll('#entityOptions input[type=checkbox]').forEach(c => { c.checked = false; });
+            applyFilters();
+        }
+        function toggleAllCategories(cb) {
+            if (cb.checked) selectedCategories.clear();
+            else document.querySelectorAll('#categoryOptions input[type=checkbox]').forEach(c => { c.checked = false; });
+            applyFilters();
+        }
+        function toggleAllGroups(cb) {
+            if (cb.checked) selectedGroups.clear();
+            else document.querySelectorAll('#groupOptions input[type=checkbox]').forEach(c => { c.checked = false; });
+            applyFilters();
+        }
+
+        function updateInstanceSelection() {
+            selectedInstances = [];
+            if (document.getElementById('checkPeta')?.checked) selectedInstances.push('Peta');
+            if (document.getElementById('checkGmx')?.checked) selectedInstances.push('GMX');
+            if (selectedInstances.length === 0) selectedInstances = ['Peta', 'GMX'];
+            updateInstanceDropdownLabel();
+            applyFilters();
+        }
+
+        function updateInstanceDropdownLabel() {
+            const el = document.getElementById('instanceDropdownLabel');
+            if (!el) return;
+            if (selectedInstances.length === 2) el.textContent = 'Todas as instâncias';
+            else el.textContent = selectedInstances.join(', ');
+        }
+
+        function populateDropdownOptions() {
+            const entities = [...new Set(tickets.map(t => t.entity).filter(Boolean))].sort();
+            const categories = [...new Set(tickets.map(t => t.category).filter(Boolean))].sort();
+            const groups = [...new Set(tickets.map(t => t.group).filter(Boolean))].sort();
+
+            const entityOpts = document.getElementById('entityOptions');
+            if (entityOpts) entityOpts.innerHTML = entities.map(e =>
+                `<label class="instance-dropdown-option"><input type="checkbox" onchange="toggleEntityOption(this,'${e.replace(/'/g,'\\\'')}')">${e}</label>`
+            ).join('');
+
+            const catOpts = document.getElementById('categoryOptions');
+            if (catOpts) catOpts.innerHTML = categories.map(c =>
+                `<label class="instance-dropdown-option"><input type="checkbox" onchange="toggleCategoryOption(this,'${c.replace(/'/g,'\\\'')}')">${c}</label>`
+            ).join('');
+
+            const grpOpts = document.getElementById('groupOptions');
+            if (grpOpts) grpOpts.innerHTML = groups.map(g =>
+                `<label class="instance-dropdown-option"><input type="checkbox" onchange="toggleGroupOption(this,'${g.replace(/'/g,'\\\'')}')">${g}</label>`
+            ).join('');
+        }
+
+        function toggleEntityOption(cb, value) {
+            if (cb.checked) selectedEntities.add(value); else selectedEntities.delete(value);
+            document.getElementById('entityAll').checked = selectedEntities.size === 0;
+            document.getElementById('entitySelectLabel').textContent = selectedEntities.size > 0 ? `Entidades (${selectedEntities.size})` : 'Entidades';
+            applyFilters();
+        }
+        function toggleCategoryOption(cb, value) {
+            if (cb.checked) selectedCategories.add(value); else selectedCategories.delete(value);
+            document.getElementById('categoryAll').checked = selectedCategories.size === 0;
+            document.getElementById('categorySelectLabel').textContent = selectedCategories.size > 0 ? `Categorias (${selectedCategories.size})` : 'Categorias';
+            applyFilters();
+        }
+        function toggleGroupOption(cb, value) {
+            if (cb.checked) selectedGroups.add(value); else selectedGroups.delete(value);
+            document.getElementById('groupAll').checked = selectedGroups.size === 0;
+            document.getElementById('groupSelectLabel').textContent = selectedGroups.size > 0 ? `Responsáveis (${selectedGroups.size})` : 'Responsáveis';
+            applyFilters();
         }
 
         function renderTable(ticketsToRender) {

@@ -191,23 +191,7 @@
             }
         }
 
-        async function getTicketsFromInstance(instanceName) {
-            try {
-                let allTickets = [];
-                let page = 0;
-                const pageSize = 100;
-                const maxTickets = 1000;
-                let hasMore = true;
-                
-                console.log(`[${instanceName}] Total carregado: ${allTickets.length} tickets (limite: ${maxTickets})`);
-                console.log(`Total de tickets carregados: ${allTickets.length}`);
-            } catch (error) {
-                console.error('Erro ao carregar tickets:', error);
-                content.innerHTML = `<div class="empty-state"><h3>Erro ao carregar dados</h3><p>${error.message}</p></div>`;
-            } finally {
-                isLoading = false;
-            }
-        }
+        // getTicketsFromInstance removido — carregamento feito por loadTicketsFromSupabase()
 
         function populateYearFilter() {
             const yearSelect = document.getElementById('yearFilter');
@@ -391,6 +375,7 @@
                 <div class="table-responsive">
                     <table>
                         <thead>
+                            <tr>
                                 <th class="col-id">ID</th>
                                 <th class="col-instance">Instância</th>
                                 <th class="col-entity">Entidade</th>
@@ -502,8 +487,14 @@
                     lastUpdate: t.date_mod,
                     dueDate: t.due_date,
                     isSlaLate: t.is_sla_late || false,
+                    isOverdueFirst: t.is_overdue_first || false,
+                    isOverdueResolve: t.is_overdue_resolve || false,
+                    slaAtendimento: t.is_overdue_first ? 'Fora do prazo' : 'No prazo',
+                    slaSolucao: (t.is_sla_late || t.is_overdue_resolve) ? 'Fora do prazo' : 'No prazo',
+                    date_solved: t.date_solved || null,
+                    solution_content: t.solution_content || t.solution || '',
                     instance: t.instance,
-                    instanceUrl: t.instance === 'PETA' 
+                    instanceUrl: t.instance?.toUpperCase() === 'PETA'
                         ? (window.APP_CONFIG?.GLPI_PETA_TICKET_URL || '')
                         : (window.APP_CONFIG?.GLPI_GMX_TICKET_URL || ''),
                 }));
