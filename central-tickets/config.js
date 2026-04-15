@@ -4,36 +4,48 @@
  * Para Vercel: Configure as Environment Variables em:
  * Project Settings > Environment Variables
  * 
- * Variáveis necessárias:
- * - SUPABASE_URL
- * - SUPABASE_ANON_KEY
- * - GLPI_PETA_URL
- * - GLPI_PETA_USER_TOKEN
- * - GLPI_PETA_APP_TOKEN
- * - GLPI_GMX_URL
- * - GLPI_GMX_USER_TOKEN
- * - GLPI_GMX_APP_TOKEN
- * - GLPI_PETA_TICKET_URL
- * - GLPI_GMX_TICKET_URL
+ * NOTA: SUPABASE_URL e SUPABASE_ANON_KEY são públicos e podem ser expostos.
+ * Os tokens GLPI são sensíveis e devem ser usados apenas em Edge Functions.
  */
 
-// Check if APP_CONFIG is already set (by Vercel env vars)
-if (typeof window.APP_CONFIG === 'undefined') {
-    window.APP_CONFIG = {};
+// Try to get config from different sources
+let envConfig = {};
+
+// 1. Try process.env (works during build or in Edge Functions)
+if (typeof process !== 'undefined' && process.env) {
+    envConfig = {
+        SUPABASE_URL: process.env.SUPABASE_URL || '',
+        SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || '',
+        GLPI_PETA_URL: process.env.PETA_BASE_URL || process.env.GLPI_PETA_URL || '',
+        GLPI_PETA_USER_TOKEN: process.env.PETA_USER_TOKEN || '',
+        GLPI_PETA_APP_TOKEN: process.env.PETA_APP_TOKEN || '',
+        GLPI_GMX_URL: process.env.GMX_BASE_URL || process.env.GLPI_GMX_URL || '',
+        GLPI_GMX_USER_TOKEN: process.env.GMX_USER_TOKEN || '',
+        GLPI_GMX_APP_TOKEN: process.env.GMX_APP_TOKEN || '',
+    };
 }
 
-// Validate required config
-const requiredVars = ['SUPABASE_URL', 'SUPABASE_ANON_KEY'];
-const missing = requiredVars.filter(key => !window.APP_CONFIG[key]);
-
-if (missing.length > 0) {
-    console.error('[CONFIG] ERRO: Variáveis de ambiente faltando:', missing.join(', '));
-    console.error('[CONFIG] Configure no Vercel Dashboard > Environment Variables');
-    throw new Error('Configuração incompleta. Verifique as variáveis de ambiente.');
+// 2. Check if already set by Vercel in production
+if (typeof window !== 'undefined' && window.__VERCEL_ENV__) {
+    // Vercel may inject env vars here
 }
 
-// Ticket URLs
-window.APP_CONFIG.GLPI_PETA_TICKET_URL = window.APP_CONFIG.GLPI_PETA_TICKET_URL || 'https://glpi.petacorp.com.br/front/ticket.form.php?id=';
-window.APP_CONFIG.GLPI_GMX_TICKET_URL = window.APP_CONFIG.GLPI_GMX_TICKET_URL || 'https://glpi.gmxtecnologia.com.br/front/ticket.form.php?id=';
+window.APP_CONFIG = window.APP_CONFIG || envConfig;
 
-console.log('[CONFIG] Configuração carregada com sucesso');
+// Fill in ticket URLs
+window.APP_CONFIG.GLPI_PETA_TICKET_URL = 'https://glpi.petacorp.com.br/front/ticket.form.php?id=';
+window.APP_CONFIG.GLPI_GMX_TICKET_URL = 'https://glpi.gmxtecnologia.com.br/front/ticket.form.php?id=';
+
+// Validate
+const hasSupabase = window.APP_CONFIG.SUPABASE_URL && window.APP_CONFIG.SUPABASE_ANON_KEY;
+
+if (!hasSupabase) {
+    console.warn('[CONFIG] AVISO: Configuração do Supabase incompleta');
+    console.warn('[CONFIG] Defina SUPABASE_URL e SUPABASE_ANON_KEY no Vercel Dashboard');
+} else {
+    console.log('[CONFIG] Supabase configurado:', window.APP_CONFIG.SUPABASE_URL);
+}
+
+// Log GLPI status (tokens should be used server-side only)
+console.log('[CONFIG] GLPI_PETA:', window.APP_CONFIG.GLPI_PETA_URL ? 'URL configurada' : 'URL não configurada');
+console.log('[CONFIG] GLPI_GMX:', window.APP_CONFIG.GLPI_GMX_URL ? 'URL configurada' : 'URL não configurada');
