@@ -338,16 +338,21 @@ body {
 
 /* === TABELAS RESPONSIVAS === */
 .table-responsive {
+    width: 100%;
+    max-width: 100%;
+    min-width: 90vw;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     border-radius: var(--radius-md);
     border: 1px solid var(--border);
     background: var(--surface);
+    margin: 0 auto;
 }
 
 .table-responsive table {
     width: 100%;
     table-layout: fixed;
+    min-width: 1200px;
     border-collapse: collapse;
 }
 
