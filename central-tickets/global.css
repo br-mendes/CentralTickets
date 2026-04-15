@@ -399,6 +399,7 @@ body {
 .col-status { width: 120px; }
 .col-date { width: 110px; }
 .col-sla { width: 100px; }
+.col-time { width: 100px; text-align: center; }
 .col-category { width: auto; min-width: 180px; max-width: 200px; }
 .col-priority { width: 100px; }
 .col-solution { max-width: 250px; }
