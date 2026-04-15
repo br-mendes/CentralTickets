@@ -3,157 +3,3804 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Central de Tickets - Dashboard</title>
-    <link rel="stylesheet" href="global.css">
-    <script src="config.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <meta name="description" content="Central de Tickets - Dashboard de Tickets GLPI">
+<title>Central de Tickets</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="shared-header.js"></script>
-</head>
-<body>
-    <header class="header"></header>
-
-    <main class="main">
-        <div class="page-header">
-            <h1 class="text-2xl font-bold">Dashboard Central de Tickets</h1>
-            <span id="lastUpdate" class="text-sm text-muted"></span>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div class="rounded-lg border p-4 bg-surface">
-                <p class="text-sm text-muted">Total Tickets</p>
-                <p id="totalCount" class="text-3xl font-bold">0</p>
-            </div>
-            <div class="rounded-lg border p-4 bg-surface">
-                <p class="text-sm text-muted">Em Atendimento</p>
-                <p id="processingCount" class="text-3xl font-bold text-green-600">0</p>
-            </div>
-            <div class="rounded-lg border p-4 bg-surface">
-                <p class="text-sm text-muted">Pendentes</p>
-                <p id="pendingCount" class="text-3xl font-bold text-orange-600">0</p>
-            </div>
-            <div class="rounded-lg border p-4 bg-surface">
-                <p class="text-sm text-muted">SLA Excedido</p>
-                <p id="slaLateCount" class="text-3xl font-bold text-red-600">0</p>
-            </div>
-        </div>
-
-        <div class="table-responsive">
-            <table>
-                <thead>
-                    <tr>
-                        <th class="col-id">ID</th>
-                        <th class="col-instance">Inst</th>
-                        <th class="col-title">Título</th>
-                        <th class="col-entity">Entidade</th>
-                        <th class="col-status">Status</th>
-                        <th class="col-technician">Técnico</th>
-                        <th class="col-date">Abertura</th>
-                        <th class="col-sla">SLA</th>
-                    </tr>
-                </thead>
-                <tbody id="dashboardTableBody"></tbody>
-            </table>
-        </div>
-    </main>
-
     <script>
-        const SUPABASE_URL = window.APP_CONFIG?.SUPABASE_URL || '';
-        const SUPABASE_ANON_KEY = window.APP_CONFIG?.SUPABASE_ANON_KEY || '';
-        const sbClient = window._sb || (window._sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
-
-        function getUnifiedStatus(status) {
-            if (!status) return 'new';
-            const s = status.toLowerCase();
-            if (s.includes('atendimento') || s.includes('processing')) return 'processing';
-            if (s.includes('pendente') || s.includes('pending')) return 'pending';
-            if (s.includes('solucionado') || s.includes('solved')) return 'solved';
-            if (s.includes('fechado') || s.includes('closed')) return 'closed';
-            return 'new';
+        tailwind.config = {
+            content: ["./**/*.html"],
+            theme: { extend: {} }
+        };
+    </script>
+    <script src="incremental-loader.js"></script>
+    <link rel="icon" href="favicon-peta.png" type="image/png">
+    <link rel="stylesheet" href="global.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #64748b;
+            --background: #f8fafc;
+            --surface: #ffffff;
+            --border: #e2e8f0;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            
+            --status-new: #3b82f6;
+            --status-processing: #22c55e;
+            --status-pending: #f97316;
+            --status-approval: #f97316;
+            --status-solved: #6b7280;
+            --status-closed: #1f2937;
+            
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            
+            --radius-sm: 6px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
         }
 
-        async function loadDashboard() {
-            const tbody = document.getElementById('dashboardTableBody');
-            const totalEl = document.getElementById('totalCount');
-            const processingEl = document.getElementById('processingCount');
-            const pendingEl = document.getElementById('pendingCount');
-            const slaLateEl = document.getElementById('slaLateCount');
-            const lastUpdateEl = document.getElementById('lastUpdate');
+        [data-theme="dark"] {
+            --background: #0f172a;
+            --surface: #1e293b;
+            --border: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+        }
 
-            tbody.innerHTML = '<tr><td colspan="8" class="text-center py-8">Carregando...</td></tr>';
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--background);
+            color: var(--text-primary);
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .app {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow-sm);
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        .header-content {
+            max-width: 1800px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header h1 .page-title {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .header h1 .title-main {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.2;
+        }
+
+        .header h1 .subtitle {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .header-logo {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            flex-shrink: 0;
+        }
+
+        .header-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .header-logo-fallback {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header-logo-fallback svg {
+            width: 22px;
+            height: 22px;
+            color: white;
+        }
+
+        .theme-toggle {
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .theme-toggle:hover {
+            background: var(--border);
+        }
+
+        .theme-toggle svg {
+            width: 20px;
+            height: 20px;
+            color: var(--text-primary);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .last-update {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        .refresh-countdown {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-left: 10px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .main {
+            flex: 1;
+            padding: 24px;
+            max-width: 1800px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+            gap: 16px;
+        }
+
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+
+        /* Skeleton Loading */
+        .skeleton {
+            background: linear-gradient(90deg, var(--border) 25%, var(--background) 50%, var(--border) 75%);
+            background-size: 200% 100%;
+            animation: skeleton-shimmer 1.5s ease-in-out infinite;
+            border-radius: var(--radius-sm);
+        }
+
+        @keyframes skeleton-shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .skeleton-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+        }
+
+        .skeleton-title {
+            height: 24px;
+            width: 60%;
+            margin-bottom: 16px;
+        }
+
+        .skeleton-text {
+            height: 16px;
+            width: 100%;
+            margin-bottom: 8px;
+        }
+
+        .skeleton-text-short {
+            height: 16px;
+            width: 40%;
+        }
+
+        .skeleton-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .skeleton-table-row {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+            gap: 16px;
+        }
+
+        .skeleton-table-row .skeleton {
+            height: 20px;
+        }
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+
+        .error-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+            gap: 16px;
+            text-align: center;
+            padding: 24px;
+        }
+
+        .error-icon {
+            width: 64px;
+            height: 64px;
+            color: #ef4444;
+        }
+
+        .error-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .error-message {
+            color: var(--text-secondary);
+            max-width: 400px;
+        }
+
+        .kanban-board {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            min-height: calc(100vh - 180px);
+        }
+
+        .filtered-board {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            min-height: calc(100vh - 180px);
+        }
+
+        @media (max-width: 1600px) {
+            .kanban-board {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 1100px) {
+            .kanban-board {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .filtered-board {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 700px) {
+            .kanban-board {
+                grid-template-columns: 1fr;
+            }
+            .filtered-board {
+                grid-template-columns: 1fr;
+            }
+            .summary-dashboard {
+                grid-template-columns: 1fr 1fr;
+            }
+            .nav-links {
+                flex-wrap: wrap;
+            }
+            .nav-link {
+                flex: 1;
+                justify-content: center;
+                min-width: 120px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .kanban-board {
+                grid-template-columns: 1fr;
+            }
+            
+            .header-content {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .header-actions {
+                width: 100%;
+                justify-content: space-between;
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+            
+            .main {
+                padding: 16px;
+            }
+
+            .summary-dashboard {
+                grid-template-columns: 1fr;
+                padding: 0;
+            }
+
+            .instance-cards {
+                grid-template-columns: 1fr;
+            }
+
+            .quick-actions {
+                flex-direction: column;
+            }
+
+            .quick-action {
+                width: 100%;
+            }
+
+            .header-nav {
+                width: 100%;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+
+            .nav-link {
+                flex: 1;
+                justify-content: center;
+                min-width: 100px;
+            }
+
+            .header-right {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 500px) {
+            .header-nav {
+                display: none;
+            }
+        }
+
+        .instance-dropdown {
+            position: relative;
+        }
+
+        .instance-dropdown-header {
+            padding: 8px 12px;
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.875rem;
+            user-select: none;
+            transition: border-color 0.2s, background-color 0.2s;
+        }
+
+        .instance-dropdown-header:hover {
+            border-color: var(--primary);
+            background: var(--surface);
+        }
+
+        .instance-dropdown-header svg {
+            width: 16px;
+            height: 16px;
+            transition: transform 0.2s;
+        }
+
+        .instance-dropdown.open .instance-dropdown-header svg {
+            transform: rotate(180deg);
+        }
+
+        .instance-dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 4px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            z-index: 100;
+            overflow: hidden;
+        }
+
+        .instance-dropdown.open .instance-dropdown-menu {
+            display: block;
+        }
+
+        .instance-dropdown-option {
+            padding: 10px 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.2s;
+        }
+
+        .instance-dropdown-option:hover {
+            background: var(--background);
+        }
+
+        .instance-dropdown-option input {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        .instance-dropdown-option.peta {
+            color: #2563eb;
+        }
+
+        .instance-dropdown-option.gmx {
+            color: #7c3aed;
+        }
+
+        .kanban-column {
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            max-height: calc(100vh - 180px);
+            overflow: hidden;
+        }
+
+        .column-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .column-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .status-dot.new { background: var(--status-new); }
+        .status-dot.processing { background: var(--status-processing); }
+        .status-dot.pending { background: var(--status-pending); }
+        .status-dot.solved { background: var(--status-solved); }
+        .status-dot.closed { background: var(--status-closed); }
+
+        .column-count {
+            background: var(--background);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .column-content {
+            flex: 1;
+            padding: 12px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .column-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .column-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .column-content::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        .load-more-btn {
+            width: 100%;
+            padding: 10px;
+            margin-top: 8px;
+            background: var(--background);
+            border: 1px dashed var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .load-more-btn:hover {
+            background: var(--surface);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .ticket-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 14px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .ticket-card:hover {
+            border-color: var(--primary);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .ticket-card.new { border-left: 3px solid var(--status-new); }
+        .ticket-card.processing { border-left: 3px solid var(--status-processing); }
+        .ticket-card.pending { border-left: 3px solid var(--status-pending); }
+        .ticket-card.solved { border-left: 3px solid var(--status-solved); }
+        .ticket-card.closed { border-left: 3px solid var(--status-closed); }
+
+        .ticket-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .ticket-status {
+            margin-bottom: 6px;
+        }
+
+        .ticket-id {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .ticket-entity {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            background: var(--background);
+            padding: 2px 8px;
+            border-radius: 4px;
+            max-width: 100px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .ticket-category {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .ticket-category svg {
+            width: 16px;
+            height: 16px;
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        .ticket-dates {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            padding-top: 10px;
+            border-top: 1px solid var(--border);
+        }
+
+        .ticket-date-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .ticket-date-label {
+            color: var(--text-muted);
+        }
+
+        .ticket-date-value {
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .pending-time {
+            background: rgba(249, 115, 22, 0.15);
+            color: #f97316;
+            padding: 6px 10px;
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .pending-time svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .empty-column {
+            text-align: center;
+            padding: 24px;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .btn-secondary {
+            background: var(--surface);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--background);
+        }
+
+        .btn-secondary.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .view-indicator {
+            background: var(--primary);
+            color: white;
+            padding: 4px 12px;
+            border-radius: var(--radius-md);
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        .view-indicator.processing {
+            background: var(--status-processing);
+        }
+
+        .view-indicator.pending {
+            background: var(--status-pending);
+        }
+
+        .priority-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+
+        .priority-badge.low {
+            background: rgba(107, 114, 128, 0.15);
+            color: #6b7280;
+        }
+
+        .priority-badge.medium {
+            background: rgba(59, 130, 246, 0.15);
+            color: #3b82f6;
+        }
+
+        .priority-badge.high {
+            background: rgba(249, 115, 22, 0.15);
+            color: #f97316;
+        }
+
+        .priority-badge.urgent {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+        }
+
+        .priority-badge.critical {
+            background: rgba(153, 27, 27, 0.2);
+            color: #991b1b;
+        }
+
+        .priority-badge svg {
+            width: 10px;
+            height: 10px;
+            flex-shrink: 0;
+        }
+
+        .ticket-card.urgent {
+            border-color: #f59e0b;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.05), transparent);
+        }
+
+        .ticket-card.urgent.processing {
+            border-left-color: var(--status-processing);
+        }
+
+        .ticket-card.urgent.pending {
+            border-left-color: var(--status-pending);
+        }
+
+        .instance-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .instance-badge.peta {
+            background: rgba(37, 99, 235, 0.15);
+            color: #2563eb;
+        }
+
+        .instance-badge.gmx {
+            background: rgba(234, 88, 12, 0.15);
+            color: #ea580c;
+        }
+
+        .ticket-entity-mini {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .ticket-card .ticket-id a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .ticket-card .ticket-id a:hover {
+            text-decoration: underline;
+        }
+
+        .summary-dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .summary-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            transition: all 0.2s;
+        }
+
+        .summary-card:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .summary-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .summary-card-title {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .summary-card-title svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .summary-card-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .summary-card-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .summary-subitem {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+        }
+
+        .summary-subitem-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .summary-subitem-label {
+            color: var(--text-secondary);
+        }
+
+        .summary-subitem-value {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .summary-section {
+            margin-bottom: 8px;
+        }
+
+        .summary-section-title {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+
+        .summary-bar-container {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .summary-bar-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.75rem;
+        }
+
+        .summary-bar-label {
+            min-width: 100px;
+            color: var(--text-secondary);
+        }
+
+        .summary-bar {
+            flex: 1;
+            height: 8px;
+            background: var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .summary-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .summary-bar-value {
+            min-width: 30px;
+            text-align: right;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .team-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .team-item:last-child {
+            border-bottom: none;
+        }
+
+        .team-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: white;
+        }
+
+        .team-name {
+            flex: 1;
+            font-size: 0.8rem;
+            color: var(--text-primary);
+        }
+
+        .team-count {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 12px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover {
+            background: var(--border);
+            color: var(--text-primary);
+        }
+
+        .nav-link.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .nav-link.active:hover {
+            background: var(--primary-dark);
+            color: white;
+        }
+
+        .nav-link svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .header-nav {
+            display: flex;
+            gap: 8px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .cache-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        .cache-btn {
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .cache-btn:hover {
+            background: var(--border);
+            color: var(--primary);
+        }
+
+        .cache-btn svg {
+            width: 16px;
+            height: 16px;
+            color: var(--text-secondary);
+        }
+
+        .cache-btn:hover svg {
+            color: var(--primary);
+        }
+
+        .dashboard-section {
+            margin-bottom: 32px;
+        }
+
+        .dashboard-section-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dashboard-section-title svg {
+            width: 20px;
+            height: 20px;
+            color: var(--primary);
+        }
+
+        .instance-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+        }
+
+        .instance-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+        }
+
+        .instance-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .instance-card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .instance-badge-large {
+            padding: 4px 12px;
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .instance-badge-large.peta {
+            background: rgba(37, 99, 235, 0.15);
+            color: #2563eb;
+        }
+
+        .instance-badge-large.gmx {
+            background: rgba(234, 88, 12, 0.15);
+            color: #ea580c;
+        }
+
+        .instance-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .instance-stat {
+            background: var(--background);
+            padding: 12px;
+            border-radius: var(--radius-md);
+        }
+
+        .instance-stat-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .instance-stat-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .instance-stat-bar {
+            margin-top: 8px;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .instance-stat-bar-fill {
+            height: 100%;
+            border-radius: 2px;
+        }
+
+        .avg-pending {
+            margin-top: 12px;
+            padding: 12px;
+            background: var(--background);
+            border-radius: var(--radius-md);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .avg-pending-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .avg-pending-value {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .avg-pending-value.warning {
+            color: #f59e0b;
+        }
+
+        .avg-pending-value.danger {
+            color: #ef4444;
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .quick-action {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 20px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            flex: 1;
+            min-width: 150px;
+            justify-content: center;
+        }
+
+        .quick-action:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .quick-action svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .period-filter {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .period-btn {
+            padding: 6px 14px;
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .period-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .period-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .period-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .period-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+        }
+
+        .period-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .period-card-title {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .period-card-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .period-card-meta {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .instance-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .instance-summary {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+        }
+
+        .instance-summary-header {
+            padding: 16px 20px;
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(37, 99, 235, 0.05));
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .instance-summary-header.gmx {
+            background: linear-gradient(135deg, rgba(234, 88, 12, 0.1), rgba(234, 88, 12, 0.05));
+        }
+
+        .instance-summary-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .instance-summary-title svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .instance-summary-title.peta svg {
+            color: #2563eb;
+        }
+
+        .instance-summary-title.gmx svg {
+            color: #ea580c;
+        }
+
+        .instance-summary-badge {
+            padding: 4px 12px;
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .instance-summary-badge.peta {
+            background: rgba(37, 99, 235, 0.15);
+            color: #2563eb;
+        }
+
+        .instance-summary-badge.gmx {
+            background: rgba(234, 88, 12, 0.15);
+            color: #ea580c;
+        }
+
+        .instance-summary-body {
+            padding: 20px;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .status-item {
+            background: var(--background);
+            border-radius: var(--radius-md);
+            padding: 12px;
+            text-align: center;
+        }
+
+        .status-item-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .status-item-label {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-item.new .status-item-value { color: #3b82f6; }
+        .status-item.processing .status-item-value { color: #22c55e; }
+        .status-item.pending .status-item-value { color: #f97316; }
+        .status-item.solved .status-item-value { color: #6b7280; }
+        .status-item.closed .status-item-value { color: #1f2937; }
+
+        .instance-metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .metric-card {
+            background: var(--background);
+            border-radius: var(--radius-md);
+            padding: 12px;
+        }
+
+        .metric-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .metric-value {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .metric-value.warning {
+            color: #f59e0b;
+        }
+
+        .metric-value.danger {
+            color: #ef4444;
+        }
+
+        @media (max-width: 900px) {
+            .instance-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .status-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .sla-alert-cards {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .sla-alert-card {
+            background: var(--surface);
+            border: 2px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            flex: 1;
+            min-width: 200px;
+            text-align: center;
+        }
+
+        .sla-alert-card.late {
+            border-color: #ef4444;
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.05), transparent);
+        }
+
+        .sla-alert-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #ef4444;
+        }
+
+        .sla-alert-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .sla-alert-detail {
+            font-size: 0.75rem;
+            margin-top: 8px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 12px;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 14px;
+            transition: all 0.2s;
+        }
+
+        .stat-card:hover {
+            border-color: var(--primary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .stat-name {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .stat-meta {
+            font-size: 0.75rem;
+            margin-top: 4px;
+        }
+
+        .stat-card[title] {
+            cursor: help;
+        }
+
+        .stat-card-full {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            transition: all 0.2s;
+        }
+
+        .stat-card-full:hover {
+            border-color: var(--primary);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .stat-card-full .stat-name {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            word-break: break-word;
+        }
+
+        .stat-card-full .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .stat-card-full .stat-meta {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            background-color: var(--text-primary);
+            color: var(--background);
+            text-align: left;
+            border-radius: var(--radius-sm);
+            padding: 8px 12px;
+            position: absolute;
+            z-index: 1000;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+            font-size: 0.75rem;
+            max-width: 300px;
+            white-space: normal;
+            box-shadow: var(--shadow-lg);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .tooltip .tooltiptext::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: var(--text-primary) transparent transparent transparent;
+        }
+
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .sla-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .sla-ticket-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.2s;
+        }
+
+        .sla-ticket-item:last-child {
+            border-bottom: none;
+        }
+
+        .sla-ticket-item:hover {
+            background: var(--background);
+        }
+
+        .sla-ticket-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .sla-ticket-id {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .sla-ticket-title {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sla-ticket-meta {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .sla-ticket-status {
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .sla-ticket-status.processing {
+            background: rgba(245, 158, 11, 0.15);
+            color: #f59e0b;
+        }
+
+        .sla-ticket-status.pending {
+            background: rgba(139, 92, 246, 0.15);
+            color: #8b5cf6;
+        }
+
+        .sla-ticket-due {
+            font-size: 0.7rem;
+            color: var(--sla-late, #ef4444);
+            font-weight: 500;
+        }
+
+        .category-full-name {
+            display: block;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+            max-width: 200px;
+            word-break: break-all;
+        }
+
+        .bar-chart {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .bar-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .bar-label {
+            min-width: 180px;
+            max-width: 180px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .bar-container {
+            flex: 1;
+            height: 28px;
+            background: var(--border);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            display: flex;
+            position: relative;
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: var(--radius-sm);
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 8px;
+            min-width: 40px;
+        }
+
+        .bar-fill.peta {
+            background: linear-gradient(90deg, #2563eb, #3b82f6);
+        }
+
+        .bar-fill.gmx {
+            background: linear-gradient(90deg, #ea580c, #f97316);
+        }
+
+        .bar-fill.mixed {
+            background: linear-gradient(90deg, #2563eb 50%, #ea580c 50%);
+        }
+
+        .bar-value {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: white;
+        }
+
+        .bar-total {
+            min-width: 50px;
+            text-align: right;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .bar-legend {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 12px;
+            font-size: 0.75rem;
+        }
+
+        .bar-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .bar-legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+
+        .bar-legend-dot.peta { background: #2563eb; }
+        .bar-legend-dot.gmx { background: #ea580c; }
+
+        .expand-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            width: 100%;
+            padding: 10px;
+            margin-top: 12px;
+            background: var(--background);
+            border: 1px dashed var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .expand-btn:hover {
+            background: var(--surface);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .expand-btn svg {
+            width: 16px;
+            height: 16px;
+            transition: transform 0.2s;
+        }
+
+        .expand-btn.expanded svg {
+            transform: rotate(180deg);
+        }
+    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+  <div class="app">
+      <header class="header">
+            <div class="header-content">
+                <div class="header-left">
+                    <h1>
+                        <span class="header-logo">
+                            <img src="favicon-peta.png" alt="Logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <span class="header-logo-fallback" style="display: none;">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                    <polyline points="22,6 12,13 2,6"></polyline>
+                                </svg>
+                            </span>
+                        </span>
+                        <span class="page-title">
+                            <span class="title-main">Central de Tickets</span>
+                            <span class="subtitle">Dashboard</span>
+                        </span>
+                    </h1>
+                </div>
+                <nav class="header-nav">
+                    <a href="index.html" class="nav-link">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="7" height="9"/>
+                            <rect x="14" y="3" width="7" height="5"/>
+                            <rect x="14" y="12" width="7" height="9"/>
+                            <rect x="3" y="16" width="7" height="5"/>
+                        </svg>
+                        Dashboard
+                    </a>
+                    <a href="tickets-ativos.html" class="nav-link">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                            <polyline points="22 4 12 14.01 9 11.01"/>
+                        </svg>
+                        Ativos
+                    </a>
+                    <a href="tickets-em-espera.html" class="nav-link">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                        Espera
+                    </a>
+                    <a href="aprovacao.html" class="nav-link">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <path d="M9 15l2 2 4-4"/>
+                        </svg>
+                        Aprovação
+                    </a>
+                    <a href="relatorios.html" class="nav-link">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="20" x2="18" y2="10"/>
+                            <line x1="12" y1="20" x2="12" y2="4"/>
+                            <line x1="6" y1="20" x2="6" y2="14"/>
+                        </svg>
+                        Relatórios
+                    </a>
+                    <a href="kanban.html" class="nav-link">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <line x1="9" y1="3" x2="9" y2="21"/>
+                            <line x1="15" y1="3" x2="15" y2="21"/>
+                        </svg>
+                        Kanban
+                    </a>
+                </nav>
+                <div class="header-right">
+                    <div class="cache-actions">
+                        <button class="cache-btn" onclick="exportToJSON()" title="Exportar dados para JSON">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                        </button>
+                        <button class="cache-btn" onclick="importFromJSON()" title="Importar dados de JSON">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                        </button>
+                        <button class="cache-btn" onclick="if(confirm('Limpar cache local?')) { clearCache(); location.reload(); }" title="Limpar cache">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <button class="theme-toggle" onclick="toggleTheme()" title="Alternar tema">
+                        <svg id="sunIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="5"></circle>
+                            <line x1="12" y1="1" x2="12" y2="3"></line>
+                            <line x1="12" y1="21" x2="12" y2="23"></line>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                            <line x1="1" y1="12" x2="3" y2="12"></line>
+                            <line x1="21" y1="12" x2="23" y2="12"></line>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                        </svg>
+                        <svg id="moonIcon" style="display:none;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                        </svg>
+                    </button>
+                    <div class="instance-dropdown" id="instanceDropdownContainer">
+                        <div class="instance-dropdown-header" onclick="toggleInstanceDropdown()">
+                            <span id="instanceDropdownLabel">Todas as instâncias</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </div>
+                        <div class="instance-dropdown-menu" id="instanceDropdownMenu">
+                            <label class="instance-dropdown-option peta">
+                                <input type="checkbox" id="checkPeta" checked onchange="updateInstanceSelection()"> Peta
+                            </label>
+                            <label class="instance-dropdown-option gmx">
+                                <input type="checkbox" id="checkGmx" checked onchange="updateInstanceSelection()"> GMX
+                            </label>
+                        </div>
+                    </div>
+                    <button class="cache-btn" onclick="syncToSupabase()" title="Sincronizar com Supabase" id="syncBtn">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12a9 9 0 0 1-9 9m0 0A9 9 0 0 1 3 12m9 9a9 9 0 0 1-9-9m0 0a9 9 0 0 1 9-9"></path>
+                            <polyline points="17 1 21 5 17 9"></polyline>
+                            <path d="M3 12a9 9 0 0 1 9-9m0 0a9 9 0 0 1 9 9"></path>
+                            <polyline points="7 23 3 19 7 15"></polyline>
+                        </svg>
+                    </button>
+                    <span class="last-update" id="lastUpdate"></span>
+                    <span class="refresh-countdown" id="refreshCountdown"></span>
+                    <button class="btn btn-primary" id="refreshBtn" onclick="refreshTickets()">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 2v6h-6"></path>
+                            <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
+                            <path d="M3 22v-6h6"></path>
+                            <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+                        </svg>
+                        Atualizar
+                    </button>
+                </div>
+            </div>
+        </header>
+        
+        <main class="main" id="mainContent">
+            <div class="loading-container" id="loadingState">
+                <div class="spinner"></div>
+                <p class="loading-text">Carregando tickets...</p>
+            </div>
+</main>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="glpi-technician.js"></script>
+    <script src="shared-header.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        if (typeof window.renderSharedHeader === 'function') window.renderSharedHeader();
+        if (typeof window.initTheme === 'function') window.initTheme();
+        if (typeof window.startRefreshCountdown === 'function') window.startRefreshCountdown();
+      });
+    </script>
+    <script src="cache-manager.js"></script>
+    <script src="supabase-cache.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // Auth temporarily disabled
+
+        // Configuração do Supabase via Environment Variables
+        const SUPABASE_URL = window.APP_CONFIG?.SUPABASE_URL || '';
+        const SUPABASE_ANON_KEY = window.APP_CONFIG?.SUPABASE_ANON_KEY || '';
+        
+        const sbClient = window._sb || (window._sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
+
+        // Configuração da API GLPI via Environment Variables
+        const API_CONFIG = {
+            BASE_URL: window.APP_CONFIG?.GLPI_PETA_URL || '',
+            USER_TOKEN: window.APP_CONFIG?.GLPI_PETA_USER_TOKEN || '',
+            APP_TOKEN: window.APP_CONFIG?.GLPI_PETA_APP_TOKEN || '',
+        };
+        
+        // Alternativas de endpoints GLPI (fallback)
+        const API_ENDPOINTS = [
+            window.APP_CONFIG?.GLPI_PETA_URL || '',
+            (window.APP_CONFIG?.GLPI_PETA_URL || '') + '/api.php/v1',
+        ];
+
+        // Instâncias GLPI via Environment Variables
+        const INSTANCES = {
+            'Peta': {
+                BASE_URL: window.APP_CONFIG?.GLPI_PETA_URL || '',
+                USER_TOKEN: window.APP_CONFIG?.GLPI_PETA_USER_TOKEN || '',
+                APP_TOKEN: window.APP_CONFIG?.GLPI_PETA_APP_TOKEN || '',
+                TICKET_URL: window.APP_CONFIG?.GLPI_PETA_TICKET_URL || ''
+            },
+            'GMX': {
+                BASE_URL: window.APP_CONFIG?.GLPI_GMX_URL || '',
+                USER_TOKEN: window.APP_CONFIG?.GLPI_GMX_USER_TOKEN || '',
+                APP_TOKEN: window.APP_CONFIG?.GLPI_GMX_APP_TOKEN || '',
+                TICKET_URL: window.APP_CONFIG?.GLPI_GMX_TICKET_URL || ''
+            }
+        };
+
+        // Debug: Verificar se config está carregado
+        console.log('[CONFIG] Configurações carregadas:');
+        console.log('[CONFIG] GLPI_PETA_URL:', INSTANCES['Peta'].BASE_URL);
+        console.log('[CONFIG] GLPI_PETA_USER_TOKEN:', INSTANCES['Peta'].USER_TOKEN ? 'DEFINIDO' : 'NÃO DEFINIDO');
+        console.log('[CONFIG] GLPI_GMX_URL:', INSTANCES['GMX'].BASE_URL);
+        console.log('[CONFIG] GLPI_GMX_USER_TOKEN:', INSTANCES['GMX'].USER_TOKEN ? 'DEFINIDO' : 'NÃO DEFINIDO');
+
+        // ========== SUPABASE SYNC ==========
+        async function syncTicketsToSupabase(glpiTickets, instanceName) {
+            try {
+                console.log(`[Supabase] Sincronizando ${glpiTickets.length} tickets de ${instanceName}...`);
+                
+                const ticketsToUpsert = glpiTickets.map(ticket => ({
+                    glpi_id: ticket.id,
+                    instance: instanceName.toUpperCase(),
+                    title: ticket.title || ticket.name || '',
+                    content: ticket.content || ticket.description || '',
+                    entity: ticket.entity || '',
+                    category: ticket.category || '',
+                    technician: ticket.technician || ticket.user || '',
+                    status: ticket.status || 1,
+                    date_opening: ticket.date_creation || ticket.date || null,
+                    date_takeaccount: ticket.date_takeaccount || null,
+                    date_solve: ticket.solvedate || null,
+                    date_close: ticket.closedate || null,
+                    internal_time_to_own: ticket.time_to_own || null,
+                    internal_time_to_resolve: ticket.time_to_resolve || null,
+                    sla_percentage_first: ticket.sla_agreement_tto_percent_done || null,
+                    sla_percentage_resolve: ticket.sla_agreement_ttr_percent_done || null,
+                    is_overdue_first: ticket.is_late === '1' || ticket.time_to_own <= 0,
+                    is_overdue_resolve: ticket.is_late === '1' || ticket.time_to_resolve <= 0,
+                    updated_at: new Date().toISOString()
+                }));
+
+                const { data, error } = await sbClient
+                    .from('tickets')
+                    .upsert(ticketsToUpsert, { 
+                        onConflict: 'glpi_id,instance',
+                        ignoreDuplicates: false 
+                    });
+
+                if (error) {
+                    console.error('[Supabase] Erro ao sincronizar:', error);
+                    return false;
+                }
+
+                console.log(`[Supabase] ${glpiTickets.length} tickets sincronizados com sucesso!`);
+                return true;
+            } catch (err) {
+                console.error('[Supabase] Erro na sincronização:', err);
+                return false;
+            }
+        }
+
+        async function fetchTicketsFromSupabase(instanceFilter = null) {
+            try {
+                let query = supabase
+                    .from('tickets')
+                    .select('*')
+                    .order('date_opening', { ascending: false });
+
+                if (instanceFilter && instanceFilter.length > 0) {
+                    query = query.in('instance', instanceFilter.map(i => i.toUpperCase()));
+                }
+
+                const { data, error } = await query;
+
+                if (error) {
+                    console.error('[Supabase] Erro ao buscar tickets:', error);
+                    return null;
+                }
+
+                return data || [];
+            } catch (err) {
+                console.error('[Supabase] Erro ao buscar tickets:', err);
+                return null;
+            }
+        }
+
+        async function getLastSyncTime() {
+            try {
+                const { data, error } = await sbClient
+                    .from('tickets')
+                    .select('updated_at')
+                    .order('updated_at', { ascending: false })
+                    .limit(1);
+                
+                if (error) return null;
+                return data && data.length > 0 ? data[0].updated_at : null;
+            } catch {
+                return null;
+            }
+        }
+
+        // ========== FIM SUPABASE SYNC ==========
+
+        // Mapeamento de status do GLPI
+        const TICKET_STATUS = {
+            1: { name: 'Novo', nameLegacy:'Novo', key: 'new', color: '#3b82f6' },
+            2: { name: 'Em atendimento', key: 'processing', color: '#22c55e' },
+            3: { name: 'Em atendimento', key: 'processing', color: '#22c55e' },
+            4: { name: 'Pendente', key: 'pending', color: '#f97316' },
+            5: { name: 'Solucionado', key: 'solved', color: '#6b7280' },
+            6: { name: 'Fechado', key: 'closed', color: '#1f2937' },
+            7: { name: 'Aprovação', key: 'pending-approval', color: '#f97316', waitText: 'Esperando por uma validação' },
+        };
+
+        // Ordem dos status no Kanban (removido 'new')
+        const STATUS_ORDER = ['processing', 'pending', 'solved', 'closed'];
+
+        const STATUS_LABELS = {
+            'new': 'Novo',
+            'processing': 'Em atendimento',
+            'pending': 'Pendente',
+            'solved': 'Solucionado',
+            'closed': 'Fechado',
+        };
+
+        const TICKET_PRIORITY = {
+            1: { label: 'Baixa', key: 'low', color: '#6b7280' },
+            2: { label: 'Média', key: 'medium', color: '#3b82f6' },
+            3: { label: 'Alta', key: 'high', color: '#f97316' },
+            4: { label: 'Urgente', key: 'urgent', color: '#ef4444' },
+            5: { label: 'Crítica', key: 'critical', color: '#991b1b' },
+        };
+
+        function getPriorityIcon() {
+            return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>';
+        }
+
+        function getStatusIcon(status) {
+            const icons = {
+                'new': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle></svg>',
+                'processing': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path></svg>',
+                'pending': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>',
+                'pending-approval': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>',
+                'solved': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>',
+                'closed': '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line></svg>'
+            };
+            return icons[status] || '';
+        }
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const isDark = html.getAttribute('data-theme') === 'dark';
+            
+            if (isDark) {
+                html.removeAttribute('data-theme');
+                localStorage.setItem('theme', 'light');
+                document.getElementById('sunIcon').style.display = 'block';
+                document.getElementById('moonIcon').style.display = 'none';
+            } else {
+                html.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+                document.getElementById('sunIcon').style.display = 'none';
+                document.getElementById('moonIcon').style.display = 'block';
+            }
+        }
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                document.getElementById('sunIcon').style.display = 'none';
+                document.getElementById('moonIcon').style.display = 'block';
+            }
+        }
+
+        function toggleInstanceDropdown() {
+            const container = document.getElementById('instanceDropdownContainer');
+            const isOpen = container.classList.contains('open');
+            
+            if (isOpen) {
+                container.classList.remove('open');
+            } else {
+                container.classList.add('open');
+            }
+            
+            document.addEventListener('click', closeInstanceDropdownOnClickOutside);
+        }
+
+        function closeInstanceDropdownOnClickOutside(e) {
+            const container = document.getElementById('instanceDropdownContainer');
+            if (!container.contains(e.target)) {
+                container.classList.remove('open');
+                document.removeEventListener('click', closeInstanceDropdownOnClickOutside);
+            }
+        }
+
+        function updateInstanceSelection() {
+            const checkPeta = document.getElementById('checkPeta');
+            const checkGmx = document.getElementById('checkGmx');
+            const label = document.getElementById('instanceDropdownLabel');
+            
+            const petaSelected = checkPeta.checked;
+            const gmxSelected = checkGmx.checked;
+            
+            selectedInstances = [];
+            if (petaSelected) selectedInstances.push('Peta');
+            if (gmxSelected) selectedInstances.push('GMX');
+            
+            if (petaSelected && gmxSelected) {
+                label.textContent = 'Todas as instâncias';
+            } else if (petaSelected) {
+                label.textContent = 'Peta';
+            } else if (gmxSelected) {
+                label.textContent = 'GMX';
+            } else {
+                label.textContent = 'Nenhuma selecionada';
+                selectedInstances = ['Peta', 'GMX'];
+                checkPeta.checked = true;
+                checkGmx.checked = true;
+            }
+            
+            if (tickets.length > 0) {
+                renderKanban(tickets);
+            }
+        }
+
+        function initInstanceDropdown() {
+            const checkPeta = document.getElementById('checkPeta');
+            const checkGmx = document.getElementById('checkGmx');
+            
+            if (!checkPeta || !checkGmx) {
+                // Elementos ainda não renderizados, adiar
+                setTimeout(initInstanceDropdown, 100);
+                return;
+            }
+            
+            checkPeta.checked = selectedInstances.includes('Peta');
+            checkGmx.checked = selectedInstances.includes('GMX');
+            updateInstanceSelection();
+        }
+
+        // Estado da aplicação
+        let sessionTokens = {};
+        let tickets = [];
+        let ticketsByStatus = {};
+        let isLoading = false;
+        let currentView = 'all';
+        let selectedInstances = ['Peta', 'GMX'];
+        let loadedCounts = { processing: 100, pending: 100, solved: 100, closed: 100 };
+        const INITIAL_LOAD = 100;
+        const LOAD_MORE = 50;
+
+        // Intervalo de atualização automática (10 minutos = 600000ms)
+        const REFRESH_INTERVAL = 600000;
+        let refreshTimer = null;
+        let countdownTimer = null;
+        let nextRefreshTime = null;
+
+        // Função para atualizar o contador regressivo
+        function updateCountdown() {
+            if (!nextRefreshTime) return;
+            
+            const now = Date.now();
+            const remaining = Math.max(0, nextRefreshTime - now);
+            const minutes = Math.floor(remaining / 60000);
+            const seconds = Math.floor((remaining % 60000) / 1000);
+            
+            const countdownEl = document.getElementById('refreshCountdown');
+            if (countdownEl) {
+                countdownEl.textContent = `Próximo refresh: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }
+        }
+
+        // Função para iniciar o contador regressivo
+        function startCountdown() {
+            nextRefreshTime = Date.now() + REFRESH_INTERVAL;
+            updateCountdown();
+            if (countdownTimer) clearInterval(countdownTimer);
+            countdownTimer = setInterval(updateCountdown, 1000);
+        }
+
+        // Função para alternar entre visualizações
+        function setView(view) {
+            currentView = view;
+            
+            // Atualizar botões
+            document.getElementById('btnAll').classList.toggle('active', view === 'all');
+            document.getElementById('btnActive').classList.toggle('active', view === 'active');
+            
+            // Atualizar indicador
+            const indicator = document.getElementById('viewIndicator');
+            if (view === 'active') {
+                indicator.style.display = 'inline-block';
+                indicator.textContent = 'Em atendimento + Pendente';
+                indicator.className = 'view-indicator';
+            } else {
+                indicator.style.display = 'none';
+            }
+            
+            // Re-renderizar
+            renderKanban(tickets);
+        }
+
+        // Função para iniciar sessão na API - tenta diferentes endpoints
+        async function initSession() {
+            let lastError = null;
+            
+            for (const baseUrl of API_ENDPOINTS) {
+                try {
+                    console.log(`Tentando autenticar em: ${baseUrl}`);
+                    
+                    const response = await fetch(`${baseUrl}/initSession`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `user_token ${API_CONFIG.USER_TOKEN}`,
+                            'App-Token': API_CONFIG.APP_TOKEN,
+                        },
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        sessionToken = data.session_token;
+                        API_CONFIG.BASE_URL = baseUrl; // Usar o endpoint que funcionou
+                        console.log('Autenticação bem-sucedida!');
+                        return sessionToken;
+                    }
+                    
+                    const errorText = await response.text();
+                    console.log(`Endpoint ${baseUrl} retornou ${response.status}: ${errorText}`);
+                    lastError = new Error(`Erro ${response.status} em ${baseUrl}`);
+                    
+                } catch (error) {
+                    console.log(`Endpoint ${baseUrl} falhou:`, error.message);
+                    lastError = error;
+                }
+            }
+            
+            // Se nenhum endpoint funcionou, lançar erro detalhado
+            console.error('Falha na autenticação em todos os endpoints:', lastError);
+            throw lastError || new Error('Falha na autenticação');
+        }
+
+        // Função para encerrar sessão
+        async function killSession() {
+            for (const instanceName of Object.keys(INSTANCES)) {
+                if (sessionTokens[instanceName]) {
+                    try {
+                        await fetch(`${INSTANCES[instanceName].BASE_URL}/killSession/`, {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Session-Token': sessionTokens[instanceName],
+                                'App-Token': INSTANCES[instanceName].APP_TOKEN,
+                            },
+                        });
+                    } catch (error) {
+                        console.error(`Erro ao encerrar sessão ${instanceName}:`, error);
+                    }
+                }
+            }
+            sessionTokens = {};
+        }
+
+        // Função para iniciar sessão em uma instância
+        async function initSession(instanceName) {
+            const instance = INSTANCES[instanceName];
+            console.log(`[GLPI] Iniciando sessão em ${instanceName}...`);
+            console.log(`[GLPI] URL: ${instance.BASE_URL}`);
+            console.log(`[GLPI] User Token: ${instance.USER_TOKEN ? 'definido' : 'NÃO DEFINIDO'}`);
+            console.log(`[GLPI] App Token: ${instance.APP_TOKEN ? 'definido' : 'NÃO DEFINIDO'}`);
+            
+            try {
+                const response = await fetch(`${instance.BASE_URL}/initSession`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `user_token ${instance.USER_TOKEN}`,
+                        'App-Token': instance.APP_TOKEN,
+                    },
+                });
+
+                console.log(`[GLPI] Resposta: ${response.status} ${response.statusText}`);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error(`[GLPI] Erro detalhado:`, errorText);
+                    throw new Error(`Erro ao iniciar sessão em ${instanceName}: ${response.status} - ${errorText}`);
+                }
+
+                const data = await response.json();
+                console.log(`[GLPI] Sessão iniciada com sucesso para ${instanceName}`);
+                sessionTokens[instanceName] = data.session_token;
+                return data.session_token;
+            } catch (error) {
+                console.error(`[GLPI] Erro na autenticação ${instanceName}:`, error);
+                throw error;
+            }
+        }
+
+        // Função para buscar tickets de uma instância
+        async function getTicketsFromInstance(instanceName, retryCount = 0) {
+            const instance = INSTANCES[instanceName];
+            
+            if (!sessionTokens[instanceName]) {
+                await initSession(instanceName);
+            }
 
             try {
+                const allTickets = [];
+                let page = 0;
+                const pageSize = 100;
+                let hasMore = true;
+                let consecutiveErrors = 0;
+
+                while (hasMore) {
+                    const start = page * pageSize;
+                    const end = start + pageSize - 1;
+
+                    const searchParams = new URLSearchParams({
+                        'range': `${start}-${end}`,
+                        'expand_dropdowns': 'true',
+                        'get_hateoas': 'false',
+                    });
+
+                    const response = await fetch(
+                        `${instance.BASE_URL}/search/Ticket?${searchParams.toString()}`,
+                        {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Session-Token': sessionTokens[instanceName],
+                                'App-Token': instance.APP_TOKEN,
+                            },
+                        }
+                    );
+
+                    if (!response.ok) {
+                        consecutiveErrors++;
+                        console.error(`[GLPI] Erro na requisição: ${response.status} ${response.statusText}`);
+                        if (response.status === 401 && retryCount < 2) {
+                            console.log(`🔄 Sessão expirada para ${instanceName}, reautenticando...`);
+                            sessionTokens[instanceName] = null;
+                            await initSession(instanceName);
+                            return getTicketsFromInstance(instanceName, retryCount + 1);
+                        }
+                        throw new Error(`Erro ao buscar tickets de ${instanceName}: ${response.status}`);
+                    }
+
+                    consecutiveErrors = 0;
+                    const data = await response.json();
+                    
+                    if (data.data) {
+                        const ticketsArray = Array.isArray(data.data) ? data.data : Object.values(data.data);
+                        
+                        if (ticketsArray.length === 0) {
+                            hasMore = false;
+                        } else {
+                            allTickets.push(...ticketsArray);
+                            page++;
+                            
+                            if (ticketsArray.length < pageSize || page >= 50) {
+                                hasMore = false;
+                            }
+                        }
+                    } else {
+                        hasMore = false;
+                    }
+                }
+
+                return processTickets(allTickets, instanceName);
+            } catch (error) {
+                console.error(`Erro ao buscar tickets de ${instanceName}:`, error);
+                throw error;
+            }
+        }
+
+        // Função para buscar tickets de todas as instâncias
+        async function getAllTickets() {
+            const allTickets = [];
+            const errors = [];
+            
+            for (const instanceName of selectedInstances) {
+                try {
+                    await initSession(instanceName);
+                    const instanceTickets = await getTicketsFromInstance(instanceName);
+                    allTickets.push(...instanceTickets);
+                    console.log(`✅ ${instanceName}: ${instanceTickets.length} tickets carregados`);
+                } catch (error) {
+                    console.error(`❌ Falha ao carregar tickets de ${instanceName}:`, error);
+                    errors.push({ instance: instanceName, error: error.message });
+                }
+            }
+            
+            if (allTickets.length === 0 && errors.length > 0) {
+                throw new Error(`Falha ao carregar tickets: ${errors.map(e => e.instance).join(', ')}`);
+            }
+            
+            console.log(`📊 Total de tickets carregados: ${allTickets.length}`);
+            return allTickets;
+        }
+
+        // Função para processar tickets da API
+        function getRootCategory(category) {
+            if (!category) return 'Não categorizado';
+            const parts = category.split(' > ');
+            return parts[0].trim();
+        }
+
+        function getLastCategory(category) {
+            if (!category) return 'Não categorizado';
+            const parts = category.split(' > ');
+            return parts[parts.length - 1].trim();
+        }
+
+        function isSlaExceeded(dueDateStr) {
+            if (!dueDateStr) return false;
+            const dueDate = new Date(dueDateStr);
+            const now = new Date();
+            return dueDate < now;
+        }
+
+        function processTickets(rawTickets, instanceName) {
+            return rawTickets.map(ticket => {
+                const statusId = parseInt(ticket[12]) || 1;
+                const statusInfo = TICKET_STATUS[statusId] || TICKET_STATUS[1];
+                
+                let category = ticket[7] || 'Não categorizado';
+
+                const dueDate = ticket[151] || ticket.due_date;
+                const isSlaLate = isSlaExceeded(dueDate);
+
+                return {
+                    id: ticket[2] || ticket.id,
+                    title: ticket[1] || 'Sem título',
+                    entity: ticket[80] || 'Entidade não definida',
+                    category: category,
+                    rootCategory: getRootCategory(category),
+                    group: lastGroupLabel(ticket[8] || 'Não atribuído'),
+                    statusId: statusId,
+                    status: statusInfo.key,
+                    statusName: statusInfo.name,
+                    statusColor: statusInfo.color,
+                    dateCreated: ticket[15] || ticket.date_creation,
+                    dueDate: dueDate,
+                    isSlaLate: isSlaLate,
+                    timePending: statusInfo.key === 'pending' ? calculatePendingTime(ticket) : null,
+                    instance: instanceName,
+                    instanceUrl: INSTANCES[instanceName].TICKET_URL,
+                };
+            });
+        }
+
+        // Função para calcular tempo em pendência
+        function calculatePendingTime(ticket) {
+            const lastUpdate = ticket[91] || ticket.date_creation;
+            if (!lastUpdate) return null;
+
+            const updateDate = new Date(lastUpdate);
+            const now = new Date();
+            const diffMs = now - updateDate;
+
+            return formatDuration(diffMs);
+        }
+
+        // Função para formatar duração
+        function formatDuration(ms) {
+            const seconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            const days = Math.floor(hours / 24);
+
+            if (days > 0) {
+                const remainingHours = hours % 24;
+                if (remainingHours > 0) {
+                    return `há ${days} dia${days > 1 ? 's' : ''} e ${remainingHours} hora${remainingHours > 1 ? 's' : ''}`;
+                }
+                return `há ${days} dia${days > 1 ? 's' : ''}`;
+            }
+            
+            if (hours > 0) {
+                return `há ${hours} hora${hours > 1 ? 's' : ''}`;
+            }
+            
+            if (minutes > 0) {
+                return `há ${minutes} minuto${minutes > 1 ? 's' : ''}`;
+            }
+            
+            return 'há poucos segundos';
+        }
+
+        // Função para formatar data
+        function formatShortDate(dateString) {
+            if (!dateString) return 'N/A';
+            
+            try {
+                const date = new Date(dateString);
+                if (isNaN(date.getTime())) return 'N/A';
+                
+                return date.toLocaleDateString('pt-BR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                });
+            } catch {
+                return 'N/A';
+            }
+        }
+
+        // Função para obter hora formatada
+        function getCurrentTimeFormatted() {
+            return new Date().toLocaleTimeString('pt-BR', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+            });
+        }
+
+        // Função para exibir tela de loading com skeleton
+        function showLoading(message = 'Carregando tickets...') {
+            const mainContent = document.getElementById('mainContent');
+            mainContent.innerHTML = `
+                <div style="padding: 24px;">
+                    <p class="loading-text" style="margin-bottom: 20px; font-weight: 500;">${message}</p>
+                    
+                    <!-- Skeleton Cards -->
+                    <div class="skeleton-grid" style="margin-bottom: 24px;">
+                        <div class="skeleton-card">
+                            <div class="skeleton skeleton-title"></div>
+                            <div class="skeleton skeleton-text"></div>
+                            <div class="skeleton skeleton-text-short"></div>
+                        </div>
+                        <div class="skeleton-card">
+                            <div class="skeleton skeleton-title"></div>
+                            <div class="skeleton skeleton-text"></div>
+                            <div class="skeleton skeleton-text-short"></div>
+                        </div>
+                        <div class="skeleton-card">
+                            <div class="skeleton skeleton-title"></div>
+                            <div class="skeleton skeleton-text"></div>
+                            <div class="skeleton skeleton-text-short"></div>
+                        </div>
+                        <div class="skeleton-card">
+                            <div class="skeleton skeleton-title"></div>
+                            <div class="skeleton skeleton-text"></div>
+                            <div class="skeleton skeleton-text-short"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Skeleton Table -->
+                    <div class="skeleton-card">
+                        <div class="skeleton skeleton-title" style="margin-bottom: 16px; width: 40%;"></div>
+                        ${Array(5).fill('<div class="skeleton-table-row"><div class="skeleton" style="width: 60px;"></div><div class="skeleton" style="flex: 1;"></div><div class="skeleton" style="width: 100px;"></div><div class="skeleton" style="width: 80px;"></div></div>').join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Função para exibir erro
+        function showError(message, details, error = null) {
+            const mainContent = document.getElementById('mainContent');
+            
+            let debugInfo = '';
+            if (error) {
+                debugInfo = `
+                    <details style="margin-top: 16px; text-align: left; max-width: 500px;">
+                        <summary style="cursor: pointer; color: var(--text-muted); font-size: 0.75rem;">
+                            Detalhes técnicos
+                        </summary>
+                        <pre style="margin-top: 8px; padding: 12px; background: var(--background); 
+                            border-radius: var(--radius-sm); font-size: 0.75rem; 
+                            overflow-x: auto; text-align: left; color: var(--text-secondary);">
+${JSON.stringify(error, null, 2)}
+                        </pre>
+                    </details>
+                `;
+            }
+            
+            mainContent.innerHTML = `
+                <div class="error-container">
+                    <svg class="error-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <h2 class="error-title">${message}</h2>
+                    <p class="error-message">${details}</p>
+                    <button class="btn btn-primary" onclick="refreshTickets()">
+                        Tentar novamente
+                    </button>
+                    ${debugInfo}
+                </div>
+            `;
+        }
+
+        function getInstanceStats(tickets, instanceName) {
+            // Filter case-insensitive to handle 'Peta' and 'PETA'
+            const instanceTickets = tickets.filter(t => t.instance?.toLowerCase() === instanceName.toLowerCase());
+            
+            // Support both status (key) and status_key from Supabase
+            const getStatus = (t) => t.status || t.status_key || 'new';
+            
+            return {
+                total: instanceTickets.length,
+                new: instanceTickets.filter(t => getStatus(t) === 'new').length,
+                processing: instanceTickets.filter(t => getStatus(t) === 'processing').length,
+                pending: instanceTickets.filter(t => getStatus(t) === 'pending').length,
+                solved: instanceTickets.filter(t => getStatus(t) === 'solved').length,
+                closed: instanceTickets.filter(t => getStatus(t) === 'closed').length,
+                tickets: instanceTickets
+            };
+        }
+
+        function getAvgPendingTime(tickets) {
+            const pending = tickets.filter(t => t.status === 'pending');
+            if (pending.length === 0) return { time: 'N/A', class: '', count: 0 };
+            
+            let totalMs = 0;
+            let count = 0;
+            pending.forEach(t => {
+                if (t.dateCreated) {
+                    totalMs += (new Date() - new Date(t.dateCreated));
+                    count++;
+                }
+            });
+            
+            if (count === 0) return { time: 'N/A', class: '', count: pending.length };
+            
+            const avgMs = totalMs / count;
+            const days = Math.floor(avgMs / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((avgMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            
+            let timeStr, timeClass;
+            if (days > 2) {
+                timeStr = days > 0 ? `${days}d ${hours}h` : `${hours}h`;
+                timeClass = 'danger';
+            } else if (days > 0 || hours > 24) {
+                timeStr = days > 0 ? `${days}d ${hours}h` : `${hours}h`;
+                timeClass = 'warning';
+            } else {
+                timeStr = `${hours}h`;
+                timeClass = '';
+            }
+            
+            return { time: timeStr, class: timeClass, count: pending.length };
+        }
+
+        function getTicketsByPeriod(tickets, days) {
+            const now = new Date();
+            const startDate = new Date(now.getTime() - (days * 24 * 60 * 60 * 1000));
+            return tickets.filter(t => {
+                if (!t.dateCreated) return false;
+                const created = new Date(t.dateCreated);
+                return created >= startDate;
+            });
+        }
+
+        function getTicketsClosedInPeriod(tickets, days) {
+            const now = new Date();
+            const startDate = new Date(now.getTime() - (days * 24 * 60 * 60 * 1000));
+            return tickets.filter(t => {
+                if (t.status !== 'closed' && t.status !== 'solved') return false;
+                if (!t.dateCreated) return false;
+                const created = new Date(t.dateCreated);
+                return created >= startDate;
+            });
+        }
+
+        function renderInstanceSummary(instanceName, stats, avgPending, color) {
+            return `
+                <div class="instance-summary">
+                    <div class="instance-summary-header ${instanceName.toLowerCase()}">
+                        <span class="instance-summary-title ${instanceName.toLowerCase()}">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                ${instanceName === 'Peta' ? '<circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>' : '<polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline>'}
+                            </svg>
+                            ${instanceName === 'Peta' ? 'Peta' : 'GMX'} ${instanceName === 'Peta' ? '' : 'Tecnologia'}
+                        </span>
+                        <span class="instance-summary-badge ${instanceName.toLowerCase()}">${instanceName.toUpperCase()}</span>
+                    </div>
+                    <div class="instance-summary-body">
+                        <div class="status-grid">
+                            <div class="status-item new">
+                                <div class="status-item-value">${stats.new}</div>
+                                <div class="status-item-label">Novos</div>
+                            </div>
+                            <div class="status-item processing">
+                                <div class="status-item-value">${stats.processing}</div>
+                                <div class="status-item-label">Em Att</div>
+                            </div>
+                            <div class="status-item pending">
+                                <div class="status-item-value">${stats.pending}</div>
+                                <div class="status-item-label">Pendente</div>
+                            </div>
+                            <div class="status-item solved">
+                                <div class="status-item-value">${stats.solved}</div>
+                                <div class="status-item-label">Solucionado</div>
+                            </div>
+                            <div class="status-item closed">
+                                <div class="status-item-value">${stats.closed}</div>
+                                <div class="status-item-label">Fechado</div>
+                            </div>
+                        </div>
+                        <div class="instance-metrics">
+                            <div class="metric-card">
+                                <div class="metric-label">Total</div>
+                                <div class="metric-value">${stats.total}</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Em Andamento</div>
+                                <div class="metric-value">${stats.processing + stats.pending}</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Tmp. Médio Pendência</div>
+                                <div class="metric-value ${avgPending.class}">${avgPending.time}</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Tickets Pendentes</div>
+                                <div class="metric-value">${avgPending.count}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderFullDashboard(tickets) {
+            console.log(`renderFullDashboard received: ${tickets?.length || 0} tickets`);
+            
+            // Debug: ver valores únicos de instance
+            const uniqueInstances = [...new Set(tickets.map(t => t.instance))];
+            console.log('Unique instances:', uniqueInstances);
+            
+            const petaCount = tickets.filter(t => t.instance?.toLowerCase() === 'peta').length;
+            const gmxCount = tickets.filter(t => t.instance?.toLowerCase() === 'gmx').length;
+            console.log(`Peta: ${petaCount}, GMX: ${gmxCount}, Total: ${petaCount + gmxCount}`);
+            
+            window.ticketsBySolution = null;
+            const petaStats = getInstanceStats(tickets, 'Peta');
+            const gmxStats = getInstanceStats(tickets, 'GMX');
+            const petaAvgPending = getAvgPendingTime(petaStats.tickets);
+            const gmxAvgPending = getAvgPendingTime(gmxStats.tickets);
+            const slaOverdue = tickets.filter(t => t.isSlaLate);
+            const slaOverdueSorted = [...slaOverdue].sort((a, b) => new Date(a.dueDate || 0) - new Date(b.dueDate || 0));
+
+            const ticketsByEntity = {};
+            tickets.forEach(t => {
+                const entity = t.entity || 'Sem Entidade';
+                if (!ticketsByEntity[entity]) ticketsByEntity[entity] = { total: 0, peta: 0, gmx: 0 };
+                ticketsByEntity[entity].total++;
+                if (t.instance?.toLowerCase() === 'peta') ticketsByEntity[entity].peta++;
+                if (t.instance?.toLowerCase() === 'gmx') ticketsByEntity[entity].gmx++;
+            });
+
+            window.ticketsByGroup = {};
+            tickets.forEach(t => {
+                const group = t.group || 'Não atribuído';
+                if (!window.ticketsByGroup[group]) window.ticketsByGroup[group] = { total: 0, peta: 0, gmx: 0 };
+                window.ticketsByGroup[group].total++;
+                if (t.instance?.toLowerCase() === 'peta') window.ticketsByGroup[group].peta++;
+                if (t.instance?.toLowerCase() === 'gmx') window.ticketsByGroup[group].gmx++;
+            });
+            const ticketsByGroup = window.ticketsByGroup;
+
+            const ticketsByCategory = {};
+            tickets.forEach(t => {
+                const cat = t.category || 'Sem Categoria';
+                if (!ticketsByCategory[cat]) ticketsByCategory[cat] = { total: 0, peta: 0, gmx: 0 };
+                ticketsByCategory[cat].total++;
+                if (t.instance?.toLowerCase() === 'peta') ticketsByCategory[cat].peta++;
+                if (t.instance?.toLowerCase() === 'gmx') ticketsByCategory[cat].gmx++;
+            });
+
+            window.ticketsBySolution = {};
+            tickets.forEach(t => {
+                const rootCat = getRootCategory(t.category) || 'Sem Categoria';
+                if (!window.ticketsBySolution[rootCat]) window.ticketsBySolution[rootCat] = { total: 0, peta: 0, gmx: 0 };
+                window.ticketsBySolution[rootCat].total++;
+                if (t.instance?.toLowerCase() === 'peta') window.ticketsBySolution[rootCat].peta++;
+                if (t.instance?.toLowerCase() === 'gmx') window.ticketsBySolution[rootCat].gmx++;
+            });
+            const ticketsBySolution = window.ticketsBySolution;
+
+            // Tickets por Técnico
+            const ticketsByTechnician = {};
+            tickets.forEach(t => {
+                const tech = t.technician || 'Não atribuído';
+                const status = t.status || t.status_key || 'new';
+                if (!ticketsByTechnician[tech]) {
+                    ticketsByTechnician[tech] = { 
+                        total: 0, 
+                        processing: 0, 
+                        pending: 0, 
+                        solved: 0, 
+                        closed: 0,
+                        peta: 0,
+                        gmx: 0 
+                    };
+                }
+                ticketsByTechnician[tech].total++;
+                if (status === 'processing') ticketsByTechnician[tech].processing++;
+                if (status === 'pending') ticketsByTechnician[tech].pending++;
+                if (status === 'solved') ticketsByTechnician[tech].solved++;
+                if (status === 'closed') ticketsByTechnician[tech].closed++;
+                if (t.instance?.toLowerCase() === 'peta') ticketsByTechnician[tech].peta++;
+                if (t.instance?.toLowerCase() === 'gmx') ticketsByTechnician[tech].gmx++;
+            });
+            const technicianStats = Object.entries(ticketsByTechnician)
+                .sort((a, b) => b[1].total - a[1].total);
+
+            // Build HTML sections using helper functions
+            const htmlPeta = renderTailwindInstanceSummary('Peta', petaStats, petaAvgPending, 'blue');
+            const htmlGmx = renderTailwindInstanceSummary('GMX', gmxStats, gmxAvgPending, 'orange');
+            const htmlSla = renderSlaSection(slaOverdue);
+            const htmlTechnician = renderTechnicianCards(ticketsByTechnician);
+            const htmlEntity = renderEntityCards(ticketsByEntity);
+            const htmlGroup = renderGroupBars(ticketsByGroup);
+            const htmlSolution = renderSolutionBars(ticketsBySolution);
+            const htmlCategory = renderCategoryCards(ticketsByCategory);
+            const htmlPeriod = renderTailwindPeriodContent(tickets, 30);
+
+            // Set default period button - show ALL tickets by default
+            setTimeout(() => {
+                const defaultBtn = document.querySelector('[data-period="total"]');
+                if (defaultBtn) {
+                    document.querySelectorAll('.period-btn').forEach(b => {
+                        b.classList.remove('bg-blue-600', 'text-white');
+                        b.classList.add('bg-gray-200', 'text-gray-700');
+                    });
+                    defaultBtn.classList.remove('bg-gray-200', 'text-gray-700');
+                    defaultBtn.classList.add('bg-blue-600', 'text-white');
+                }
+            }, 100);
+
+            return '<div class="p-6">' +
+                '<div class="bg-white rounded-lg shadow p-6 mb-6">' +
+                    '<h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">' +
+                        '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>' +
+                        'Resumo por Instância' +
+                    '</h2>' +
+                    '<div class="grid grid-cols-1 md:grid-cols-2 gap-6">' + htmlPeta + htmlGmx + '</div>' +
+                '</div>' +
+                '<div class="bg-white rounded-lg shadow p-6 mb-6">' +
+                    '<h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">' +
+                        '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>' +
+                        'Tickets por Técnico' +
+                    '</h2>' +
+                    '<div class="overflow-x-auto">' + htmlTechnician + '</div>' +
+                '</div>' +
+                htmlSla +
+                '<div class="bg-white rounded-lg shadow p-6 mb-6">' +
+                    '<h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">' +
+                        '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>' +
+                        'Tickets por Entidade' +
+                    '</h2>' +
+                    '<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">' + htmlEntity + '</div>' +
+                '</div>' +
+                '<div class="bg-white rounded-lg shadow p-6 mb-6">' +
+                    '<h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">' +
+                        '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>' +
+                        'Tickets por Grupo Responsável' +
+                    '</h2>' +
+                    '<div class="space-y-3">' + htmlGroup + '</div>' +
+                '</div>' +
+                '<div class="bg-white rounded-lg shadow p-6 mb-6">' +
+                    '<h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">' +
+                        '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>' +
+                        'Tickets por Solução (Raiz ITIL)' +
+                    '</h2>' +
+                    '<div class="space-y-3">' + htmlSolution + '</div>' +
+                '</div>' +
+                '<div class="bg-white rounded-lg shadow p-6 mb-6">' +
+                    '<h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">' +
+                        '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>' +
+                        'Tickets por Categoria (ITIL Completa)' +
+                    '</h2>' +
+                    '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">' + htmlCategory + '</div>' +
+                '</div>' +
+                '<div class="bg-white rounded-lg shadow p-6 mb-6">' +
+                    '<h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">' +
+                        '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>' +
+                        'Tickets por Período' +
+                    '</h2>' +
+                    '<div class="flex gap-2 mb-6" id="periodButtons">' +
+                        '<button class="period-btn px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors" data-period="total" onclick="filterPeriod(this)">Total</button>' +
+                        '<button class="period-btn px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors" data-period="30" onclick="filterPeriod(this)">Últimos 30 dias</button>' +
+                        '<button class="period-btn px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors" data-period="60" onclick="filterPeriod(this)">Últimos 60 dias</button>' +
+                        '<button class="period-btn px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors" data-period="90" onclick="filterPeriod(this)">Últimos 90 dias</button>' +
+                        '<button class="period-btn px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors" data-period="365" onclick="filterPeriod(this)">Este Ano</button>' +
+                    '</div>' +
+                    '<div id="periodContent">' + htmlPeriod + '</div>' +
+                '</div>' +
+                '<div class="bg-white rounded-lg shadow p-6">' +
+                    '<h2 class="text-xl font-bold text-gray-800 mb-4">Ações Rápidas</h2>' +
+                    '<div class="flex gap-4 flex-wrap">' +
+                        '<a href="kanban.html" class="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100">Visualizar Kanban</a>' +
+                        '<a href="tickets-ativos.html" class="flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100">Tickets Ativos</a>' +
+                        '<a href="tickets-em-espera.html" class="flex items-center gap-2 px-4 py-2 bg-orange-50 text-orange-700 rounded-lg hover:bg-orange-100">Tickets em Espera</a>' +
+                        '<a href="aprovacao.html" class="flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100">Aprovação</a>' +
+                        '<a href="relatorios.html" class="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">Relatórios</a>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+        }
+
+        function renderSlaSection(slaOverdue) {
+            const petaCount = slaOverdue.filter(t => t.instance?.toLowerCase() === 'peta').length;
+            const gmxCount = slaOverdue.filter(t => t.instance?.toLowerCase() === 'gmx').length;
+            const pendingCount = slaOverdue.filter(t => t.status === 'pending').length;
+            const processingCount = slaOverdue.filter(t => t.status === 'processing').length;
+            
+            let tableHtml = '';
+            if (slaOverdue.length > 0) {
+                const rows = slaOverdue.slice(0, 15).map(ticket => {
+                    const overdueDays = ticket.dueDate ? Math.floor((new Date() - new Date(ticket.dueDate)) / (1000 * 60 * 60 * 24)) : 0;
+                    const statusClass = ticket.status === 'pending' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700';
+                    return '<tr class="border-t hover:bg-gray-50">' +
+                        '<td class="px-3 py-2"><a href="' + ticket.instanceUrl + ticket.id + '" target="_blank" class="text-blue-600 hover:underline">#' + ticket.id + '</a></td>' +
+                        '<td class="px-3 py-2 max-w-xs truncate">' + (ticket.title || '') + '</td>' +
+                        '<td class="px-3 py-2 text-gray-600">' + (ticket.entity || '-') + '</td>' +
+                        '<td class="px-3 py-2"><span class="px-2 py-1 rounded text-xs font-medium ' + statusClass + '">' + (ticket.statusName || '') + '</span></td>' +
+                        '<td class="px-3 py-2 text-red-600 font-medium">' + overdueDays + 'd</td>' +
+                    '</tr>';
+                }).join('');
+                
+                tableHtml = '<div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr>' +
+                    '<th class="px-3 py-2 text-left font-medium text-gray-600">ID</th>' +
+                    '<th class="px-3 py-2 text-left font-medium text-gray-600">Título</th>' +
+                    '<th class="px-3 py-2 text-left font-medium text-gray-600">Entidade</th>' +
+                    '<th class="px-3 py-2 text-left font-medium text-gray-600">Status</th>' +
+                    '<th class="px-3 py-2 text-left font-medium text-gray-600">Atraso</th>' +
+                    '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+                if (slaOverdue.length > 15) {
+                    tableHtml += '<div class="text-center py-2 text-gray-500 text-sm">Mostrando 15 de ' + slaOverdue.length + ' tickets</div>';
+                }
+            } else {
+                tableHtml = '<div class="text-center py-8 text-gray-500">Nenhum ticket com SLA atrasado</div>';
+            }
+            
+            return '<div class="bg-white rounded-lg shadow p-6 mb-6">' +
+                '<h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">' +
+                    '<svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>' +
+                    'Tickets com SLA Fora do Prazo' +
+                '</h2>' +
+                '<div class="flex gap-4 mb-4">' +
+                    '<div class="flex-1 bg-red-50 border border-red-200 rounded-lg p-4 text-center">' +
+                        '<div class="text-3xl font-bold text-red-600">' + slaOverdue.length + '</div>' +
+                        '<div class="text-sm text-red-700">Total SLA Excedido</div>' +
+                        '<div class="text-xs mt-1"><span class="text-blue-600">Peta: ' + petaCount + '</span> · <span class="text-orange-600">GMX: ' + gmxCount + '</span></div>' +
+                    '</div>' +
+                    '<div class="flex-1 bg-amber-50 border border-amber-200 rounded-lg p-4 text-center">' +
+                        '<div class="text-3xl font-bold text-amber-600">' + pendingCount + '</div>' +
+                        '<div class="text-sm text-amber-700">Aguardando Ação</div>' +
+                    '</div>' +
+                    '<div class="flex-1 bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">' +
+                        '<div class="text-3xl font-bold text-blue-600">' + processingCount + '</div>' +
+                        '<div class="text-sm text-blue-700">Em Atendimento</div>' +
+                    '</div>' +
+                '</div>' +
+                tableHtml +
+            '</div>';
+        }
+
+        function renderEntityCards(ticketsByEntity) {
+            const sorted = Object.entries(ticketsByEntity).sort((a, b) => b[1].total - a[1].total).slice(0, 12);
+            return sorted.map(([entity, stats]) => 
+                '<div class="border rounded-lg p-4 hover:shadow-md transition-shadow">' +
+                    '<div class="text-sm font-medium text-gray-700 truncate">' + entity + '</div>' +
+                    '<div class="text-2xl font-bold text-gray-800 mt-1">' + stats.total + '</div>' +
+                    '<div class="text-xs mt-1 flex justify-between"><span class="text-blue-600">Peta: ' + stats.peta + '</span><span class="text-orange-600">GMX: ' + stats.gmx + '</span></div>' +
+                '</div>'
+            ).join('');
+        }
+
+        function renderGroupBars(ticketsByGroup) {
+            const sorted = Object.entries(ticketsByGroup).sort((a, b) => b[1].total - a[1].total).slice(0, 15);
+            const maxTotal = Math.max(...sorted.map(([, s]) => s.total), 1);
+            return sorted.map(([group, stats]) => {
+                const pct = (stats.total / maxTotal * 100);
+                const barColor = (stats.peta > 0 && stats.gmx === 0) ? 'bg-blue-500' : ((stats.gmx > 0 && stats.peta === 0) ? 'bg-orange-500' : 'bg-gradient-to-r from-blue-500 to-orange-500');
+                return '<div class="flex items-center gap-3">' +
+                    '<div class="w-32 truncate text-sm font-medium text-gray-700">' + group + '</div>' +
+                    '<div class="flex-1 h-6 bg-gray-100 rounded-full overflow-hidden">' +
+                        '<div class="' + barColor + ' h-full rounded-full flex items-center justify-end pr-2" style="width: ' + pct + '%">' +
+                            '<span class="text-xs font-bold text-white">' + stats.total + '</span>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="w-16 text-xs text-gray-500 text-right"><span class="text-blue-600">' + stats.peta + '</span> · <span class="text-orange-600">' + stats.gmx + '</span></div>' +
+                '</div>';
+            }).join('');
+        }
+
+        function renderSolutionBars(ticketsBySolution) {
+            const sorted = Object.entries(ticketsBySolution).sort((a, b) => b[1].total - a[1].total).slice(0, 15);
+            const maxTotal = Math.max(...sorted.map(([, s]) => s.total), 1);
+            return sorted.map(([rootCat, stats]) => {
+                const pct = (stats.total / maxTotal * 100);
+                const barColor = (stats.peta > 0 && stats.gmx === 0) ? 'bg-purple-500' : ((stats.gmx > 0 && stats.peta === 0) ? 'bg-green-500' : 'bg-gradient-to-r from-purple-500 to-green-500');
+                return '<div class="flex items-center gap-3">' +
+                    '<div class="w-40 truncate text-sm font-medium text-gray-700">' + rootCat + '</div>' +
+                    '<div class="flex-1 h-6 bg-gray-100 rounded-full overflow-hidden">' +
+                        '<div class="' + barColor + ' h-full rounded-full flex items-center justify-end pr-2" style="width: ' + pct + '%">' +
+                            '<span class="text-xs font-bold text-white">' + stats.total + '</span>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="w-16 text-xs text-gray-500 text-right"><span class="text-blue-600">' + stats.peta + '</span> · <span class="text-orange-600">' + stats.gmx + '</span></div>' +
+                '</div>';
+            }).join('');
+        }
+
+        function renderCategoryCards(ticketsByCategory) {
+            const sorted = Object.entries(ticketsByCategory).sort((a, b) => b[1].total - a[1].total).slice(0, 18);
+            return sorted.map(([cat, stats]) => {
+                const shortCat = cat.length > 45 ? cat.substring(0, 45) + '...' : cat;
+                return '<div class="border rounded-lg p-3 hover:shadow-md transition-shadow">' +
+                    '<div class="text-sm font-medium text-gray-700 truncate">' + shortCat + '</div>' +
+                    '<div class="flex items-center justify-between mt-2">' +
+                        '<div class="text-xl font-bold text-gray-800">' + stats.total + '</div>' +
+                        '<div class="text-xs flex gap-2"><span class="px-2 py-1 bg-blue-100 text-blue-700 rounded">P: ' + stats.peta + '</span><span class="px-2 py-1 bg-orange-100 text-orange-700 rounded">G: ' + stats.gmx + '</span></div>' +
+                    '</div>' +
+                '</div>';
+            }).join('');
+        }
+
+        function renderTechnicianCards(ticketsByTechnician) {
+            const sorted = Object.entries(ticketsByTechnician).sort((a, b) => b[1].total - a[1].total);
+            if (sorted.length === 0) {
+                return '<div class="text-gray-500 text-center py-4">Nenhum técnico encontrado</div>';
+            }
+            return '<table class="min-w-full divide-y divide-gray-200">' +
+                '<thead class="bg-gray-50">' +
+                    '<tr>' +
+                        '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Técnico</th>' +
+                        '<th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Total</th>' +
+                        '<th class="px-4 py-3 text-center text-xs font-medium text-blue-600">Em Andamento</th>' +
+                        '<th class="px-4 py-3 text-center text-xs font-medium text-orange-600">Pendente</th>' +
+                        '<th class="px-4 py-3 text-center text-xs font-medium text-green-600">Solucionado</th>' +
+                        '<th class="px-4 py-3 text-center text-xs font-medium text-gray-600">Fechado</th>' +
+                        '<th class="px-4 py-3 text-center text-xs font-medium text-gray-500">PETA · GMX</th>' +
+                    '</tr>' +
+                '</thead>' +
+                '<tbody class="bg-white divide-y divide-gray-200">' +
+                sorted.slice(0, 20).map(([tech, stats]) => {
+                    return '<tr class="hover:bg-gray-50">' +
+                        '<td class="px-4 py-3 text-sm font-medium text-gray-900">' + tech + '</td>' +
+                        '<td class="px-4 py-3 text-center text-sm font-bold text-gray-800">' + stats.total + '</td>' +
+                        '<td class="px-4 py-3 text-center text-sm">' +
+                            (stats.processing > 0 ? '<span class="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">' + stats.processing + '</span>' : '<span class="text-gray-400">0</span>') +
+                        '</td>' +
+                        '<td class="px-4 py-3 text-center text-sm">' +
+                            (stats.pending > 0 ? '<span class="px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-medium">' + stats.pending + '</span>' : '<span class="text-gray-400">0</span>') +
+                        '</td>' +
+                        '<td class="px-4 py-3 text-center text-sm">' +
+                            (stats.solved > 0 ? '<span class="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">' + stats.solved + '</span>' : '<span class="text-gray-400">0</span>') +
+                        '</td>' +
+                        '<td class="px-4 py-3 text-center text-sm">' +
+                            (stats.closed > 0 ? '<span class="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">' + stats.closed + '</span>' : '<span class="text-gray-400">0</span>') +
+                        '</td>' +
+                        '<td class="px-4 py-3 text-center text-xs text-gray-500"><span class="text-blue-600">' + stats.peta + '</span> · <span class="text-orange-600">' + stats.gmx + '</span></td>' +
+                    '</tr>';
+                }).join('') +
+                '</tbody>' +
+            '</table>';
+        }
+
+        function renderTailwindInstanceSummary(instanceName, stats, avgPending, color) {
+            const colorClasses = {
+                blue: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-600', dark: 'text-blue-800' },
+                orange: { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-600', dark: 'text-orange-800' }
+            };
+            const c = colorClasses[color];
+            return `
+                <div class="border rounded-xl p-5 ${c.bg}">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold text-lg ${c.dark}">${instanceName === 'Peta' ? 'Peta' : 'GMX Tecnologia'}</h3>
+                        <span class="px-2 py-1 bg-white rounded text-xs font-medium ${c.text}">${instanceName.toUpperCase()}</span>
+                    </div>
+                    <div class="grid grid-cols-5 gap-2 mb-4">
+                        <div class="text-center">
+                            <div class="text-xl font-bold ${c.text}">${stats.new}</div>
+                            <div class="text-xs text-gray-600">Novos</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-xl font-bold ${c.text}">${stats.processing}</div>
+                            <div class="text-xs text-gray-600">Em Att</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-xl font-bold ${c.text}">${stats.pending}</div>
+                            <div class="text-xs text-gray-600">Pendente</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-xl font-bold ${c.text}">${stats.solved}</div>
+                            <div class="text-xs text-gray-600">Solucionado</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-xl font-bold ${c.text}">${stats.closed}</div>
+                            <div class="text-xs text-gray-600">Fechado</div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 pt-3 border-t border-${color}-200">
+                        <div class="text-center">
+                            <div class="text-2xl font-bold ${c.dark}">${stats.total}</div>
+                            <div class="text-xs text-gray-500">Total</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-2xl font-bold ${c.dark}">${avgPending.time}</div>
+                            <div class="text-xs text-gray-500">Tmp. Médio</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderTailwindPeriodContent(tickets, days) {
+            const periodTickets = getTicketsByPeriod(tickets, days);
+            const closedTickets = getTicketsClosedInPeriod(tickets, days);
+            const petaPeriod = periodTickets.filter(t => t.instance?.toLowerCase() === 'peta');
+            const gmxPeriod = periodTickets.filter(t => t.instance?.toLowerCase() === 'gmx');
+            const petaClosed = closedTickets.filter(t => t.instance?.toLowerCase() === 'peta');
+            const gmxClosed = closedTickets.filter(t => t.instance?.toLowerCase() === 'gmx');
+            
+            const petaClosedCount = petaClosed.length;
+            const gmxClosedCount = gmxClosed.length;
+            const totalOpened = periodTickets.length;
+            const totalClosed = closedTickets.length;
+            const closureRate = totalOpened > 0 ? Math.round((totalClosed / totalOpened) * 100) : 0;
+            
+            return `
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-gray-50 rounded-lg p-4 text-center">
+                        <div class="text-3xl font-bold text-gray-800">${totalOpened}</div>
+                        <div class="text-sm text-gray-600">Abertos no Período</div>
+                        <div class="text-xs mt-1 text-blue-600">Peta: ${petaPeriod.length}</div>
+                        <div class="text-xs text-orange-600">GMX: ${gmxPeriod.length}</div>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-4 text-center">
+                        <div class="text-3xl font-bold text-green-600">${totalClosed}</div>
+                        <div class="text-sm text-gray-600">Fechados no Período</div>
+                        <div class="text-xs mt-1 text-blue-600">Peta: ${petaClosedCount}</div>
+                        <div class="text-xs text-orange-600">GMX: ${gmxClosedCount}</div>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-4 text-center">
+                        <div class="text-3xl font-bold text-purple-600">${closureRate}%</div>
+                        <div class="text-sm text-gray-600">Taxa de Fechamento</div>
+                        <div class="text-xs mt-1 text-gray-500">Fechados / Abertos</div>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-4 text-center">
+                        <div class="text-3xl font-bold text-blue-600">${Math.round(totalOpened * 30 / days)}</div>
+                        <div class="text-sm text-gray-600">Média Mensal</div>
+                        <div class="text-xs mt-1 text-gray-500">Tickets/mês</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updatePeriodFilter(btn, tickets) {
+            document.querySelectorAll('.period-btn').forEach(b => {
+                b.classList.remove('bg-blue-600', 'text-white');
+                b.classList.add('bg-gray-200', 'text-gray-700');
+            });
+            btn.classList.remove('bg-gray-200', 'text-gray-700');
+            btn.classList.add('bg-blue-600', 'text-white');
+            
+            const days = btn.dataset.period;
+            const contentDiv = document.getElementById('periodContent');
+            
+            if (days === 'total') {
+                // Show all tickets (no date filter)
+                const totalOpened = tickets.length;
+                const closedTickets = tickets.filter(t => t.status === 'closed' || t.status === 'solved');
+                const totalClosed = closedTickets.length;
+                const petaCount = tickets.filter(t => t.instance?.toLowerCase() === 'peta').length;
+                const gmxCount = tickets.filter(t => t.instance?.toLowerCase() === 'gmx').length;
+                const petaClosed = closedTickets.filter(t => t.instance?.toLowerCase() === 'peta').length;
+                const gmxClosed = closedTickets.filter(t => t.instance?.toLowerCase() === 'gmx').length;
+                const closureRate = totalOpened > 0 ? Math.round((totalClosed / totalOpened) * 100) : 0;
+                
+                contentDiv.innerHTML = renderTailwindPeriodContentAll(totalOpened, totalClosed, petaCount, gmxCount, petaClosed, gmxClosed, closureRate);
+            } else {
+                const daysNum = parseInt(days);
+                contentDiv.innerHTML = renderTailwindPeriodContent(tickets, daysNum);
+            }
+        }
+
+        function renderTailwindPeriodContentAll(totalOpened, totalClosed, petaCount, gmxCount, petaClosed, gmxClosed, closureRate) {
+            return `
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-gray-50 rounded-lg p-4 text-center">
+                        <div class="text-3xl font-bold text-gray-800">${totalOpened}</div>
+                        <div class="text-sm text-gray-600">Total de Tickets</div>
+                        <div class="text-xs mt-1 text-blue-600">Peta: ${petaCount}</div>
+                        <div class="text-xs text-orange-600">GMX: ${gmxCount}</div>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-4 text-center">
+                        <div class="text-3xl font-bold text-green-600">${totalClosed}</div>
+                        <div class="text-sm text-gray-600">Fechados/Solucionados</div>
+                        <div class="text-xs mt-1 text-blue-600">Peta: ${petaClosed}</div>
+                        <div class="text-xs text-orange-600">GMX: ${gmxClosed}</div>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-4 text-center">
+                        <div class="text-3xl font-bold text-purple-600">${closureRate}%</div>
+                        <div class="text-sm text-gray-600">Taxa de Fechamento</div>
+                        <div class="text-xs mt-1 text-gray-500">Fechados / Total</div>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-4 text-center">
+                        <div class="text-3xl font-bold text-blue-600">${totalOpened - totalClosed}</div>
+                        <div class="text-sm text-gray-600">Em Aberto</div>
+                        <div class="text-xs mt-1 text-gray-500">Total - Fechados</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Global function for period buttons
+        function filterPeriod(btn) {
+            updatePeriodFilter(btn, window.currentTickets || []);
+        }
+
+        function toggleSolutionChart(btn) {
+            const extraItems = document.getElementById('solutionExtraItems');
+            const isExpanded = btn.classList.toggle('expanded');
+            extraItems.style.display = isExpanded ? 'block' : 'none';
+            btn.querySelector('span').textContent = isExpanded ? 'Ver menos' : `Ver todas as ${Object.keys(window.ticketsBySolution || {}).length} categorias`;
+        }
+
+        function toggleGroupChart(btn) {
+            const extraItems = document.getElementById('groupExtraItems');
+            const isExpanded = btn.classList.toggle('expanded');
+            extraItems.style.display = isExpanded ? 'block' : 'none';
+            btn.querySelector('span').textContent = isExpanded ? 'Ver menos' : `Ver todos os ${Object.keys(window.ticketsByGroup || {}).length} grupos`;
+        }
+
+        function renderKanban(tickets) {
+            const mainContent = document.getElementById('mainContent');
+            console.log(`renderKanban received: ${tickets.length} tickets`);
+            
+            // Store tickets globally for filter functions
+            window.currentTickets = tickets;
+            
+            mainContent.innerHTML = renderFullDashboard(tickets);
+            console.log(`Dashboard rendered, innerHTML length: ${mainContent.innerHTML.length}`);
+            
+            // Initialize global filters
+            if (typeof initGlobalFilters === 'function') {
+                initGlobalFilters(tickets);
+            }
+            
+            // Listen for global filter events
+            window.addEventListener('tickets-filtered', (e) => {
+                console.log(`Filtered tickets: ${e.detail.length}`);
+                if (typeof renderFullDashboard === 'function') {
+                    document.getElementById('mainContent').innerHTML = renderFullDashboard(e.detail);
+                }
+            });
+        }
+
+        // Função para renderizar card de ticket
+        function renderTicketCard(ticket, isFiltered = false) {
+            let pendingHTML = '';
+            if (ticket.status === 'pending' && ticket.timePending) {
+                pendingHTML = `
+                    <div class="pending-time">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                        ${ticket.timePending}
+                    </div>
+                `;
+            }
+            
+            const priorityInfo = ticket.priority_id ? (TICKET_PRIORITY[ticket.priority_id] || TICKET_PRIORITY[1]) : TICKET_PRIORITY[1];
+            const isUrgent = priorityInfo.key === 'urgent' || priorityInfo.key === 'critical';
+            const urgentClass = isFiltered || isUrgent ? 'urgent' : '';
+            const instanceClass = ticket.instance ? ticket.instance.toLowerCase() : '';
+            const cardClass = `ticket-card ${ticket.status} ${urgentClass}`.trim();
+
+            return `
+                <div class="${cardClass}">
+                    <div class="ticket-header">
+                        <span class="ticket-id">
+                            <a href="${ticket.instanceUrl}${ticket.id}" target="_blank" title="${ticket.title}">
+                                #${ticket.id}
+                            </a>
+                        </span>
+                        <span class="instance-badge ${instanceClass}">${ticket.instance}</span>
+                    </div>
+                    <div class="ticket-status-row" style="display: flex; gap: 6px; align-items: center; margin-bottom: 6px;">
+                        <span class="status-badge ${ticket.status}">${getStatusIcon(ticket.status)}${ticket.statusName}</span>
+                        ${ticket.priority ? `<span class="priority-badge ${priorityInfo.key}">${getPriorityIcon()}${priorityInfo.label}</span>` : ''}
+                    </div>
+                    
+                    <div class="ticket-entity-mini" title="${ticket.entity}">${ticket.entity}</div>
+                    
+                    <div class="ticket-category" title="${ticket.title}">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                            <polyline points="22,6 12,13 2,6"></polyline>
+                        </svg>
+                        ${ticket.category}
+                    </div>
+                    
+                    <div class="ticket-dates">
+                        <div class="ticket-date-row">
+                            <span class="ticket-date-label">Abertura:</span>
+                            <span class="ticket-date-value">${formatShortDate(ticket.dateCreated)}</span>
+                        </div>
+                        <div class="ticket-date-row">
+                            <span class="ticket-date-label">Previsto:</span>
+                            <span class="ticket-date-value">${formatShortDate(ticket.dueDate)}</span>
+                        </div>
+                    </div>
+                    
+                    ${pendingHTML}
+                </div>
+            `;
+        }
+
+        // ========== SISTEMA DE CACHE ==========
+        const CACHE_KEY = 'central_tickets_cache';
+        const CACHE_TIMESTAMP_KEY = 'central_tickets_cache_timestamp';
+
+        function saveCache() {
+            try {
+                const cacheData = {
+                    tickets: tickets,
+                    timestamp: new Date().toISOString(),
+                    version: '1.0'
+                };
+                localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+                localStorage.setItem(CACHE_TIMESTAMP_KEY, new Date().toISOString());
+                console.log('💾 Cache salvo com sucesso');
+                return true;
+            } catch (error) {
+                console.error('❌ Erro ao salvar cache:', error);
+                return false;
+            }
+        }
+
+        function loadCache() {
+            try {
+                const cached = localStorage.getItem(CACHE_KEY);
+                if (cached) {
+                    const cacheData = JSON.parse(cached);
+                    console.log('📂 Cache carregado de:', new Date(cacheData.timestamp).toLocaleString('pt-BR'));
+                    return cacheData.tickets;
+                }
+            } catch (error) {
+                console.error('❌ Erro ao carregar cache:', error);
+            }
+            return null;
+        }
+
+        function getCacheTimestamp() {
+            return localStorage.getItem(CACHE_TIMESTAMP_KEY);
+        }
+
+        function clearCache() {
+            localStorage.removeItem(CACHE_KEY);
+            localStorage.removeItem(CACHE_TIMESTAMP_KEY);
+            console.log('🗑️ Cache limpo');
+        }
+
+        function exportToJSON() {
+            if (tickets.length === 0) {
+                alert('Nenhum ticket para exportar. Carregue os dados primeiro.');
+                return;
+            }
+
+            const exportData = {
+                exportedAt: new Date().toISOString(),
+                totalTickets: tickets.length,
+                instances: {
+                    peta: tickets.filter(t => t.instance?.toLowerCase() === 'peta').length,
+                    gmx: tickets.filter(t => t.instance?.toLowerCase() === 'gmx').length
+                },
+                tickets: tickets
+            };
+
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `tickets_backup_${new Date().toISOString().slice(0,10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            console.log('📤 Exportação concluída');
+        }
+
+        function importFromJSON() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            
+            input.onchange = function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const importedData = JSON.parse(e.target.result);
+                        
+                        if (importedData.tickets && Array.isArray(importedData.tickets)) {
+                            if (confirm(`Importar ${importedData.tickets.length} tickets de ${importedData.exportedAt ? new Date(importedData.exportedAt).toLocaleDateString('pt-BR') : 'data desconhecida'}?\n\nIsso substituirá os dados atuais.`)) {
+                                tickets = importedData.tickets;
+                                saveCache();
+                                loadedCounts = { processing: INITIAL_LOAD, pending: INITIAL_LOAD, solved: INITIAL_LOAD, closed: INITIAL_LOAD };
+                                renderKanban(tickets);
+                                alert(`✅ ${tickets.length} tickets importados com sucesso!`);
+                            }
+                        } else {
+                            alert('❌ Arquivo JSON inválido. Verifique o formato.');
+                        }
+                    } catch (error) {
+                        alert('❌ Erro ao ler arquivo: ' + error.message);
+                    }
+                };
+                reader.readAsText(file);
+            };
+            
+            input.click();
+        }
+
+// Função para atualizar tickets com carregamento otimizado
+        async function refreshTickets() {
+            if (isLoading) return;
+            isLoading = true;
+
+            const refreshBtn = document.getElementById('refreshBtn');
+            const syncBtn = document.getElementById('syncBtn');
+            if (refreshBtn) refreshBtn.disabled = true;
+            if (syncBtn) syncBtn.disabled = true;
+            showLoading('Carregando tickets do Supabase...');
+
+            try {
+                console.log('[Supabase] Carregando TODOS os tickets...');
+
+                // Supabase has default limit of 1000, so we need to paginate
                 const allTickets = [];
                 let page = 0;
                 const pageSize = 1000;
                 let hasMore = true;
 
                 while (hasMore) {
-                    const { data, error } = await sbClient
+                    const { data, error } = await window._sb
                         .from('tickets_cache')
                         .select('*')
                         .order('date_mod', { ascending: false })
                         .range(page * pageSize, (page + 1) * pageSize - 1);
 
-                    if (error) throw error;
-                    if (data?.length > 0) {
+                    if (error) throw new Error(error.message);
+
+                    if (data && data.length > 0) {
                         allTickets.push(...data);
+                        console.log(`[Supabase] Página ${page + 1}: ${data.length} tickets (total: ${allTickets.length})`);
                         page++;
-                        if (data.length < pageSize) hasMore = false;
+                        if (data.length < pageSize) {
+                            hasMore = false;
+                        }
                     } else {
                         hasMore = false;
                     }
                 }
 
-                const total = allTickets.length;
-                const processing = allTickets.filter(t => t.status_key === 'processing').length;
-                const pending = allTickets.filter(t => t.status_key === 'pending').length;
-                const slaLate = allTickets.filter(t => t.is_sla_late).length;
+                console.log(`[Supabase] Total carregado: ${allTickets.length} tickets`);
 
-                totalEl.textContent = total;
-                processingEl.textContent = processing;
-                pendingEl.textContent = pending;
-                slaLateEl.textContent = slaLate;
-                lastUpdateEl.textContent = `Atualizado: ${new Date().toLocaleTimeString('pt-BR')}`;
+                // Mapear para formato do dashboard
+                tickets = allTickets.map(t => ({
+                    id: t.ticket_id,
+                    title: t.title,
+                    entity: t.entity,
+                    entityFull: t.entity_full,
+                    category: t.category,
+                    rootCategory: t.root_category,
+                    statusId: t.status_id,
+                    status: t.status_key || 'new',
+                    statusName: t.status_name,
+                    priorityId: t.priority_id || 1,
+                    priority: t.priority || '1-Baixa',
+                    group: lastGroupLabel(t.group_name || ''),
+                    groupFull: t.group_name,
+                    technician: t.technician || '',
+                    dateCreated: t.date_created,
+                    lastUpdate: t.date_mod,
+                    dueDate: t.due_date,
+                    isSlaLate: t.is_sla_late || false,
+                    isOverdueFirst: t.is_overdue_first || false,
+                    isOverdueResolve: t.is_overdue_resolve || false,
+                    timeToOwn: t.time_to_own,
+                    timeToResolve: t.time_to_resolve,
+                    instance: t.instance,
+                    instanceUrl: t.instance?.toLowerCase() === 'peta' 
+                        ? (window.APP_CONFIG?.GLPI_PETA_TICKET_URL || '') 
+                        : (window.APP_CONFIG?.GLPI_GMX_TICKET_URL || ''),
+                }));
 
-                if (total === 0) {
-                    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-8">Nenhum ticket.</td></tr>';
-                    return;
+                // Salvar apenas metadata no cache (não os tickets completos para evitar quota)
+                try {
+                    const cacheMeta = {
+                        count: tickets.length,
+                        timestamp: new Date().toISOString(),
+                        lastId: tickets.length > 0 ? tickets[0].id : null
+                    };
+                    localStorage.setItem(CACHE_TIMESTAMP_KEY, JSON.stringify(cacheMeta));
+                } catch (e) {
+                    console.warn('Não foi possível salvar metadata do cache:', e);
                 }
 
-                tbody.innerHTML = '';
-                allTickets.slice(0, 100).forEach(t => {
-                    const unifiedStatus = getUnifiedStatus(t.status_name);
-                    const slaClass = t.is_sla_late ? 'sla-late' : 'sla-ok';
-                    const slaText = t.is_sla_late ? 'Excedido' : 'OK';
+                console.log(`[Supabase] Finalizado: ${tickets.length} tickets`);
 
-                    const tr = document.createElement('tr');
-                    tr.className = t.is_sla_late ? 'sla-late' : '';
-                    tr.innerHTML = `
-                        <td class="col-id font-medium">#${t.ticket_id || t.id}</td>
-                        <td class="col-instance"><span class="instance-badge ${t.instance?.toLowerCase()}">${t.instance}</span></td>
-                        <td class="col-title" title="${t.title}">${t.title || '-'}</td>
-                        <td class="col-entity">${t.entity || '-'}</td>
-                        <td class="col-status"><span class="status-badge ${unifiedStatus}">${t.status_name || 'Novo'}</span></td>
-                        <td class="col-technician">${t.technician || '-'}</td>
-                        <td class="col-date">${new Date(t.date_created).toLocaleDateString('pt-BR')}</td>
-                        <td class="col-sla"><span class="sla-badge ${slaClass}">${slaText}</span></td>
-                    `;
-                    tbody.appendChild(tr);
-                });
+                window.currentTickets = tickets;
+                renderKanban(tickets);
 
-            } catch (err) {
-                console.error(err);
-                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-red-600 py-8">Erro ao carregar.</td></tr>';
+                // Atualizar UI
+                const lastUpdateEl = document.getElementById('lastUpdate');
+                if (lastUpdateEl) lastUpdateEl.textContent = `Atualizado: ${getCurrentTimeFormatted()}`;
+                startCountdown();
+
+                console.log(`✅ Carregamento concluído: ${tickets.length} tickets`);
+            } catch (error) {
+                console.error('[Supabase] Erro ao carregar tickets:', error);
+                showError('Falha ao carregar tickets', 'Verifique a conexão e tente novamente.', error);
+            } finally {
+                isLoading = false;
+                if (refreshBtn) refreshBtn.disabled = false;
+                if (syncBtn) syncBtn.disabled = false;
             }
         }
 
+        async function syncToSupabase() {
+            const syncBtn = document.getElementById('syncBtn');
+            if (syncBtn) {
+                syncBtn.disabled = true;
+                syncBtn.style.opacity = '0.5';
+            }
+            
+            try {
+                console.log('🔄 Sincronizando com Supabase...');
+                
+                for (const instanceName of selectedInstances) {
+                    const instanceTickets = tickets.filter(t => t.instance === instanceName);
+                    if (instanceTickets.length > 0) {
+                        await syncTicketsToSupabase(instanceTickets, instanceName);
+                    }
+                }
+                
+                console.log('✅ Sincronização com Supabase concluída');
+            } catch (error) {
+                console.error('❌ Erro na sincronização:', error);
+            } finally {
+                if (syncBtn) {
+                    syncBtn.disabled = false;
+                    syncBtn.style.opacity = '1';
+                }
+            }
+        }
+
+        // Inicialização
         document.addEventListener('DOMContentLoaded', () => {
+            // Inicializar Supabase cache
+            const supabaseUrl = window.APP_CONFIG?.SUPABASE_URL || '';
+            const supabaseKey = window.APP_CONFIG?.SUPABASE_ANON_KEY || '';
+            if (supabaseUrl && supabaseKey) {
+                SupabaseCache.init(supabaseUrl, supabaseKey);
+                console.log('✅ Supabase Cache inicializado');
+            }
+
+            // initTheme() is now called by shared-header.js
+            initInstanceDropdown();
+            
+            // First sync from GLPI to Supabase cache
+            if (typeof syncToSupabase === 'function') {
+                syncToSupabase();
+            }
+            
+            // Then load and display tickets
             setTimeout(() => {
-                loadDashboard();
-                setInterval(loadDashboard, 3 * 60 * 1000);
-            }, 100);
+                refreshTickets();
+            }, 500);
+
+            // Configurar atualização automática (apenas dados, sem recarregar página)
+            refreshTimer = setInterval(() => {
+                console.log('🔄 Atualizando dados automaticamente...');
+                refreshTickets();
+            }, REFRESH_INTERVAL);
+            
+            // Usar o contador regressivo do shared-header.js
+            if (typeof window.startRefreshCountdown === 'function') {
+                window.startRefreshCountdown(REFRESH_INTERVAL);
+            }
         });
+
+        // Cleanup ao sair da página
+        window.addEventListener('beforeunload', () => {
+            if (refreshTimer) {
+                clearInterval(refreshTimer);
+            }
+            killSession();
+        });
+
+        // Helper: extract last segment of group label
+        function lastGroupLabel(name) {
+            if (!name) return '';
+            const parts = String(name).split('>');
+            return parts[parts.length - 1].trim();
+        }
     </script>
 </body>
 </html>
