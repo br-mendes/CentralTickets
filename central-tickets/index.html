@@ -3024,6 +3024,27 @@ ${JSON.stringify(error, null, 2)}
                 }
             }, 100);
 
+            const statusCounts = { new: 0, processing: 0, pending: 0, solved: 0, closed: 0 };
+            tickets.forEach(t => {
+                const status = t.status || t.status_key || 'new';
+                if (statusCounts[status] !== undefined) statusCounts[status]++;
+                else statusCounts.new++;
+            });
+            
+            const dates30 = [];
+            const opened30 = [];
+            const closed30 = [];
+            for (let i = 29; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const dateStr = d.toISOString().split('T')[0];
+                dates30.push(dateStr);
+                const opened = tickets.filter(t => t.date_creation && t.date_creation.startsWith(dateStr)).length;
+                const closed = tickets.filter(t => (t.solvedate || t.closedate || '').startsWith(dateStr)).length;
+                opened30.push(opened);
+                closed30.push(closed);
+            }
+            
             return '<div class="p-6">' +
                 '<div class="bg-white rounded-lg shadow p-6 mb-6">' +
                     '<h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">' +
@@ -3031,6 +3052,14 @@ ${JSON.stringify(error, null, 2)}
                         'Resumo por Instância' +
                     '</h2>' +
                     '<div class="grid grid-cols-1 md:grid-cols-2 gap-6">' + htmlPeta + htmlGmx + '</div>' +
+                '</div>' +
+                '<div class="bg-white rounded-lg shadow p-6 mb-6">' +
+                    '<h2 class="text-xl font-bold text-gray-800 mb-4">Tickets por Status</h2>' +
+                    '<div class="h-64"><canvas id="statusChart"></canvas></div>' +
+                '</div>' +
+                '<div class="bg-white rounded-lg shadow p-6 mb-6">' +
+                    '<h2 class="text-xl font-bold text-gray-800 mb-4">Tickets nos Últimos 30 Dias</h2>' +
+                    '<div class="h-64"><canvas id="trendChart"></canvas></div>' +
                 '</div>' +
                 '<div class="bg-white rounded-lg shadow p-6 mb-6">' +
                     '<h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">' +
@@ -3432,6 +3461,9 @@ ${JSON.stringify(error, null, 2)}
             mainContent.innerHTML = renderFullDashboard(tickets);
             console.log(`Dashboard rendered, innerHTML length: ${mainContent.innerHTML.length}`);
             
+            // Initialize Charts after render
+            setTimeout(() => initCharts(tickets), 100);
+            
             // Initialize global filters
             if (typeof initGlobalFilters === 'function') {
                 initGlobalFilters(tickets);
@@ -3442,8 +3474,93 @@ ${JSON.stringify(error, null, 2)}
                 console.log(`Filtered tickets: ${e.detail.length}`);
                 if (typeof renderFullDashboard === 'function') {
                     document.getElementById('mainContent').innerHTML = renderFullDashboard(e.detail);
+                    setTimeout(() => initCharts(e.detail), 100);
                 }
             });
+        }
+        
+        function initCharts(tickets) {
+            // Status pie chart
+            const statusCounts = { new: 0, processing: 0, pending: 0, solved: 0, closed: 0 };
+            tickets.forEach(t => {
+                const status = t.status || t.status_key || 'new';
+                if (statusCounts[status] !== undefined) statusCounts[status]++;
+                else statusCounts.new++;
+            });
+            
+            const statusCtx = document.getElementById('statusChart');
+            if (statusCtx && window.Chart) {
+                if (statusCtx.chart) statusCtx.chart.destroy();
+                statusCtx.chart = new Chart(statusCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Novo', 'Em Andamento', 'Pendente', 'Resolvido', 'Fechado'],
+                        datasets: [{
+                            data: [statusCounts.new, statusCounts.processing, statusCounts.pending, statusCounts.solved, statusCounts.closed],
+                            backgroundColor: ['#3b82f6', '#22c55e', '#f97316', '#6b7280', '#1f2937'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'bottom' } }
+                    }
+                });
+            }
+            
+            // Trend line chart (last 30 days)
+            const dates30 = [];
+            const opened30 = [];
+            const closed30 = [];
+            for (let i = 29; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const dateStr = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                dates30.push(dateStr);
+                const targetDate = d.toISOString().split('T')[0];
+                const opened = tickets.filter(t => t.date_creation && t.date_creation.startsWith(targetDate)).length;
+                const closed = tickets.filter(t => (t.solvedate || t.closedate || '').startsWith(targetDate)).length;
+                opened30.push(opened);
+                closed30.push(closed);
+            }
+            
+            const trendCtx = document.getElementById('trendChart');
+            if (trendCtx && window.Chart) {
+                if (trendCtx.chart) trendCtx.chart.destroy();
+                trendCtx.chart = new Chart(trendCtx, {
+                    type: 'line',
+                    data: {
+                        labels: dates30,
+                        datasets: [
+                            {
+                                label: 'Abertos',
+                                data: opened30,
+                                borderColor: '#3b82f6',
+                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                fill: true,
+                                tension: 0.3
+                            },
+                            {
+                                label: 'Fechados',
+                                data: closed30,
+                                borderColor: '#22c55e',
+                                backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                                fill: true,
+                                tension: 0.3
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'bottom' } },
+                        scales: {
+                            y: { beginAtZero: true, ticks: { stepSize: 1 } }
+                        }
+                    }
+                });
+            }
         }
 
         // Função para renderizar card de ticket
