@@ -88,14 +88,14 @@ Injects standardized CSS for status badges, ticket meta, tables, etc.
       cursor: help;
     }
 
-    /* === ALERTAS PISCANDO PADRONIZADOS === */
+    /* === ALERTAS PISCANDO PADRONIZADOS (CONSTANTE) === */
     .sla-late, .alert-red {
-      animation: flash-red 1200ms ease-in-out 4;
+      animation: flash-red 1200ms ease-in-out infinite;
       border-color: #ef4444 !important;
     }
 
     .alert-yellow {
-      animation: flash-yellow 1400ms ease-in-out 3;
+      animation: flash-yellow 1400ms ease-in-out infinite;
       border-color: #f59e0b !important;
     }
 
