@@ -1611,8 +1611,8 @@ tickets = await getAllTickets();
                 
                 return `
                     <tr class="${alertClass}">
-                        <td class="col-id">
-                            <a href="${ticket.instanceUrl}${ticket.id}" target="_blank" title="${ticket.title}">#${ticket.id}</a>
+                        <td class="col-id" title="${ticket.title}">
+                            <a href="${ticket.instanceUrl}${ticket.id}" target="_blank">#${ticket.id}</a>
                         </td>
                         <td class="col-instance">
                             <span class="instance-badge ${ticket.instance.toLowerCase()}">${ticket.instance}</span>
@@ -1621,8 +1621,8 @@ tickets = await getAllTickets();
                         <td class="col-status">
                             <span class="status-badge ${ticket.status}">${statusIcon}${ticket.statusName}</span>
                         </td>
-                        <td class="col-group">${ticket.group}</td>
-                        <td class="col-technician">${ticket.technician || '-'}</td>
+                        <td class="col-group" title="${ticket.group}">${ticket.group}</td>
+                        <td class="col-technician" title="${ticket.technician || 'Não atribuído'}">${ticket.technician || '-'}</td>
                         <td class="col-date">${formatDateTime(ticket.dateCreated)}</td>
                         <td class="col-date">${formatDateTime(ticket.lastUpdate)}</td>
                         <td class="col-date">${formatDateTime(ticket.dueDate)}</td>
