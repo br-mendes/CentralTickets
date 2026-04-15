@@ -1177,7 +1177,16 @@
                 if (hoursSinceUpdate > 72) alertClass = 'alert-red';
                 else if (hoursSinceUpdate > 24) alertClass = 'alert-yellow';
                 
-                const timeAgo = hoursSinceUpdate > 0 ? `${hoursSinceUpdate}h atrás` : '-';
+                // Time display text
+                const timeText = hoursSinceUpdate > 72 
+                    ? `${hoursSinceUpdate}h (crítico)` 
+                    : hoursSinceUpdate > 24 
+                        ? `${hoursSinceUpdate}h (atrasado)` 
+                        : `${hoursSinceUpdate}h`;
+                
+                // Get unified status
+                const unifiedStatus = ticket.status_key || (typeof getUnifiedStatus === 'function' ? getUnifiedStatus(ticket.statusName) : ticket.status);
+                const displayName = typeof getStatusDisplayName === 'function' ? getStatusDisplayName(ticket.statusName) : ticket.statusName;
                 
                 return `
                     <tr class="${alertClass}">
@@ -1189,13 +1198,13 @@
                         </td>
                         <td class="col-entity" title="${ticket.entityFull}">${ticket.entity}</td>
                         <td class="col-status">
-                            <span class="status-badge ${ticket.status_key || ticket.status}">${statusIcon}${ticket.statusName}</span>
+                            <span class="status-badge ${unifiedStatus}">${displayName}</span>
                         </td>
                         <td class="col-group" title="${ticket.group}">${ticket.group}</td>
                         <td class="col-technician" title="${ticket.technician || 'Não atribuído'}">${ticket.technician || '-'}</td>
                         <td class="col-date">${formatDateTime(ticket.dateCreated)}</td>
                         <td class="col-date">${formatDateTime(ticket.lastUpdate)}</td>
-                        <td class="col-time ${alertClass}">${timeAgo}</td>
+                        <td class="col-time ${alertClass}">${timeText}</td>
                         <td class="col-date">${formatDateTime(ticket.dueDate)}</td>
                         <td class="col-sla">
                             <span class="sla-badge ${slaClass}">${slaIcon}${slaText}</span>
