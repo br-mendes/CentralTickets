@@ -1739,7 +1739,7 @@ tickets = await getAllTickets();
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', () => {
             if (typeof renderSharedHeader === 'function') renderSharedHeader();
-            initTheme();
+            // initTheme() is now called by shared-header.js
             
             // First sync from GLPI to Supabase cache
             if (typeof syncToSupabase === 'function') {
@@ -1752,6 +1752,11 @@ tickets = await getAllTickets();
             }, 500);
             
             refreshTimer = setInterval(refreshTickets, REFRESH_INTERVAL);
+            
+            // Usar o contador regressivo do shared-header.js
+            if (typeof window.startRefreshCountdown === 'function') {
+                window.startRefreshCountdown(REFRESH_INTERVAL);
+            }
         });
 
         window.addEventListener('beforeunload', () => {

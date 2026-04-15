@@ -247,6 +247,28 @@ Injects standardized CSS for status badges, ticket meta, tables, etc.
   // Expose toggle for external use
   window.toggleTheme = toggleTheme;
 
+  // Refresh countdown - configure per page in the page itself
+  let refreshIntervalMs = 600000; // 10 minutes default
+  let countdownTimer = null;
+  let nextRefreshTime = null;
+
+  window.startRefreshCountdown = function(intervalMs) {
+    if (intervalMs) refreshIntervalMs = intervalMs;
+    nextRefreshTime = Date.now() + refreshIntervalMs;
+    updateCountdown();
+    if (countdownTimer) clearInterval(countdownTimer);
+    countdownTimer = setInterval(updateCountdown, 1000);
+  };
+
+  function updateCountdown() {
+    if (!nextRefreshTime) return;
+    const remaining = Math.max(0, nextRefreshTime - Date.now());
+    const min = Math.floor(remaining / 60000);
+    const sec = Math.floor((remaining % 60000) / 1000);
+    const el = document.getElementById('refreshCountdown');
+    if (el) el.textContent = `Refresh em ${min}:${sec.toString().padStart(2, '0')}`;
+  }
+
   // Initialize on load
   window.renderSharedHeader = renderSharedHeader;
   document.addEventListener('DOMContentLoaded', renderSharedHeader);

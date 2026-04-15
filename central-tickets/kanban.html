@@ -2508,7 +2508,7 @@ ${JSON.stringify(error, null, 2)}
                 console.log('✅ Supabase Cache inicializado');
             }
 
-            initTheme();
+            // initTheme() is now called by shared-header.js
             initInstanceDropdown();
             
             // First sync from GLPI to Supabase cache
@@ -2524,7 +2524,11 @@ ${JSON.stringify(error, null, 2)}
             // Configurar atualização automática
             refreshTimer = setInterval(refreshTickets, REFRESH_INTERVAL);
             countdownTimer = setInterval(updateSlaCountdowns, 1000);
-            startCountdown();
+            
+            // Usar o contador regressivo do shared-header.js
+            if (typeof window.startRefreshCountdown === 'function') {
+                window.startRefreshCountdown(REFRESH_INTERVAL);
+            }
         });
 
         // Cleanup ao sair da página

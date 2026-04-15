@@ -1082,7 +1082,7 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            initTheme();
+            // initTheme() is now called by shared-header.js
             loadTicketsFromSupabase();
         });
 
