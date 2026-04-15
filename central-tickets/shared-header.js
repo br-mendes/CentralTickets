@@ -140,6 +140,29 @@
     }
   }
 
+  // Função central de inicialização
+  window.initSharedHeader = function(options = {}) {
+    const intervalMs = options.refreshInterval || 600000; // 10 minutos padrão
+
+    // 1. Renderizar header
+    renderSharedHeader();
+
+    // 2. Inicializar tema
+    initTheme();
+
+    // 3. Iniciar countdown de refresh
+    if (typeof window.startRefreshCountdown === 'function') {
+      window.startRefreshCountdown(intervalMs);
+    }
+
+    // 4. Inicializar filtros globais se houver tickets
+    if (window.tickets && Array.isArray(window.tickets)) {
+      initGlobalFilters(window.tickets);
+    }
+
+    console.log('[Header] Inicialização completa');
+  };
+
   // Expose functions
   window.renderSharedHeader = renderSharedHeader;
   window.initTheme = initTheme;
@@ -150,7 +173,10 @@
   window.initGlobalFilters = initGlobalFilters;
 
   // Auto-init on DOMContentLoaded
-  document.addEventListener('DOMContentLoaded', renderSharedHeader);
+  document.addEventListener('DOMContentLoaded', () => {
+    renderSharedHeader();
+    initTheme();
+  });
 })();
 
 // Filtros globais
