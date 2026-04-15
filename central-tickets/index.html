@@ -3677,19 +3677,18 @@ ${JSON.stringify(error, null, 2)}
             showLoading('Carregando tickets do Supabase...');
 
             try {
-                console.log('[Supabase] Carregando tickets...');
+                console.log('[Supabase] Carregando TODOS os tickets...');
 
-                // Simple single query - more efficient for ~10k tickets
+                // Load ALL tickets - no limit
                 const { data, error } = await window._sb
                     .from('tickets_cache')
                     .select('*')
-                    .order('date_mod', { ascending: false })
-                    .limit(10000);
+                    .order('date_mod', { ascending: false });
 
                 if (error) throw new Error(error.message);
 
                 const allTickets = data || [];
-                console.log(`[Supabase] Total carregado: ${allTickets.length}`);
+                console.log(`[Supabase] Total carregado: ${allTickets.length} tickets`);
 
                 // Mapear para formato do dashboard
                 tickets = allTickets.map(t => ({

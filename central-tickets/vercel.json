@@ -1,23 +1,6 @@
-{
-  "buildCommand": "echo 'No build needed for static site'",
-  "outputDirectory": ".",
-  "installCommand": "echo 'No dependencies'",
-  "framework": null,
-  "headers": [
-    {
-      "source": "/api/env-config.js",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=0, must-revalidate"
-        }
-      ]
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/env-config.js",
-      "destination": "/env-config.js"
-    }
-  ]
-}
+[
+  {
+    "source": "/api/config",
+    "Destination": "/api/config.html"
+  }
+]
