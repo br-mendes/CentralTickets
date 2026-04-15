@@ -3674,39 +3674,22 @@ ${JSON.stringify(error, null, 2)}
             const syncBtn = document.getElementById('syncBtn');
             if (refreshBtn) refreshBtn.disabled = true;
             if (syncBtn) syncBtn.disabled = true;
+            showLoading('Carregando tickets do Supabase...');
 
             try {
-                console.log('[Supabase] Iniciando carregamento completo de tickets...');
+                console.log('[Supabase] Carregando tickets...');
 
-                let allTickets = [];
-                let page = 0;
-                const pageSize = 2000;
-                let hasMore = true;
+                // Simple single query - more efficient for ~10k tickets
+                const { data, error } = await window._sb
+                    .from('tickets_cache')
+                    .select('*')
+                    .order('date_mod', { ascending: false })
+                    .limit(10000);
 
-                while (hasMore) {
-                    const from = page * pageSize;
-                    const to = from + pageSize - 1;
+                if (error) throw new Error(error.message);
 
-                    const { data, error } = await window._sb
-                        .from('tickets_cache')
-                        .select('*')
-                        .order('date_mod', { ascending: false })
-                        .range(from, to);
-
-                    if (error) throw new Error(`Erro na página ${page}: ${error.message}`);
-
-                    if (!data || data.length === 0) {
-                        hasMore = false;
-                    } else {
-                        allTickets = [...allTickets, ...data];
-                        page++;
-                        console.log(`[Supabase] Página ${page} → Total: ${allTickets.length}`);
-                        
-                        showLoading(`Carregando tickets... ${allTickets.length} registros`);
-                    }
-                }
-
-                console.log(`[Supabase] Total carregado do Supabase: ${allTickets.length}`);
+                const allTickets = data || [];
+                console.log(`[Supabase] Total carregado: ${allTickets.length}`);
 
                 // Mapear para formato do dashboard
                 tickets = allTickets.map(t => ({
