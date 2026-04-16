@@ -140,53 +140,40 @@
     }
   }
 
-  // Expose functions
-  window.renderSharedHeader = renderSharedHeader;
-  window.initTheme = initTheme;
-  window.normalizeStatus = normalizeStatus;
-  window.getUnifiedStatus = getUnifiedStatus;
-  window.getStatusDisplayName = getStatusDisplayName;
-  window.applyGlobalFilters = applyGlobalFilters;
-  window.initGlobalFilters = initGlobalFilters;
+// Filtros globais (definidos antes de exportar)
+  function applyGlobalFilters(tickets) {
+      let filtered = tickets;
 
-  // Auto-init on DOMContentLoaded
-  document.addEventListener('DOMContentLoaded', renderSharedHeader);
-})();
+      // Busca global
+      const searchInput = document.getElementById('globalSearch');
+      const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+      if (searchTerm) {
+          filtered = filtered.filter(t => 
+              String(t.id).includes(searchTerm) || 
+              (t.title && t.title.toLowerCase().includes(searchTerm))
+          );
+      }
 
-// Filtros globais
-function applyGlobalFilters(tickets) {
-    let filtered = tickets;
+      // Filtro por período
+      const periodSelect = document.getElementById('periodFilter');
+      const days = periodSelect ? parseInt(periodSelect.value) : 0;
+      if (days) {
+          const cutoff = new Date();
+          cutoff.setDate(cutoff.getDate() - days);
+          filtered = filtered.filter(t => new Date(t.date_created || t.dateCreation) >= cutoff);
+      }
 
-    // Busca global
-    const searchInput = document.getElementById('globalSearch');
-    const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
-    if (searchTerm) {
-        filtered = filtered.filter(t => 
-            String(t.id).includes(searchTerm) || 
-            (t.title && t.title.toLowerCase().includes(searchTerm))
-        );
-    }
+      // Filtro por técnico
+      const techSelect = document.getElementById('technicianFilter');
+      const tech = techSelect ? techSelect.value : '';
+      if (tech) {
+          filtered = filtered.filter(t => t.technician === tech);
+      }
 
-    // Filtro por período
-    const periodSelect = document.getElementById('periodFilter');
-    const days = periodSelect ? parseInt(periodSelect.value) : 0;
-    if (days) {
-        const cutoff = new Date();
-        cutoff.setDate(cutoff.getDate() - days);
-        filtered = filtered.filter(t => new Date(t.date_created || t.dateCreated) >= cutoff);
-    }
+      return filtered;
+  }
 
-    // Filtro por técnico
-    const techSelect = document.getElementById('technicianFilter');
-    const tech = techSelect ? techSelect.value : '';
-    if (tech) {
-        filtered = filtered.filter(t => t.technician === tech);
-    }
-
-    return filtered;
-}
-
-function populateTechnicianFilter(tickets) {
+  function populateTechnicianFilter(tickets) {
     const select = document.getElementById('technicianFilter');
     if (!select) return;
     
@@ -212,4 +199,16 @@ function initGlobalFilters(tickets) {
     if (searchInput) searchInput.addEventListener('input', apply);
     if (periodSelect) periodSelect.addEventListener('change', apply);
     if (techSelect) techSelect.addEventListener('change', apply);
-}
+  }
+
+  // Expose functions to window
+  window.renderSharedHeader = renderSharedHeader;
+  window.initTheme = initTheme;
+  window.toggleTheme = toggleTheme;
+  window.startRefreshCountdown = startRefreshCountdown;
+  window.applyGlobalFilters = applyGlobalFilters;
+  window.initGlobalFilters = initGlobalFilters;
+
+  // Auto-init on DOMContentLoaded
+  document.addEventListener('DOMContentLoaded', renderSharedHeader);
+})();
