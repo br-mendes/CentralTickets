@@ -1,10 +1,12 @@
 /**
- * Generates config-generated.js at Vercel build time.
- * All env vars from the Vercel dashboard are available via process.env here.
+ * HARD FIX: Inject config directly into ALL HTML files at build time.
+ * No external files, no caching issues. Config is baked into HTML.
  */
-console.log('[BUILD-START] Running generate-config.js');
+console.log('[BUILD] Starting hard fix config injection...');
 const fs = require('fs');
 const path = require('path');
+
+const rootDir = path.join(__dirname, '..');
 
 const normalizeUrl = (url) => {
     if (!url) return '';
@@ -19,52 +21,59 @@ const config = {
     GLPI_PETA_APP_TOKEN: process.env.PETA_APP_TOKEN || process.env.GLPI_PETA_APP_TOKEN || '',
     GLPI_GMX_URL: process.env.NEXT_PUBLIC_GLPI_GMX_URL || process.env.GLPI_GMX_URL || '',
     GLPI_GMX_USER_TOKEN: process.env.GMX_USER_TOKEN || process.env.GLPI_GMX_USER_TOKEN || '',
-    GLPI_GMX_APP_TOKEN: process.env.GMX_APP_TOKEN || process.env.GMX_APP_TOKEN || '',
+    GLPI_GMX_APP_TOKEN: process.env.GMX_APP_TOKEN || process.env.GLPI_GMX_APP_TOKEN || '',
     GLPI_PETA_TICKET_URL: process.env.NEXT_PUBLIC_GLPI_PETA || 'https://glpi.petacorp.com.br/front/ticket.form.php?id=',
     GLPI_GMX_TICKET_URL: process.env.NEXT_PUBLIC_GLPI_GMX || 'https://glpi.gmxtecnologia.com.br/front/ticket.form.php?id=',
 };
 
-console.log('[BUILD] Env vars check:');
-console.log('[BUILD]   NEXT_PUBLIC_SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'SET' : 'UNSET');
-console.log('[BUILD]   SUPABASE_URL:', process.env.SUPABASE_URL ? 'SET' : 'UNSET');
-console.log('[BUILD]   SUPABASE_ANON_KEY:', process.env.SUPABASE_ANON_KEY ? 'SET' : 'UNSET');
-console.log('[BUILD]   NEXT_PUBLIC_GLPI_PETA_URL:', process.env.NEXT_PUBLIC_GLPI_PETA_URL ? 'SET' : 'UNSET');
-console.log('[BUILD]   PETA_USER_TOKEN:', process.env.PETA_USER_TOKEN ? 'SET' : 'UNSET');
-console.log('[BUILD]   PETA_APP_TOKEN:', process.env.PETA_APP_TOKEN ? 'SET' : 'UNSET');
-console.log('[BUILD]   NEXT_PUBLIC_GLPI_GMX_URL:', process.env.NEXT_PUBLIC_GLPI_GMX_URL ? 'SET' : 'UNSET');
-console.log('[BUILD]   GMX_USER_TOKEN:', process.env.GMX_USER_TOKEN ? 'SET' : 'UNSET');
-console.log('[BUILD]   GMX_APP_TOKEN:', process.env.GMX_APP_TOKEN ? 'SET' : 'UNSET');
-console.log('[BUILD]   NEXT_PUBLIC_GLPI_PETA:', process.env.NEXT_PUBLIC_GLPI_PETA ? 'SET' : 'UNSET');
-console.log('[BUILD]   NEXT_PUBLIC_GLPI_GMX:', process.env.NEXT_PUBLIC_GLPI_GMX ? 'SET' : 'UNSET');
+// Inline config script - NO EXTERNAL FILE NEEDED
+const inlineConfig = `<script>
+window.APP_CONFIG = ${JSON.stringify(config)};
+console.log('[CONFIG] Loaded from build-time injection');
+</script>`;
 
-const content = `// Auto-generated at Vercel build time — do not edit manually
-window.APP_CONFIG = ${JSON.stringify(config, null, 2)};
-console.log('[CONFIG-GENERATED] Loaded:', window.APP_CONFIG.SUPABASE_URL ? 'OK' : 'MISSING');
-`;
+// Find all HTML files
+const htmlFiles = fs.readdirSync(rootDir)
+    .filter(f => f.endsWith('.html'));
 
-const outPath = path.join(__dirname, '..', 'config-generated.js');
-fs.writeFileSync(outPath, content);
+console.log('[BUILD] Found HTML files:', htmlFiles.join(', '));
 
-const status = Object.entries(config).map(([k, v]) => `${k}=${v ? 'OK' : 'MISSING'}`).join(', ');
-console.log('[BUILD] config-generated.js written to:', outPath);
-console.log('[BUILD] Config status:', status);
+let processed = 0;
+let errors = 0;
 
-// Verify critical vars
-if (!config.SUPABASE_URL || !config.SUPABASE_ANON_KEY) {
-    console.error('[BUILD] ERROR: Missing critical env vars!');
-    console.error('[BUILD] Check Vercel Environment Variables:');
-    console.error('[BUILD] - NEXT_PUBLIC_SUPABASE_URL or SUPABASE_URL');
-    console.error('[BUILD] - SUPABASE_ANON_KEY');
-    process.exit(1);
+for (const file of htmlFiles) {
+    const filePath = path.join(rootDir, file);
+    let content = fs.readFileSync(filePath, 'utf8');
+    
+    // Replace config-generated.js and config.js with inline config
+    content = content.replace(/<script src="[\/]?config-generated\.js"><\/script>/gi, '');
+    content = content.replace(/<script src="[\/]?config\.js"><\/script>/gi, '');
+    
+    // Remove any existing window.APP_CONFIG definitions
+    content = content.replace(/<script>[\s\S]*?window\.APP_CONFIG\s*=[\s\S]*?;[\s\S]*?<\/script>/gi, '');
+    
+    // Inject inline config right after <head> tag
+    if (content.includes('<head>')) {
+        content = content.replace('<head>', '<head>\n' + inlineConfig);
+    } else if (content.includes('<html')) {
+        content = content.replace(/<html[^>]*>/, '$&\n<head>\n' + inlineConfig + '\n</head>');
+    }
+    
+    fs.writeFileSync(filePath, content);
+    console.log('[BUILD] Processed:', file);
+    processed++;
 }
 
-console.log('[BUILD-END] generate-config.js completed successfully');
+console.log('[BUILD] ========================');
+console.log('[BUILD] DONE! Processed', processed, 'files');
+console.log('[BUILD] Config injected:');
+console.log('[BUILD]   SUPABASE_URL:', config.SUPABASE_URL ? 'OK' : 'MISSING');
+console.log('[BUILD]   SUPABASE_ANON_KEY:', config.SUPABASE_ANON_KEY ? 'OK' : 'MISSING');
+console.log('[BUILD]   GLPI_PETA_URL:', config.GLPI_PETA_URL ? 'OK' : 'MISSING');
+console.log('[BUILD]   GLPI_GMX_URL:', config.GLPI_GMX_URL ? 'OK' : 'MISSING');
+console.log('[BUILD] ========================');
 
-// Verify critical vars
 if (!config.SUPABASE_URL || !config.SUPABASE_ANON_KEY) {
     console.error('[BUILD] ERROR: Missing critical env vars!');
-    console.error('[BUILD] Check Vercel Environment Variables:');
-    console.error('[BUILD] - NEXT_PUBLIC_SUPABASE_URL or SUPABASE_URL');
-    console.error('[BUILD] - SUPABASE_ANON_KEY');
     process.exit(1);
 }
