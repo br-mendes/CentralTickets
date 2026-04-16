@@ -1,11 +1,14 @@
 // app/tickets/[id]/page.js
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { getSupabaseServerClient } from '@/lib/supabase/server'
+import Link from 'next/link'
+
+// Marcar como página dinâmica (forçar renderização no servidor)
+export const dynamic = 'force-dynamic'
 
 // Server Component para buscar dados do ticket
 
 export default async function TicketPage({ params }) {
-  const supabase = createServerComponentClient({ cookies })
+  const supabase = getSupabaseServerClient()
   const { id } = params
 
   // Busca dados do ticket no Supabase
@@ -32,12 +35,12 @@ export default async function TicketPage({ params }) {
         <p><strong>Status:</strong> {ticket.status}</p>
         <p><strong>Criado em:</strong> {new Date(ticket.created_at).toLocaleString()}</p>
       </div>
-      <a
+      <Link
         href="/tickets"
         className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 inline-block"
       >
         Voltar para a lista
-      </a>
+      </Link>
     </div>
   )
 }
