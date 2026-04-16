@@ -4,5 +4,8 @@
   "private": true,
   "engines": {
     "node": ">=18"
+  },
+  "scripts": {
+    "build": "node scripts/generate-config.js"
   }
 }
