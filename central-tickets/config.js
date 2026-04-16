@@ -18,6 +18,12 @@
  * 3. Inclua este arquivo antes de config.js no HTML
  */
 
+// Normalize URLs (remove trailing /auth/v1/callback from Vercel env vars)
+const normalizeUrl = (url) => {
+    if (!url) return '';
+    return url.replace(/\/auth\/v1(\/.*)?$/, '').replace(/\/$/, '');
+};
+
 window.APP_CONFIG = window.APP_CONFIG || window.APP_CONFIG_WITH_LOCAL || {
     SUPABASE_URL: '',
     SUPABASE_ANON_KEY: '',
@@ -30,6 +36,9 @@ window.APP_CONFIG = window.APP_CONFIG || window.APP_CONFIG_WITH_LOCAL || {
     GLPI_PETA_TICKET_URL: '',
     GLPI_GMX_TICKET_URL: ''
 };
+
+// Apply URL normalization
+window.APP_CONFIG.SUPABASE_URL = normalizeUrl(window.APP_CONFIG.SUPABASE_URL);
 
 const isConfigured = window.APP_CONFIG?.SUPABASE_URL && window.APP_CONFIG?.GLPI_PETA_URL;
 console.log('[CONFIG] Status:', isConfigured ? 'Configurado' : 'FALTANDO credenciais');
