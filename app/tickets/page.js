@@ -2,6 +2,9 @@
 import { getSupabaseServerClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 
+// Marcar como página dinâmica (forçar renderização no servidor)
+export const dynamic = 'force-dynamic'
+
 // Server Component para listar todos os tickets
 
 export default async function TicketsPage() {
