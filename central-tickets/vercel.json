@@ -1,4 +1,6 @@
 {
-  "buildCommand": "npm run build",
-  "outputDirectory": "."
+  "buildCommand": "node scripts/generate-config.js",
+  "outputDirectory": ".",
+  "installCommand": "npm install",
+  "framework": null
 }
