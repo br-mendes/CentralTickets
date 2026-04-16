@@ -712,20 +712,7 @@
             });
         }
 
-        async function getTicketsFromInstance(instanceName) {
-            let allTickets = [];
-            let page = 0;
-            const pageSize = 100;
-            const maxTickets = 500;
-            let hasMore = true;
-            
-            console.log(`[${instanceName}] Total carregado: ${allTickets.length} tickets de aprovação (limite: ${maxTickets})`);
-
-            // Fetch technician names from GLPI API
-            const ticketsWithTechnicians = await fetchTechniciansFromGLPI(allTickets || [], instanceName);
-            
-            return processTickets(ticketsWithTechnicians, instanceName);
-        }
+        // REMOVE: broken getTicketsFromInstance (lines 715-728) - doesn't fetch data
 
         // Function to get all tickets from all instances
         async function getAllTickets() {
