@@ -35,11 +35,25 @@ const status = Object.entries(config).map(([k, v]) => `${k}=${v ? 'OK' : 'MISSIN
 console.log('[BUILD] config-generated.js written to:', outPath);
 console.log('[BUILD] Config status:', status);
 
+// Log which vars are present (without values) for debugging
+const varList = [
+    'NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_ANON_KEY',
+    'NEXT_PUBLIC_GLPI_PETA_URL', 'PETA_USER_TOKEN', 'PETA_APP_TOKEN',
+    'NEXT_PUBLIC_GLPI_GMX_URL', 'GMX_USER_TOKEN', 'GMX_APP_TOKEN',
+    'NEXT_PUBLIC_GLPI_PETA', 'NEXT_PUBLIC_GLPI_GMX'
+];
+const present = varList.filter(v => process.env[v] !== undefined);
+console.log('[BUILD] Present env vars:', present.join(', '));
+const missing = varList.filter(v => process.env[v] === undefined);
+if (missing.length > 0) {
+    console.log('[BUILD] Missing env vars:', missing.join(', '));
+}
+
 // Verify critical vars
 if (!config.SUPABASE_URL || !config.SUPABASE_ANON_KEY) {
     console.error('[BUILD] ERROR: Missing critical env vars!');
     console.error('[BUILD] Check Vercel Environment Variables:');
-    console.error('[BUILD] - NEXT_PUBLIC_SUPABASE_URL');
+    console.error('[BUILD] - NEXT_PUBLIC_SUPABASE_URL or SUPABASE_URL');
     console.error('[BUILD] - SUPABASE_ANON_KEY');
     process.exit(1);
 }
