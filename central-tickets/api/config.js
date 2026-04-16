@@ -22,15 +22,6 @@ module.exports = (req, res) => {
         GLPI_GMX_TICKET_URL: process.env.NEXT_PUBLIC_GLPI_GMX || ''
     };
     
-    // Check for missing required vars
-    if (!config.SUPABASE_URL || !config.SUPABASE_ANON_KEY) {
-        return res.status(500).json({ 
-            error: 'Configuração incompleta',
-            hasUrl: !!config.SUPABASE_URL,
-            hasKey: !!config.SUPABASE_ANON_KEY
-        });
-    }
-    
     res.status(200).json(config);
 };
 

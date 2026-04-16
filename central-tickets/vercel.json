@@ -1,6 +1,8 @@
-[
-  {
-    "source": "/api/config",
-    "Destination": "/api/config.html"
+{
+  "functions": {
+    "api/*.js": {
+      "memory": 128,
+      "maxDuration": 10
+    }
   }
-]
+}
