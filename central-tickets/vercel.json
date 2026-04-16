@@ -1,4 +1,11 @@
 {
+  "version": 2,
   "buildCommand": "node scripts/generate-config.js",
-  "outputDirectory": "."
+  "outputDirectory": ".",
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
+    }
+  ]
 }
