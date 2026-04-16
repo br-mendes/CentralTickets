@@ -74,17 +74,21 @@ const mapNextPublicVars = () => {
         return;
     }
     
-    // Try /api/config as fallback
-    try {
-        const response = await fetch('/api/config');
-        if (response.ok) {
-            const apiConfig = await response.json();
-            window.APP_CONFIG = { ...window.APP_CONFIG, ...apiConfig };
-            window.APP_CONFIG.SUPABASE_URL = normalizeUrl(window.APP_CONFIG.SUPABASE_URL);
-            if (window.initApp) window.initApp();
+    // Try /api/config as fallback (with .js extension as safety net)
+    const configEndpoints = ['/api/config', '/api/config.js'];
+    for (const endpoint of configEndpoints) {
+        try {
+            const response = await fetch(endpoint);
+            if (response.ok) {
+                const apiConfig = await response.json();
+                window.APP_CONFIG = { ...window.APP_CONFIG, ...apiConfig };
+                window.APP_CONFIG.SUPABASE_URL = normalizeUrl(window.APP_CONFIG.SUPABASE_URL);
+                if (window.initApp) window.initApp();
+                break;
+            }
+        } catch (e) {
+            // try next endpoint
         }
-    } catch (e) {
-        console.log('[CONFIG] API unavailable');
     }
     
     logConfig();
