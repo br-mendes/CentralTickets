@@ -9,7 +9,6 @@
 #     ...
 # };
 config.local.js
-config-generated.js
 
 # Backup
 *.bak
