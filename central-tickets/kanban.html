@@ -1429,54 +1429,7 @@
         }
 
         // Função para buscar tickets de uma instância
-        async function getTicketsFromInstance(instanceName) {
-            try {
-                let allTickets = [];
-                let page = 0;
-                const pageSize = 100;
-                const maxTickets = 500;
-                let hasMore = true;
-                
-                console.log(`[${instanceName}] Carregando tickets para Kanban (max: ${maxTickets})...`);
-
-                while (hasMore && allTickets.length < maxTickets) {
-                    const remainingSlots = maxTickets - allTickets.length;
-                    const currentPageSize = Math.min(pageSize, remainingSlots);
-                    
-                    let query = window._sb
-                        .from('tickets_cache')
-                        .select('*')
-                        .eq('instance', instanceName.toUpperCase())
-                        .not('status_key', 'in', '("solved","closed")')
-                        .order('date_mod', { ascending: false })
-                        .range(page * pageSize, page * pageSize + currentPageSize - 1);
-
-                    const { data, error } = await query;
-
-                    if (error) {
-                        console.error(`Erro ao buscar tickets de ${instanceName} do Supabase:`, error);
-                        return [];
-                    }
-
-                    if (!data || data.length === 0) {
-                        hasMore = false;
-                    } else {
-                        allTickets = [...allTickets, ...data];
-                        page++;
-                        console.log(`[${instanceName}] Carregados ${allTickets.length} tickets`);
-                        if (data.length < pageSize || allTickets.length >= maxTickets) {
-                            hasMore = false;
-                        }
-                    }
-                }
-
-                console.log(`[${instanceName}] Total carregado: ${allTickets.length} tickets (limite: ${maxTickets})`);
-                return allTickets || [];
-            } catch (error) {
-                console.error(`Erro na busca de tickets de ${instanceName}:`, error);
-                return [];
-            }
-        }
+        // Keeping simpler version at lines 1691-1714
 
         // Função para buscar tickets de todas as instâncias com renderização incremental
         async function getAllTickets() {
