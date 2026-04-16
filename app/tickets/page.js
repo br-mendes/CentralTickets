@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase/client'
 import StatusBadge from '../components/StatusBadge'
@@ -13,7 +13,7 @@ function fmt(dateStr) {
   return new Date(dateStr).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
-export default function TicketsAtivosPage() {
+function TicketsAtivosContent() {
   const searchParams = useSearchParams()
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
@@ -217,5 +217,13 @@ export default function TicketsAtivosPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function TicketsAtivosPage() {
+  return (
+    <Suspense fallback={<div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-secondary)' }}>Carregando...</div>}>
+      <TicketsAtivosContent />
+    </Suspense>
   )
 }
