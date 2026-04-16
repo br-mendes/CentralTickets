@@ -775,19 +775,42 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         async function getTicketsFromInstance(instanceName) {
             try {
+                console.log(`[${instanceName}] Carregando tickets do Supabase...`);
+                
                 let allTickets = [];
                 let page = 0;
-                const pageSize = 100;
-                const maxTickets = 1000;
+                const pageSize = 1000;
                 let hasMore = true;
-                
-                console.log(`[${instanceName}] Total carregado: ${allTickets.length} tickets (limite: ${maxTickets})`);
-                console.log(`Total de tickets carregados: ${allTickets.length}`);
+
+                while (hasMore) {
+                    const { data, error } = await window._sb
+                        .from('tickets_cache')
+                        .select('*')
+                        .eq('instance', instanceName.toUpperCase())
+                        .order('date_mod', { ascending: false })
+                        .range(page * pageSize, (page + 1) * pageSize - 1);
+
+                    if (error) {
+                        console.error(`Erro ao buscar tickets de ${instanceName}:`, error);
+                        return [];
+                    }
+
+                    if (!data || data.length === 0) {
+                        hasMore = false;
+                    } else {
+                        allTickets = [...allTickets, ...data];
+                        page++;
+                        if (data.length < pageSize) {
+                            hasMore = false;
+                        }
+                    }
+                }
+
+                console.log(`[${instanceName}] Total carregado: ${allTickets.length} tickets`);
+                return allTickets;
             } catch (error) {
-                console.error('Erro ao carregar tickets:', error);
-                content.innerHTML = `<div class="empty-state"><h3>Erro ao carregar dados</h3><p>${error.message}</p></div>`;
-            } finally {
-                isLoading = false;
+                console.error(`Erro na busca de tickets de ${instanceName}:`, error);
+                return [];
             }
         }
 
