@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la C:/central-tickets/*.html)",
+      "Bash(grep -i \"tailwind\" C:/central-tickets/*.html)"
+    ]
+  }
+}
