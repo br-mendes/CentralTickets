@@ -74,6 +74,5 @@ console.log('[BUILD]   GLPI_GMX_URL:', config.GLPI_GMX_URL ? 'OK' : 'MISSING');
 console.log('[BUILD] ========================');
 
 if (!config.SUPABASE_URL || !config.SUPABASE_ANON_KEY) {
-    console.error('[BUILD] ERROR: Missing critical env vars!');
-    process.exit(1);
+    console.warn('[BUILD] WARNING: Supabase env vars missing — dashboard will fall back to direct GLPI fetch.');
 }

@@ -3703,73 +3703,75 @@ ${JSON.stringify(error, null, 2)}
             const syncBtn = document.getElementById('syncBtn');
             if (refreshBtn) refreshBtn.disabled = true;
             if (syncBtn) syncBtn.disabled = true;
-            showLoading('Carregando tickets do Supabase...');
+            showLoading(window._sb ? 'Carregando tickets do Supabase...' : 'Carregando tickets do GLPI...');
 
             try {
-                if (!window._sb) {
-                    throw new Error('Supabase não configurado. Verifique as variáveis de ambiente (SUPABASE_URL / SUPABASE_ANON_KEY).');
-                }
+                if (window._sb) {
+                    console.log('[Supabase] Carregando TODOS os tickets...');
 
-                console.log('[Supabase] Carregando TODOS os tickets...');
+                    // Supabase has default limit of 1000, so we need to paginate
+                    const allTickets = [];
+                    let page = 0;
+                    const pageSize = 1000;
+                    let hasMore = true;
 
-                // Supabase has default limit of 1000, so we need to paginate
-                const allTickets = [];
-                let page = 0;
-                const pageSize = 1000;
-                let hasMore = true;
+                    while (hasMore) {
+                        const { data, error } = await window._sb
+                            .from('tickets_cache')
+                            .select('*')
+                            .order('date_mod', { ascending: false })
+                            .range(page * pageSize, (page + 1) * pageSize - 1);
 
-                while (hasMore) {
-                    const { data, error } = await window._sb
-                        .from('tickets_cache')
-                        .select('*')
-                        .order('date_mod', { ascending: false })
-                        .range(page * pageSize, (page + 1) * pageSize - 1);
+                        if (error) throw new Error(error.message);
 
-                    if (error) throw new Error(error.message);
-
-                    if (data && data.length > 0) {
-                        allTickets.push(...data);
-                        console.log(`[Supabase] Página ${page + 1}: ${data.length} tickets (total: ${allTickets.length})`);
-                        page++;
-                        if (data.length < pageSize) {
+                        if (data && data.length > 0) {
+                            allTickets.push(...data);
+                            console.log(`[Supabase] Página ${page + 1}: ${data.length} tickets (total: ${allTickets.length})`);
+                            page++;
+                            if (data.length < pageSize) {
+                                hasMore = false;
+                            }
+                        } else {
                             hasMore = false;
                         }
-                    } else {
-                        hasMore = false;
                     }
+
+                    console.log(`[Supabase] Total carregado: ${allTickets.length} tickets`);
+
+                    // Mapear para formato do dashboard
+                    tickets = allTickets.map(t => ({
+                        id: t.ticket_id,
+                        title: t.title,
+                        entity: cleanEntityName(t.entity_full || t.entity || '') || cleanEntityName(t.entity || '') || (t.entity || 'Sem entidade'),
+                        entityFull: t.entity_full || t.entity,
+                        category: t.category,
+                        rootCategory: t.root_category,
+                        statusId: t.status_id,
+                        status: t.status_key || 'new',
+                        statusName: t.status_name,
+                        priorityId: t.priority_id || 1,
+                        priority: t.priority || '1-Baixa',
+                        group: lastGroupLabel(t.group_name || ''),
+                        groupFull: t.group_name,
+                        technician: t.technician || '',
+                        dateCreated: t.date_created,
+                        lastUpdate: t.date_mod,
+                        dueDate: t.due_date,
+                        isSlaLate: t.is_sla_late || false,
+                        isOverdueFirst: t.is_overdue_first || false,
+                        isOverdueResolve: t.is_overdue_resolve || false,
+                        timeToOwn: t.time_to_own,
+                        timeToResolve: t.time_to_resolve,
+                        instance: t.instance,
+                        instanceUrl: t.instance?.toLowerCase() === 'peta'
+                            ? (window.APP_CONFIG?.GLPI_PETA_TICKET_URL || '')
+                            : (window.APP_CONFIG?.GLPI_GMX_TICKET_URL || ''),
+                    }));
+                } else {
+                    // Fallback: fetch directly from GLPI API
+                    console.log('[GLPI] Supabase não disponível, buscando diretamente do GLPI...');
+                    tickets = await getAllTickets();
                 }
-
-                console.log(`[Supabase] Total carregado: ${allTickets.length} tickets`);
-
-                // Mapear para formato do dashboard
-                tickets = allTickets.map(t => ({
-                    id: t.ticket_id,
-                    title: t.title,
-                    entity: cleanEntityName(t.entity_full || t.entity || '') || cleanEntityName(t.entity || '') || (t.entity || 'Sem entidade'),
-                    entityFull: t.entity_full || t.entity,
-                    category: t.category,
-                    rootCategory: t.root_category,
-                    statusId: t.status_id,
-                    status: t.status_key || 'new',
-                    statusName: t.status_name,
-                    priorityId: t.priority_id || 1,
-                    priority: t.priority || '1-Baixa',
-                    group: lastGroupLabel(t.group_name || ''),
-                    groupFull: t.group_name,
-                    technician: t.technician || '',
-                    dateCreated: t.date_created,
-                    lastUpdate: t.date_mod,
-                    dueDate: t.due_date,
-                    isSlaLate: t.is_sla_late || false,
-                    isOverdueFirst: t.is_overdue_first || false,
-                    isOverdueResolve: t.is_overdue_resolve || false,
-                    timeToOwn: t.time_to_own,
-                    timeToResolve: t.time_to_resolve,
-                    instance: t.instance,
-                    instanceUrl: t.instance?.toLowerCase() === 'peta' 
-                        ? (window.APP_CONFIG?.GLPI_PETA_TICKET_URL || '') 
-                        : (window.APP_CONFIG?.GLPI_GMX_TICKET_URL || ''),
-                }));
 
                 // Salvar apenas metadata no cache (não os tickets completos para evitar quota)
                 try {
@@ -3783,7 +3785,7 @@ ${JSON.stringify(error, null, 2)}
                     console.warn('Não foi possível salvar metadata do cache:', e);
                 }
 
-                console.log(`[Supabase] Finalizado: ${tickets.length} tickets`);
+                console.log(`✅ Finalizado: ${tickets.length} tickets`);
 
                 window.currentTickets = tickets;
                 renderKanban(tickets);

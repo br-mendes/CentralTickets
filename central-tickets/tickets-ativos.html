@@ -1333,7 +1333,14 @@
         const SUPABASE_URL = window.APP_CONFIG?.SUPABASE_URL || '';
         const SUPABASE_ANON_KEY = window.APP_CONFIG?.SUPABASE_ANON_KEY || '';
         
-        const sbClient = window._sb || (window._sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
+        let sbClient = window._sb;
+        if (!sbClient && SUPABASE_URL && SUPABASE_ANON_KEY) {
+            try {
+                sbClient = window._sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            } catch (e) {
+                console.error('[Supabase] Falha ao inicializar client:', e);
+            }
+        }
 
         const INSTANCES = {
             'Peta': {
