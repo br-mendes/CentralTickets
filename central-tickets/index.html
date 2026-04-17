@@ -2045,7 +2045,14 @@
         const SUPABASE_URL = window.APP_CONFIG?.SUPABASE_URL || '';
         const SUPABASE_ANON_KEY = window.APP_CONFIG?.SUPABASE_ANON_KEY || '';
         
-        const sbClient = window._sb || (window._sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
+        let sbClient = window._sb;
+        if (!sbClient && SUPABASE_URL && SUPABASE_ANON_KEY) {
+            try {
+                sbClient = window._sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            } catch (e) {
+                console.error('[Supabase] Falha ao inicializar client:', e);
+            }
+        }
 
         // Configuração da API GLPI via Environment Variables
         const API_CONFIG = {
@@ -3699,6 +3706,10 @@ ${JSON.stringify(error, null, 2)}
             showLoading('Carregando tickets do Supabase...');
 
             try {
+                if (!window._sb) {
+                    throw new Error('Supabase não configurado. Verifique as variáveis de ambiente (SUPABASE_URL / SUPABASE_ANON_KEY).');
+                }
+
                 console.log('[Supabase] Carregando TODOS os tickets...');
 
                 // Supabase has default limit of 1000, so we need to paginate
