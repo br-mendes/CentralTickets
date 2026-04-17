@@ -3,9 +3,8 @@
 (function () {
   const NAV_ITEMS = [
     { href: 'index.html', label: 'Dashboard', icon: '' },
-    { href: 'tickets-ativos.html', label: 'Tickets Ativos', icon: '' },
-    { href: 'tickets-em-espera.html', label: 'Em Espera', icon: '' },
-    { href: 'aprovacao.html', label: 'Aprovação', icon: '' },
+    { href: 'tickets-ativos.html', label: 'Monitor', icon: '' },
+    { href: 'incidentes.html', label: 'Incidentes', icon: '' },
     { href: 'relatorios.html', label: 'Relatórios', icon: '' },
     { href: 'kanban.html', label: 'Kanban', icon: '' }
   ];
@@ -64,6 +63,11 @@
   function renderSharedHeader() {
     const header = document.querySelector('header.header');
     if (!header) return;
+    // Skip pages that manage their own full header (indicated by data-custom-header attribute)
+    if (header.hasAttribute('data-custom-header')) {
+      initTheme();
+      return;
+    }
     header.innerHTML = `<div class="header-content">${buildHeaderHTML()}</div>`;
     initTheme();
   }
