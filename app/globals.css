@@ -36,11 +36,7 @@
   --text-muted: #64748b;
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
   background-color: var(--background);
@@ -51,31 +47,82 @@ body {
   transition: background-color 0.3s, color 0.3s;
 }
 
-/* SLA late row animation */
-@keyframes sla-pulse {
-  0%, 100% { background-color: rgb(254 226 226 / 0.5); }
-  50% { background-color: rgb(254 202 202 / 0.8); }
+/* ── Status Badges ───────────────────────────────────────────────── */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.status-badge.new      { background: rgba(59,130,246,0.15);  color: #2563eb; }
+.status-badge.processing { background: rgba(34,197,94,0.15); color: #16a34a; }
+.status-badge.pending  { background: rgba(249,115,22,0.15);  color: #ea580c; }
+.status-badge.approval { background: rgba(249,115,22,0.15);  color: #ea580c; }
+.status-badge.solved   { background: rgba(107,114,128,0.15); color: #52525b; }
+.status-badge.closed   { background: rgba(31,41,55,0.25);    color: #374151; }
+.status-badge.unknown  { background: rgba(148,163,184,0.15); color: #64748b; }
+
+/* ── Instance Badges ─────────────────────────────────────────────── */
+.instance-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+.instance-badge.peta { background: rgba(37,99,235,0.12); color: #2563eb; }
+.instance-badge.gmx  { background: rgba(234,88,12,0.12); color: #ea580c; }
+
+/* ── SLA Badges ──────────────────────────────────────────────────── */
+.sla-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.sla-badge.ok   { background: rgba(34,197,94,0.15);  color: #16a34a; }
+.sla-badge.late { background: rgba(239,68,68,0.15);   color: #dc2626; }
+
+/* ── Row Animations ──────────────────────────────────────────────── */
+@keyframes flash-red {
+  0%, 100% { background-color: rgba(239,68,68,0.08); }
+  50%       { background-color: rgba(239,68,68,0.25); }
+}
+@keyframes flash-yellow {
+  0%, 100% { background-color: rgba(245,158,11,0.08); }
+  50%       { background-color: rgba(245,158,11,0.22); }
 }
 
-[data-theme="dark"] @keyframes sla-pulse {
-  0%, 100% { background-color: rgb(127 29 29 / 0.3); }
-  50% { background-color: rgb(127 29 29 / 0.5); }
-}
+.sla-late    { animation: flash-red    1200ms ease-in-out infinite; }
+.alert-red   { animation: flash-red    1200ms ease-in-out infinite; }
+.alert-yellow{ animation: flash-yellow 1400ms ease-in-out infinite; }
 
-.row-sla-late {
-  animation: sla-pulse 2s ease-in-out infinite;
-}
+/* ── Table shared ────────────────────────────────────────────────── */
+.col-id         { width: 70px; }
+.col-instance   { width: 80px; }
+.col-entity     { max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+.col-technician { width: 140px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+.col-group      { width: 160px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+.col-status     { width: 130px; }
+.col-date       { width: 110px; }
+.col-sla        { width: 105px; }
+.col-solution   { max-width: 250px; overflow: hidden; text-overflow: ellipsis; }
 
-/* Wait time alert animations */
-@keyframes wait-critical {
-  0%, 100% { background-color: rgb(254 226 226 / 0.5); }
-  50% { background-color: rgb(254 202 202 / 0.8); }
+/* ── Spinner ─────────────────────────────────────────────────────── */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  width: 36px; height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
-
-@keyframes wait-warning {
-  0%, 100% { background-color: rgb(254 243 199 / 0.5); }
-  50% { background-color: rgb(253 230 138 / 0.8); }
-}
-
-.row-wait-critical { animation: wait-critical 2s ease-in-out infinite; }
-.row-wait-warning { animation: wait-warning 2s ease-in-out infinite; }
