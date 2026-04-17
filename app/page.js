@@ -118,7 +118,7 @@ export default function DashboardPage() {
   const techMap = {}
   for (const t of tickets) {
     const tech = t.technician || '—'
-    if (!techMap[tech]) techMap[tech] = { total: 0, processing: 0, pending: 0, solved: 0, closed: 0, peta: 0, gmx: 0 }
+    if (!techMap[tech]) techMap[tech] = { total: 0, new: 0, processing: 0, pending: 0, approval: 0, solved: 0, closed: 0, peta: 0, gmx: 0 }
     techMap[tech].total++
     const sk = getStatusConfig(t.status_id, t.status_key).key
     if (techMap[tech][sk] !== undefined) techMap[tech][sk]++
@@ -338,7 +338,7 @@ export default function DashboardPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
               <thead>
                 <tr>
-                  {['Técnico', 'Total', 'Em Atendimento', 'Pendente', 'Solucionado', 'Fechado', 'PETA', 'GMX'].map(h => (
+                  {['Técnico', 'Total', 'Novo', 'Em Atend.', 'Pendente', 'Aprovação', 'Solucionado', 'Fechado', 'PETA', 'GMX'].map(h => (
                     <th key={h} style={thStyle}>{h}</th>
                   ))}
                 </tr>
@@ -348,8 +348,10 @@ export default function DashboardPage() {
                   <tr key={name} style={{ background: i % 2 === 0 ? 'var(--surface)' : 'var(--background)' }}>
                     <td style={{ ...thTd, fontWeight: 600 }}>{name === '—' ? <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em> : name}</td>
                     <td style={{ ...thTd, fontWeight: 700 }}>{s.total}</td>
+                    <td style={{ ...thTd, color: '#2563eb' }}>{s.new}</td>
                     <td style={{ ...thTd, color: '#16a34a' }}>{s.processing}</td>
                     <td style={{ ...thTd, color: '#ea580c' }}>{s.pending}</td>
+                    <td style={{ ...thTd, color: '#7c3aed' }}>{s.approval}</td>
                     <td style={{ ...thTd, color: '#52525b' }}>{s.solved}</td>
                     <td style={{ ...thTd, color: '#374151' }}>{s.closed}</td>
                     <td style={{ ...thTd, color: '#2563eb' }}>{s.peta}</td>

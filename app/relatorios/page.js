@@ -23,60 +23,99 @@ const sel = {
   color: 'var(--text-primary)', fontSize: '0.82rem',
 }
 
+const FULL_SELECT = 'ticket_id,title,entity,category,status_id,status_key,status_name,group_name,technician,is_sla_late,is_overdue_first,is_overdue_resolve,date_created,date_mod,date_solved,solution,instance'
+const FALLBACK_SELECT = 'ticket_id,title,entity,category,status_id,status_key,status_name,group_name,technician,is_sla_late,is_overdue_first,is_overdue_resolve,date_created,date_mod,instance'
+
 export default function RelatoriosPage() {
   const now = new Date()
   const [allTickets, setAllTickets] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [missingColumns, setMissingColumns] = useState(false)
   const [dateType, setDateType] = useState('opening')
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [fInstance, setFInstance] = useState('')
   const [fEntity, setFEntity] = useState('')
   const [fStatus, setFStatus] = useState('')
+  const [fTech, setFTech] = useState('')
+  const [fGroup, setFGroup] = useState('')
 
   const load = useCallback(async () => {
-    setLoading(true); setError(null)
+    setLoading(true); setError(null); setMissingColumns(false)
     try {
       const startDate = new Date(year, month - 1, 1).toISOString()
       const endDate   = new Date(year, month, 0, 23, 59, 59).toISOString()
       const dateCol   = dateType === 'opening' ? 'date_created' : 'date_mod'
-      const { data, error: err } = await getSupabaseClient()
+      const sb = getSupabaseClient()
+
+      let data, err
+      // Try full query with solution columns first
+      ;({ data, error: err } = await sb
         .from('tickets_cache')
-        .select('ticket_id,title,entity,category,status_id,status_key,status_name,group_name,technician,is_sla_late,is_overdue_first,is_overdue_resolve,date_created,date_mod,instance')
+        .select(FULL_SELECT)
         .gte(dateCol, startDate)
         .lte(dateCol, endDate)
-        .order(dateCol, { ascending: false })
-      if (err) throw err
+        .order(dateCol, { ascending: false }))
+
+      if (err) {
+        if (err.message && (err.message.includes('date_solved') || err.message.includes('solution'))) {
+          // Columns don't exist yet — fall back to query without them
+          setMissingColumns(true)
+          ;({ data, error: err } = await sb
+            .from('tickets_cache')
+            .select(FALLBACK_SELECT)
+            .gte(dateCol, startDate)
+            .lte(dateCol, endDate)
+            .order(dateCol, { ascending: false }))
+          if (err) throw err
+        } else {
+          throw err
+        }
+      }
       setAllTickets(data || [])
     } catch (e) { setError(e.message) }
     finally { setLoading(false) }
   }, [dateType, year, month])
 
-  const entities = [...new Set(allTickets.map(t => processEntity(t.entity)).filter(v => v !== '—'))].sort()
+  const entities    = [...new Set(allTickets.map(t => processEntity(t.entity)).filter(v => v !== '—'))].sort()
+  const technicians = [...new Set(allTickets.map(t => t.technician).filter(Boolean))].sort()
+  const groups      = [...new Set(allTickets.map(t => lastGroupLabel(t.group_name)).filter(v => v !== '—'))].sort()
 
   const filtered = allTickets.filter(t => {
     if (fInstance && (t.instance || '').toUpperCase() !== fInstance.toUpperCase()) return false
-    if (fEntity && processEntity(t.entity) !== fEntity) return false
-    if (fStatus && t.status_key !== fStatus) return false
+    if (fEntity  && processEntity(t.entity) !== fEntity) return false
+    if (fStatus  && t.status_key !== fStatus) return false
+    if (fTech    && (t.technician || '') !== fTech) return false
+    if (fGroup   && lastGroupLabel(t.group_name) !== fGroup) return false
     return true
   })
 
+  const hasSolution = allTickets.some(t => 'date_solved' in t || 'solution' in t)
+
   function exportCSV() {
-    const headers = ['ID','Instância','Entidade','Categoria','Status','Grupo Responsável','Técnico','SLA Atendimento','SLA Solução','Abertura','Últ. Atualização']
-    const rows = filtered.map(t => [
-      t.ticket_id,
-      t.instance || '',
-      processEntity(t.entity),
-      t.category || '',
-      getStatusConfig(t.status_id, t.status_key).label,
-      lastGroupLabel(t.group_name) || '—',
-      t.technician || '—',
-      t.is_overdue_first ? 'Fora do prazo' : 'No prazo',
-      t.is_overdue_resolve ? 'Fora do prazo' : 'No prazo',
-      fmt(t.date_created),
-      fmt(t.date_mod),
-    ])
+    const headers = hasSolution
+      ? ['ID','Instância','Entidade','Categoria','Status','Grupo Responsável','Técnico','SLA Atendimento','SLA Solução','Abertura','Últ. Atualização','Data Solução','Solução']
+      : ['ID','Instância','Entidade','Categoria','Status','Grupo Responsável','Técnico','SLA Atendimento','SLA Solução','Abertura','Últ. Atualização']
+    const rows = filtered.map(t => {
+      const base = [
+        t.ticket_id,
+        t.instance || '',
+        processEntity(t.entity),
+        t.category || '',
+        getStatusConfig(t.status_id, t.status_key).label,
+        lastGroupLabel(t.group_name) || '—',
+        t.technician || '—',
+        t.is_overdue_first ? 'Fora do prazo' : 'No prazo',
+        t.is_overdue_resolve ? 'Fora do prazo' : 'No prazo',
+        fmt(t.date_created),
+        fmt(t.date_mod),
+      ]
+      if (hasSolution) {
+        base.push(fmt(t.date_solved), t.solution || '—')
+      }
+      return base
+    })
     const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
@@ -89,7 +128,60 @@ export default function RelatoriosPage() {
 
   const years = Array.from({ length: 5 }, (_, i) => now.getFullYear() - i)
   const thTd = { padding: '8px 10px', fontSize: '0.8rem', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }
-  const thS = { ...thTd, fontWeight: 600, color: 'var(--text-secondary)', textAlign: 'left', background: 'var(--background)' }
+  const thS  = { ...thTd, fontWeight: 600, color: 'var(--text-secondary)', textAlign: 'left', background: 'var(--background)' }
+
+  const filterDefs = [
+    { label: 'Tipo de data', el: (
+      <select value={dateType} onChange={e => setDateType(e.target.value)} style={sel}>
+        <option value="opening">Data de Abertura</option>
+        <option value="update">Última Atualização</option>
+      </select>
+    )},
+    { label: 'Ano', el: (
+      <select value={year} onChange={e => setYear(Number(e.target.value))} style={sel}>
+        {years.map(y => <option key={y} value={y}>{y}</option>)}
+      </select>
+    )},
+    { label: 'Mês', el: (
+      <select value={month} onChange={e => setMonth(Number(e.target.value))} style={sel}>
+        {MONTHS.slice(1).map((m, i) => <option key={i + 1} value={i + 1}>{m}</option>)}
+      </select>
+    )},
+    { label: 'Instância', el: (
+      <select value={fInstance} onChange={e => setFInstance(e.target.value)} style={sel}>
+        <option value="">Todas</option>
+        <option value="PETA">Peta</option>
+        <option value="GMX">GMX</option>
+      </select>
+    )},
+    { label: 'Status', el: (
+      <select value={fStatus} onChange={e => setFStatus(e.target.value)} style={sel}>
+        {STATUS_OPTS.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
+      </select>
+    )},
+    { label: 'Entidade', el: (
+      <select value={fEntity} onChange={e => setFEntity(e.target.value)} style={{ ...sel, maxWidth: '180px' }}>
+        <option value="">Todas</option>
+        {entities.map(e => <option key={e} value={e}>{e}</option>)}
+      </select>
+    )},
+    { label: 'Técnico', el: (
+      <select value={fTech} onChange={e => setFTech(e.target.value)} style={{ ...sel, maxWidth: '180px' }}>
+        <option value="">Todos</option>
+        {technicians.map(t => <option key={t} value={t}>{t}</option>)}
+      </select>
+    )},
+    { label: 'Grupo', el: (
+      <select value={fGroup} onChange={e => setFGroup(e.target.value)} style={{ ...sel, maxWidth: '180px' }}>
+        <option value="">Todos</option>
+        {groups.map(g => <option key={g} value={g}>{g}</option>)}
+      </select>
+    )},
+  ]
+
+  const tableHeaders = hasSolution
+    ? ['ID','Instância','Entidade','Categoria','Status','Grupo','Técnico','SLA Atend.','SLA Solução','Abertura','Últ. Atualização','Data Solução','Solução']
+    : ['ID','Instância','Entidade','Categoria','Status','Grupo','Técnico','SLA Atend.','SLA Solução','Abertura','Últ. Atualização']
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -98,44 +190,25 @@ export default function RelatoriosPage() {
         <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '2px' }}>Histórico e exportação de dados</p>
       </div>
 
+      {/* Migration notice */}
+      {missingColumns && (
+        <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 'var(--radius-lg)', padding: '12px 16px' }}>
+          <div style={{ fontWeight: 600, color: '#ea580c', marginBottom: '4px', fontSize: '0.85rem' }}>Colunas de solução não encontradas</div>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginBottom: '8px' }}>
+            As colunas <code>date_solved</code> e <code>solution</code> ainda não existem. Execute a migration abaixo no painel Supabase para habilitá-las.
+          </p>
+          <pre style={{ padding: '10px', background: 'var(--background)', borderRadius: 'var(--radius-md)', fontSize: '0.75rem', overflowX: 'auto' }}>
+{`-- migration-v4.sql
+ALTER TABLE tickets_cache ADD COLUMN IF NOT EXISTS date_solved TIMESTAMPTZ;
+ALTER TABLE tickets_cache ADD COLUMN IF NOT EXISTS solution TEXT;
+CREATE INDEX IF NOT EXISTS idx_tickets_cache_date_solved ON tickets_cache(date_solved);`}
+          </pre>
+        </div>
+      )}
+
       {/* Query filters */}
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '16px', display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-        {[
-          { label: 'Tipo de data', el: (
-            <select value={dateType} onChange={e => setDateType(e.target.value)} style={sel}>
-              <option value="opening">Data de Abertura</option>
-              <option value="update">Última Atualização</option>
-            </select>
-          )},
-          { label: 'Ano', el: (
-            <select value={year} onChange={e => setYear(Number(e.target.value))} style={sel}>
-              {years.map(y => <option key={y} value={y}>{y}</option>)}
-            </select>
-          )},
-          { label: 'Mês', el: (
-            <select value={month} onChange={e => setMonth(Number(e.target.value))} style={sel}>
-              {MONTHS.slice(1).map((m, i) => <option key={i + 1} value={i + 1}>{m}</option>)}
-            </select>
-          )},
-          { label: 'Instância', el: (
-            <select value={fInstance} onChange={e => setFInstance(e.target.value)} style={sel}>
-              <option value="">Todas</option>
-              <option value="PETA">Peta</option>
-              <option value="GMX">GMX</option>
-            </select>
-          )},
-          { label: 'Entidade', el: (
-            <select value={fEntity} onChange={e => setFEntity(e.target.value)} style={{ ...sel, maxWidth: '180px' }}>
-              <option value="">Todas</option>
-              {entities.map(e => <option key={e} value={e}>{e}</option>)}
-            </select>
-          )},
-          { label: 'Status', el: (
-            <select value={fStatus} onChange={e => setFStatus(e.target.value)} style={sel}>
-              {STATUS_OPTS.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
-            </select>
-          )},
-        ].map(({ label, el }) => (
+        {filterDefs.map(({ label, el }) => (
           <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
             <label style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</label>
             {el}
@@ -144,12 +217,18 @@ export default function RelatoriosPage() {
         <button onClick={load} style={{ ...sel, cursor: 'pointer', background: 'var(--primary)', color: '#fff', border: 'none', fontWeight: 600, alignSelf: 'flex-end' }}>
           Buscar
         </button>
+        {allTickets.length > 0 && (
+          <button onClick={() => { setFInstance(''); setFEntity(''); setFStatus(''); setFTech(''); setFGroup('') }}
+            style={{ ...sel, cursor: 'pointer', alignSelf: 'flex-end' }}>
+            Limpar filtros
+          </button>
+        )}
       </div>
 
       {/* Results bar */}
       {allTickets.length > 0 && (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-          <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{filtered.length} tickets encontrados</span>
+          <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{filtered.length} de {allTickets.length} tickets</span>
           <button onClick={exportCSV} style={{ ...sel, cursor: 'pointer', background: '#16a34a', color: '#fff', border: 'none', fontWeight: 600 }}>
             Exportar CSV
           </button>
@@ -172,9 +251,7 @@ export default function RelatoriosPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
             <thead>
               <tr style={{ background: 'var(--background)', borderBottom: '2px solid var(--border)' }}>
-                {['ID','Instância','Entidade','Categoria','Status','Grupo','Técnico','SLA Atend.','SLA Solução','Abertura','Últ. Atualização'].map(h => (
-                  <th key={h} style={thS}>{h}</th>
-                ))}
+                {tableHeaders.map(h => <th key={h} style={thS}>{h}</th>)}
               </tr>
             </thead>
             <tbody>
@@ -192,6 +269,10 @@ export default function RelatoriosPage() {
                   <td style={thTd}><SLABadge isLate={t.is_overdue_resolve} /></td>
                   <td style={{ ...thTd, color: 'var(--text-secondary)' }}>{fmt(t.date_created)}</td>
                   <td style={{ ...thTd, color: 'var(--text-secondary)' }}>{fmt(t.date_mod)}</td>
+                  {hasSolution && <>
+                    <td style={{ ...thTd, color: 'var(--text-secondary)' }}>{fmt(t.date_solved)}</td>
+                    <td style={{ ...thTd, maxWidth: '300px', whiteSpace: 'normal', color: 'var(--text-secondary)', lineHeight: 1.4 }}>{t.solution || '—'}</td>
+                  </>}
                 </tr>
               ))}
             </tbody>
