@@ -439,6 +439,10 @@ async function syncInstance(instanceName: 'PETA' | 'GMX', resumePage: number = 0
               date_mod: t.date_mod,
               due_date: t.due_date,
               is_sla_late: t.is_sla_late,
+              is_overdue_first: t.is_sla_late,
+              is_overdue_resolve: t.is_sla_late,
+              type_id: t.type_id,
+              priority_id: t.priority_id,
               last_sync: new Date().toISOString(),
               updated_at: new Date().toISOString()
             })),

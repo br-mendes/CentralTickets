@@ -16,14 +16,14 @@ const sel = {
   fontSize: '0.82rem',
 }
 
-function TicketsContent() {
+function IncidentesContent() {
   const { applyFilters, setAvailableTechnicians } = useFilters()
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [lastUpdate, setLastUpdate] = useState(null)
+  const [missingColumn, setMissingColumn] = useState(false)
 
-  /* page-level filters */
   const [search, setSearch] = useState('')
   const [fInstance, setFInstance] = useState('')
   const [fStatus, setFStatus] = useState('')
@@ -32,20 +32,37 @@ function TicketsContent() {
   const [fEntity, setFEntity] = useState('')
 
   const load = useCallback(async () => {
-    setLoading(true); setError(null)
+    setLoading(true); setError(null); setMissingColumn(false)
     try {
-      const { data, error: err } = await getSupabaseClient()
+      const sb = getSupabaseClient()
+      if (!sb) throw new Error('Supabase não configurado.')
+
+      const { data, error: err } = await sb
         .from('tickets_cache')
-        .select('ticket_id,title,entity,status_id,status_key,status_name,group_name,technician,is_sla_late,is_overdue_resolve,date_created,date_mod,due_date,instance')
+        .select('ticket_id,title,entity,status_id,status_key,status_name,group_name,technician,is_sla_late,is_overdue_resolve,date_created,date_mod,due_date,instance,type_id')
         .in('status_key', ['new', 'processing', 'pending', 'pending-approval'])
+        .eq('type_id', 1)
         .order('date_mod', { ascending: false })
-      if (err) throw err
+
+      if (err) {
+        if (err.message && err.message.includes('type_id')) {
+          setMissingColumn(true)
+          return
+        }
+        throw err
+      }
+
       setTickets(data || [])
       setLastUpdate(new Date())
       const techs = [...new Set((data || []).map(t => t.technician).filter(Boolean))].sort()
       setAvailableTechnicians(techs)
-    } catch (e) { setError(e.message) }
-    finally { setLoading(false) }
+    } catch (e) {
+      if (e.message && e.message.includes('type_id')) {
+        setMissingColumn(true)
+      } else {
+        setError(e.message)
+      }
+    } finally { setLoading(false) }
   }, [setAvailableTechnicians])
 
   useEffect(() => {
@@ -54,7 +71,6 @@ function TicketsContent() {
     return () => clearInterval(iv)
   }, [load])
 
-  /* apply all filters: global first, then page-level */
   const filtered = applyFilters(tickets).filter(t => {
     if (fInstance && (t.instance || '').toUpperCase() !== fInstance.toUpperCase()) return false
     if (fStatus && t.status_key !== fStatus) return false
@@ -69,12 +85,28 @@ function TicketsContent() {
     return true
   })
 
-  const groups    = [...new Set(tickets.map(t => lastGroupLabel(t.group_name)).filter(v => v !== '—'))].sort()
-  const entities  = [...new Set(tickets.map(t => processEntity(t.entity)).filter(v => v !== '—'))].sort()
-  const late      = filtered.filter(t => t.is_sla_late || t.is_overdue_resolve).length
-  const proc      = filtered.filter(t => t.status_key === 'processing').length
-  const pend      = filtered.filter(t => t.status_key === 'pending').length
-  const approval  = filtered.filter(t => t.status_key === 'pending-approval').length
+  const groups   = [...new Set(tickets.map(t => lastGroupLabel(t.group_name)).filter(v => v !== '—'))].sort()
+  const entities = [...new Set(tickets.map(t => processEntity(t.entity)).filter(v => v !== '—'))].sort()
+  const late     = filtered.filter(t => t.is_sla_late || t.is_overdue_resolve).length
+  const proc     = filtered.filter(t => t.status_key === 'processing').length
+  const pend     = filtered.filter(t => t.status_key === 'pending').length
+  const aprov    = filtered.filter(t => t.status_key === 'pending-approval').length
+
+  if (missingColumn) {
+    return (
+      <div style={{ padding: '32px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', textAlign: 'center' }}>
+        <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#ea580c', marginBottom: '8px' }}>Migração de banco necessária</div>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+          A coluna <code>type_id</code> ainda não existe em <code>tickets_cache</code>.
+          Execute o script SQL de migração no painel do Supabase para habilitar esta página.
+        </p>
+        <pre style={{ marginTop: '16px', padding: '12px', background: 'var(--background)', borderRadius: 'var(--radius-md)', fontSize: '0.78rem', textAlign: 'left', overflowX: 'auto' }}>
+{`ALTER TABLE tickets_cache ADD COLUMN IF NOT EXISTS type_id INTEGER DEFAULT 2;
+ALTER TABLE tickets_cache ADD COLUMN IF NOT EXISTS priority_id INTEGER DEFAULT 3;`}
+        </pre>
+      </div>
+    )
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -82,8 +114,8 @@ function TicketsContent() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
         <div>
-          <h1 style={{ fontSize: '1.4rem', fontWeight: 700 }}>Monitor.Tickets</h1>
-          <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '2px' }}>Novo • Em atendimento • Pendente • Aprovação</p>
+          <h1 style={{ fontSize: '1.4rem', fontWeight: 700 }}>Incidentes</h1>
+          <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '2px' }}>Chamados do tipo Incidente — ativos e em aprovação</p>
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           {lastUpdate && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Atualizado: {lastUpdate.toLocaleTimeString('pt-BR')}</span>}
@@ -96,7 +128,7 @@ function TicketsContent() {
         {[
           { label: 'Em atendimento', v: proc,            color: '#16a34a' },
           { label: 'Pendentes',      v: pend,            color: '#ea580c' },
-          { label: 'Aprovação',      v: approval,        color: '#7c3aed' },
+          { label: 'Aprovação',      v: aprov,           color: '#7c3aed' },
           { label: 'SLA Excedido',   v: late,            color: '#dc2626' },
           { label: 'Total filtrado', v: filtered.length, color: 'var(--text-secondary)' },
         ].map(s => (
@@ -151,7 +183,6 @@ function TicketsContent() {
           {entities.map(e => <option key={e} value={e}>{e}</option>)}
         </select>
 
-        {/* Quick filters */}
         <button onClick={() => setFSLA('late')} style={{ ...sel, cursor: 'pointer', background: fSLA === 'late' ? '#fee2e2' : undefined, color: '#dc2626', fontWeight: 600 }}>SLA fora</button>
         <button onClick={() => setFStatus('pending')} style={{ ...sel, cursor: 'pointer', background: fStatus === 'pending' ? '#fff7ed' : undefined, color: '#ea580c', fontWeight: 600 }}>Pendentes</button>
         <button onClick={() => setFStatus('pending-approval')} style={{ ...sel, cursor: 'pointer', background: fStatus === 'pending-approval' ? '#f3e8ff' : undefined, color: '#7c3aed', fontWeight: 600 }}>Aprovação</button>
@@ -167,7 +198,7 @@ function TicketsContent() {
       ) : error ? (
         <div style={{ color: '#dc2626', padding: '16px' }}>Erro: {error}</div>
       ) : filtered.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>Nenhum ticket encontrado.</div>
+        <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>Nenhum incidente encontrado.</div>
       ) : (
         <div style={{ overflowX: 'auto', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
@@ -217,10 +248,10 @@ function TicketsContent() {
   )
 }
 
-export default function TicketsAtivosPage() {
+export default function IncidentesPage() {
   return (
     <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', padding: '48px' }}><div className="spinner" /></div>}>
-      <TicketsContent />
+      <IncidentesContent />
     </Suspense>
   )
 }

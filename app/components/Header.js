@@ -5,12 +5,11 @@ import { useEffect, useState } from 'react'
 import { useFilters } from '../context/FilterContext'
 
 const NAV = [
-  { href: '/',               label: 'Dashboard' },
-  { href: '/tickets',        label: 'Tickets Ativos' },
-  { href: '/tickets/espera', label: 'Em Espera' },
-  { href: '/aprovacao',      label: 'Aprovação' },
-  { href: '/relatorios',     label: 'Relatórios' },
-  { href: '/kanban',         label: 'Kanban' },
+  { href: '/',            label: 'Dashboard' },
+  { href: '/tickets',     label: 'Monitor.Tickets' },
+  { href: '/incidentes',  label: 'Incidentes' },
+  { href: '/relatorios',  label: 'Relatórios' },
+  { href: '/kanban',      label: 'Kanban' },
 ]
 
 const selStyle = {

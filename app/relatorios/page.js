@@ -43,7 +43,7 @@ export default function RelatoriosPage() {
       const dateCol   = dateType === 'opening' ? 'date_created' : 'date_mod'
       const { data, error: err } = await getSupabaseClient()
         .from('tickets_cache')
-        .select('ticket_id,title,entity,category,status_id,status_key,status_name,group_name,technician,is_sla_late,is_overdue_first,is_overdue_resolve,date_created,date_mod,date_solved,solution,instance')
+        .select('ticket_id,title,entity,category,status_id,status_key,status_name,group_name,technician,is_sla_late,is_overdue_first,is_overdue_resolve,date_created,date_mod,instance')
         .gte(dateCol, startDate)
         .lte(dateCol, endDate)
         .order(dateCol, { ascending: false })
@@ -63,21 +63,19 @@ export default function RelatoriosPage() {
   })
 
   function exportCSV() {
-    const headers = ['ID','Instância','Entidade','Categoria','Status','Grupo Responsável','Técnico','SLA Atendimento','SLA Solução','Abertura','Últ. Atualização','Data Solução','Solução']
+    const headers = ['ID','Instância','Entidade','Categoria','Status','Grupo Responsável','Técnico','SLA Atendimento','SLA Solução','Abertura','Últ. Atualização']
     const rows = filtered.map(t => [
       t.ticket_id,
       t.instance || '',
       processEntity(t.entity),
       t.category || '',
       getStatusConfig(t.status_id, t.status_key).label,
-      lastGroupLabel(t.group_name),
-      t.technician || '',
+      lastGroupLabel(t.group_name) || '—',
+      t.technician || '—',
       t.is_overdue_first ? 'Fora do prazo' : 'No prazo',
       t.is_overdue_resolve ? 'Fora do prazo' : 'No prazo',
       fmt(t.date_created),
       fmt(t.date_mod),
-      fmt(t.date_solved),
-      (t.solution || '').replace(/<[^>]+>/g, '').replace(/[\r\n,]+/g, ' ').trim(),
     ])
     const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
@@ -174,7 +172,7 @@ export default function RelatoriosPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
             <thead>
               <tr style={{ background: 'var(--background)', borderBottom: '2px solid var(--border)' }}>
-                {['ID','Instância','Entidade','Categoria','Status','Grupo','Técnico','SLA Atend.','SLA Solução','Abertura','Últ. Atualização','Data Solução','Solução'].map(h => (
+                {['ID','Instância','Entidade','Categoria','Status','Grupo','Técnico','SLA Atend.','SLA Solução','Abertura','Últ. Atualização'].map(h => (
                   <th key={h} style={thS}>{h}</th>
                 ))}
               </tr>
@@ -194,10 +192,6 @@ export default function RelatoriosPage() {
                   <td style={thTd}><SLABadge isLate={t.is_overdue_resolve} /></td>
                   <td style={{ ...thTd, color: 'var(--text-secondary)' }}>{fmt(t.date_created)}</td>
                   <td style={{ ...thTd, color: 'var(--text-secondary)' }}>{fmt(t.date_mod)}</td>
-                  <td style={{ ...thTd, color: 'var(--text-secondary)' }}>{fmt(t.date_solved)}</td>
-                  <td className="col-solution" style={{ ...thTd, color: 'var(--text-muted)' }}>
-                    {t.solution ? t.solution.replace(/<[^>]+>/g, '').trim() : '—'}
-                  </td>
                 </tr>
               ))}
             </tbody>
