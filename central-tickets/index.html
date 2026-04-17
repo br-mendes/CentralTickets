@@ -1916,25 +1916,18 @@
                     </a>
                     <a href="tickets-ativos.html" class="nav-link">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                            <polyline points="22 4 12 14.01 9 11.01"/>
+                            <rect x="2" y="3" width="6" height="6" rx="1"/><rect x="9" y="3" width="13" height="6" rx="1"/>
+                            <rect x="2" y="12" width="6" height="6" rx="1"/><rect x="9" y="12" width="13" height="6" rx="1"/>
                         </svg>
-                        Ativos
+                        Monitor
                     </a>
-                    <a href="tickets-em-espera.html" class="nav-link">
+                    <a href="incidentes.html" class="nav-link">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"/>
-                            <polyline points="12 6 12 12 16 14"/>
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                            <line x1="12" y1="9" x2="12" y2="13"/>
+                            <line x1="12" y1="17" x2="12.01" y2="17"/>
                         </svg>
-                        Espera
-                    </a>
-                    <a href="aprovacao.html" class="nav-link">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                            <polyline points="14 2 14 8 20 8"/>
-                            <path d="M9 15l2 2 4-4"/>
-                        </svg>
-                        Aprovação
+                        Incidentes
                     </a>
                     <a href="relatorios.html" class="nav-link">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -2963,7 +2956,7 @@ ${JSON.stringify(error, null, 2)}
             // Build HTML sections using helper functions
             const htmlPeta = renderTailwindInstanceSummary('Peta', petaStats, petaAvgPending, 'blue');
             const htmlGmx = renderTailwindInstanceSummary('GMX', gmxStats, gmxAvgPending, 'orange');
-            const htmlSla = renderSlaSection(slaOverdue);
+            // SLA section removed per user request
             const htmlTechnician = renderTechnicianCards(ticketsByTechnician);
             const htmlEntity = renderEntityCards(ticketsByEntity);
             const htmlGroup = renderGroupBars(ticketsByGroup);
@@ -3028,7 +3021,6 @@ ${JSON.stringify(error, null, 2)}
                     '</h2>' +
                     '<div class="overflow-x-auto">' + htmlTechnician + '</div>' +
                 '</div>' +
-                htmlSla +
                 '<div class="bg-white rounded-lg shadow p-6 mb-6">' +
                     '<h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">' +
                         '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>' +
@@ -3075,9 +3067,8 @@ ${JSON.stringify(error, null, 2)}
                     '<h2 class="text-xl font-bold text-gray-800 mb-4">Ações Rápidas</h2>' +
                     '<div class="flex gap-4 flex-wrap">' +
                         '<a href="kanban.html" class="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100">Visualizar Kanban</a>' +
-                        '<a href="tickets-ativos.html" class="flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100">Tickets Ativos</a>' +
-                        '<a href="tickets-em-espera.html" class="flex items-center gap-2 px-4 py-2 bg-orange-50 text-orange-700 rounded-lg hover:bg-orange-100">Tickets em Espera</a>' +
-                        '<a href="aprovacao.html" class="flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100">Aprovação</a>' +
+                        '<a href="tickets-ativos.html" class="flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100">Monitor. Tickets</a>' +
+                        '<a href="incidentes.html" class="flex items-center gap-2 px-4 py-2 bg-orange-50 text-orange-700 rounded-lg hover:bg-orange-100">Incidentes</a>' +
                         '<a href="relatorios.html" class="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">Relatórios</a>' +
                     '</div>' +
                 '</div>' +
@@ -3743,8 +3734,8 @@ ${JSON.stringify(error, null, 2)}
                 tickets = allTickets.map(t => ({
                     id: t.ticket_id,
                     title: t.title,
-                    entity: t.entity,
-                    entityFull: t.entity_full,
+                    entity: cleanEntityName(t.entity_full || t.entity || '') || cleanEntityName(t.entity || '') || (t.entity || 'Sem entidade'),
+                    entityFull: t.entity_full || t.entity,
                     category: t.category,
                     rootCategory: t.root_category,
                     statusId: t.status_id,
@@ -3876,8 +3867,26 @@ ${JSON.stringify(error, null, 2)}
         // Helper: extract last segment of group label
         function lastGroupLabel(name) {
             if (!name) return '';
-            const parts = String(name).split('>');
+            let str = String(name);
+            // Handle JSON array stored as string (e.g. '["GMX – Segurança","GMX"]')
+            try {
+                const arr = JSON.parse(str);
+                if (Array.isArray(arr) && arr.length > 0) {
+                    const meaningful = arr.filter(s => s && s.trim().length > 0);
+                    str = meaningful.reduce((a, b) => a.length >= b.length ? a : b, meaningful[0] || '');
+                }
+            } catch (e) { /* not JSON */ }
+            const parts = str.split('>');
             return parts[parts.length - 1].trim();
+        }
+
+        function cleanEntityName(name) {
+            if (!name) return '';
+            return name
+                .replace(/^PETA\s*>\s*/i, '')
+                .replace(/^GMX\s+TECNOLOGIA\s*>\s*/i, '')
+                .replace(/^GMX\s*>\s*/i, '')
+                .trim();
         }
     </script>
 </body>

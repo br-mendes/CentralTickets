@@ -43,6 +43,8 @@ interface TicketData {
   date_mod: string | null
   due_date: string | null
   is_sla_late: boolean
+  type_id: number
+  priority_id: number
   instance: string
 }
 
@@ -213,6 +215,7 @@ function getStatusKey(statusId: number): string {
     case 4: return 'pending'
     case 5: return 'solved'
     case 6: return 'closed'
+    case 7: return 'pending-approval'
     default: return 'new'
   }
 }
@@ -225,6 +228,7 @@ function getStatusName(statusId: number): string {
     case 4: return 'Pendente'
     case 5: return 'Solucionado'
     case 6: return 'Fechado'
+    case 7: return 'Aprovação'
     default: return 'Novo'
   }
 }
@@ -241,6 +245,9 @@ function processTickets(tickets: any[], instanceName: string): TicketData[] {
     const dateCreated = ticket.date_creation || ticket[15] || ticket.date
     const dateMod = ticket.date_mod || ticket[19] || ticket[91] || dateCreated
     const dueDate = ticket[151]
+
+    const typeId = parseInt(ticket[14]) || 2  // 1=Incident, 2=Request
+    const priorityId = parseInt(ticket[3]) || 1
 
     return {
       id: 0,
@@ -260,6 +267,8 @@ function processTickets(tickets: any[], instanceName: string): TicketData[] {
       date_mod: dateMod,
       due_date: dueDate,
       is_sla_late: checkSlaLate(dueDate),
+      type_id: typeId,
+      priority_id: priorityId,
       instance: instanceName
     }
   })

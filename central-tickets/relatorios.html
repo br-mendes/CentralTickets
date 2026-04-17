@@ -547,25 +547,26 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                     </a>
                     <a href="tickets-ativos.html" class="nav-link">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                            <polyline points="22 4 12 14.01 9 11.01"/>
+                            <rect x="2" y="3" width="6" height="6" rx="1"/><rect x="9" y="3" width="13" height="6" rx="1"/>
+                            <rect x="2" y="12" width="6" height="6" rx="1"/><rect x="9" y="12" width="13" height="6" rx="1"/>
                         </svg>
-                        Ativos
+                        Monitor
                     </a>
-                    <a href="tickets-em-espera.html" class="nav-link">
+                    <a href="incidentes.html" class="nav-link">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"/>
-                            <polyline points="12 6 12 12 16 14"/>
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                            <line x1="12" y1="9" x2="12" y2="13"/>
+                            <line x1="12" y1="17" x2="12.01" y2="17"/>
                         </svg>
-                        Espera
+                        Incidentes
                     </a>
-                    <a href="aprovacao.html" class="nav-link">
+                    <a href="incidentes.html" class="nav-link">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                            <polyline points="14 2 14 8 20 8"/>
-                            <path d="M9 15l2 2 4-4"/>
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                            <line x1="12" y1="9" x2="12" y2="13"/>
+                            <line x1="12" y1="17" x2="12.01" y2="17"/>
                         </svg>
-                        Aprovação
+                        Incidentes
                     </a>
                     <a href="relatorios.html" class="nav-link active">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1093,13 +1094,28 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                 let hasMore = true;
 
                 while (hasMore) {
+                    const cols = 'ticket_id,instance,title,entity,entity_full,category,root_category,status_id,status_key,status_name,group_name,technician,date_created,date_mod,due_date,is_sla_late,is_overdue_first,is_overdue_resolve,sla_percentage_first,sla_percentage_resolve,solution_content,date_solved';
                     const { data, error } = await window._sb
                         .from('tickets_cache')
-                        .select('*')
+                        .select(cols)
                         .order('date_mod', { ascending: false })
                         .range(page * pageSize, (page + 1) * pageSize - 1);
 
-                    if (error) throw new Error(`Erro na página ${page}: ${error.message}`);
+                    if (error) {
+                        // Fallback: retry without optional columns that may not exist
+                        const colsFallback = 'ticket_id,instance,title,entity,entity_full,category,root_category,status_id,status_key,status_name,group_name,technician,date_created,date_mod,due_date,is_sla_late,is_overdue_first,is_overdue_resolve';
+                        const { data: data2, error: error2 } = await window._sb
+                            .from('tickets_cache')
+                            .select(colsFallback)
+                            .order('date_mod', { ascending: false })
+                            .range(page * pageSize, (page + 1) * pageSize - 1);
+                        if (error2) throw new Error(`Erro ao carregar dados: ${error2.message}`);
+                        if (!data2 || data2.length === 0) { hasMore = false; break; }
+                        allData = [...allData, ...data2];
+                        page++;
+                        if (data2.length < pageSize) hasMore = false;
+                        continue;
+                    }
 
                     if (!data || data.length === 0) {
                         hasMore = false;
@@ -1111,28 +1127,52 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                 }
 
                 // Transform to app format
-                allTickets = allData.map(t => ({
-                    id: t.ticket_id,
-                    title: t.title,
-                    entity: t.entity,
-                    entityFull: t.entity_full,
-                    category: t.category,
-                    rootCategory: t.root_category,
-                    status: t.status_key || 'new',
-                    statusName: t.status_name,
-                    statusId: t.status_id,
-                    group: t.group_name ? t.group_name.split('>').pop().trim() : '',
-                    groupFull: t.group_name,
-                    technician: t.technician || '',
-                    dateCreated: t.date_created,
-                    lastUpdate: t.date_mod,
-                    dueDate: t.due_date,
-                    isSlaLate: t.is_sla_late || false,
-                    instance: t.instance,
-                    instanceUrl: t.instance === 'PETA' 
-                        ? (window.APP_CONFIG?.GLPI_PETA_TICKET_URL || '')
-                        : (window.APP_CONFIG?.GLPI_GMX_TICKET_URL || ''),
-                }));
+                allTickets = allData.map(t => {
+                    let groupStr = t.group_name || '';
+                    try {
+                        const arr = JSON.parse(groupStr);
+                        if (Array.isArray(arr) && arr.length > 0) {
+                            const meaningful = arr.filter(s => s && s.trim());
+                            groupStr = meaningful.reduce((a, b) => a.length >= b.length ? a : b, meaningful[0] || '');
+                        }
+                    } catch (e) { /* not JSON */ }
+                    const cleanGroup = groupStr.split('>').pop().trim();
+
+                    const rawEntity = t.entity_full || t.entity || '';
+                    const cleanEntity = rawEntity
+                        .replace(/^PETA\s*>\s*/i, '')
+                        .replace(/^GMX\s+TECNOLOGIA\s*>\s*/i, '')
+                        .replace(/^GMX\s*>\s*/i, '')
+                        .trim() || t.entity || '';
+
+                    return {
+                        id: t.ticket_id,
+                        title: t.title,
+                        entity: cleanEntity,
+                        entityFull: rawEntity,
+                        category: t.category,
+                        rootCategory: t.root_category,
+                        status: t.status_key || 'new',
+                        statusName: t.status_name,
+                        statusId: t.status_id,
+                        status_key: t.status_key || 'new',
+                        group: cleanGroup,
+                        groupFull: t.group_name,
+                        technician: t.technician || '',
+                        dateCreated: t.date_created,
+                        lastUpdate: t.date_mod,
+                        dueDate: t.due_date,
+                        isSlaLate: t.is_sla_late || false,
+                        slaAtendimento: t.is_overdue_first ? 'Fora do prazo' : 'No prazo',
+                        slaSolucao: t.is_overdue_resolve ? 'Fora do prazo' : 'No prazo',
+                        solution_content: t.solution_content || '',
+                        date_solved: t.date_solved || null,
+                        instance: t.instance,
+                        instanceUrl: t.instance === 'PETA'
+                            ? (window.APP_CONFIG?.GLPI_PETA_TICKET_URL || '')
+                            : (window.APP_CONFIG?.GLPI_GMX_TICKET_URL || ''),
+                    };
+                });
 
                 console.log(`[Relatórios] Total carregado: ${allTickets.length} tickets`);
 

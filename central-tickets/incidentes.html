@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Central de Tickets - Monitor. Tickets</title>
+    <title>Central de Tickets - Incidentes</title>
     <link rel="icon" href="favicon-peta.png" type="image/png">
     <link rel="stylesheet" href="global.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1098,7 +1098,7 @@
                     </span>
                     <span class="page-title">
                         <span class="title-main">Central de Tickets</span>
-                        <span class="subtitle">Monitor. Tickets</span>
+                        <span class="subtitle">Incidentes</span>
                     </span>
                 </h1>
             </div>
@@ -1112,14 +1112,14 @@
                     </svg>
                     Dashboard
                 </a>
-                <a href="tickets-ativos.html" class="nav-link active">
+                <a href="tickets-ativos.html" class="nav-link">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <rect x="2" y="3" width="6" height="6" rx="1"/><rect x="9" y="3" width="13" height="6" rx="1"/>
                         <rect x="2" y="12" width="6" height="6" rx="1"/><rect x="9" y="12" width="13" height="6" rx="1"/>
                     </svg>
                     Monitor
                 </a>
-                <a href="incidentes.html" class="nav-link">
+                <a href="incidentes.html" class="nav-link active">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
                         <line x1="12" y1="9" x2="12" y2="13"/>
@@ -1316,7 +1316,7 @@
     <main class="main" id="mainContent">
         <div class="loading-container" id="loadingState">
             <div class="spinner"></div>
-            <p class="loading-text">Carregando tickets ativos...</p>
+            <p class="loading-text">Carregando incidentes...</p>
         </div>
     </main>
 
@@ -1398,7 +1398,8 @@
                 let hasMore = true;
 
                 while (hasMore) {
-                    const { data, error } = await window._sb
+                    // type_id=1 → Incidente in GLPI; falls back to all active if column missing
+                    let query = window._sb
                         .from('tickets_cache')
                         .select('*')
                         .eq('instance', instanceName.toUpperCase())
@@ -1406,6 +1407,36 @@
                         .order('date_mod', { ascending: false })
                         .range(page * pageSize, (page + 1) * pageSize - 1);
 
+                    // Filter by incident type when type_id column is available
+                    if (window._incidentTypeAvailable !== false) {
+                        query = window._sb
+                            .from('tickets_cache')
+                            .select('*')
+                            .eq('instance', instanceName.toUpperCase())
+                            .eq('type_id', 1)
+                            .or('status_key.in.(processing,pending),status_id.eq.7')
+                            .order('date_mod', { ascending: false })
+                            .range(page * pageSize, (page + 1) * pageSize - 1);
+                    }
+
+                    const { data, error } = await query;
+                    // If type_id column missing, fall back to all active tickets
+                    if (error && error.message && error.message.includes('type_id')) {
+                        window._incidentTypeAvailable = false;
+                        const { data: data2, error: error2 } = await window._sb
+                            .from('tickets_cache')
+                            .select('*')
+                            .eq('instance', instanceName.toUpperCase())
+                            .or('status_key.in.(processing,pending),status_id.eq.7')
+                            .order('date_mod', { ascending: false })
+                            .range(page * pageSize, (page + 1) * pageSize - 1);
+                        if (error2) { console.error(error2); return []; }
+                        if (!data2 || data2.length === 0) { hasMore = false; break; }
+                        allTickets.push(...data2);
+                        page++;
+                        if (data2.length < pageSize) hasMore = false;
+                        continue;
+                    }
                     if (error) {
                         console.error(`Erro ao buscar tickets de ${instanceName} do Supabase:`, error);
                         return [];
@@ -1604,7 +1635,7 @@ tickets = await getAllTickets();
             document.getElementById('mainContent').innerHTML = `
                 <div class="loading-container">
                     <div class="spinner"></div>
-                    <p class="loading-text">Carregando tickets ativos...</p>
+                    <p class="loading-text">Carregando incidentes...</p>
                 </div>
             `;
         }
