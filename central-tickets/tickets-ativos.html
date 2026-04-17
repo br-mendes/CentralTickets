@@ -1294,7 +1294,7 @@
                 </svg>
                 SLA fora
             </button>
-            <button class="quick-filter-btn" id="btnPending" onclick="toggleQuickFilter('pending')">
+            <button class="quick-filter-btn pending-btn" id="btnPending" onclick="toggleQuickFilter('pending')">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="10"></circle>
                     <polyline points="12 6 12 12 16 14"></polyline>
@@ -1589,8 +1589,12 @@ async function refreshTickets() {
             showLoading();
 
             try {
-tickets = await getAllTickets();
-                renderTable(tickets);
+                tickets = await getAllTickets();
+                populateEntityFilter();
+                populateCategoryFilter();
+                populateGroupFilter();
+                filteredTickets = tickets;
+                renderTable(filteredTickets);
                 startCountdown();
             } catch (error) {
                 console.error('Erro ao carregar tickets:', error);
@@ -1630,25 +1634,225 @@ tickets = await getAllTickets();
             }
         }
 
-        // Funções de filtro
+        // ========== DROPDOWN STATE ==========
+        let selectedEntities = new Set();
+        let selectedCategories = new Set();
+        let selectedGroups = new Set();
+        let activeQuickFilters = new Set();
+
+        // ========== DROPDOWN HELPERS ==========
+        function closeAllDropdowns(except) {
+            ['instanceDropdownContainer','entityDropdownContainer','categoryDropdownContainer','groupDropdownContainer'].forEach(id => {
+                if (id !== except) document.getElementById(id)?.classList.remove('open');
+            });
+        }
+
+        document.addEventListener('click', e => {
+            if (!e.target.closest('.instance-dropdown')) closeAllDropdowns(null);
+        });
+
+        // ========== INSTANCE DROPDOWN ==========
+        function toggleInstanceDropdown() {
+            const c = document.getElementById('instanceDropdownContainer');
+            const wasOpen = c.classList.contains('open');
+            closeAllDropdowns(null);
+            if (!wasOpen) c.classList.add('open');
+        }
+
+        function updateInstanceSelection() {
+            const peta = document.getElementById('checkPeta').checked;
+            const gmx  = document.getElementById('checkGmx').checked;
+            selectedInstances = [];
+            if (peta) selectedInstances.push('Peta');
+            if (gmx)  selectedInstances.push('GMX');
+            const label = selectedInstances.length === 2 ? 'Todas as instâncias' : (selectedInstances.join(', ') || 'Nenhuma');
+            document.getElementById('instanceDropdownLabel').textContent = label;
+            applyFilters();
+        }
+
+        // ========== ENTITY DROPDOWN ==========
+        function toggleEntityDropdown() {
+            const c = document.getElementById('entityDropdownContainer');
+            const wasOpen = c.classList.contains('open');
+            closeAllDropdowns(null);
+            if (!wasOpen) c.classList.add('open');
+        }
+
+        function toggleAllEntities(el) {
+            document.querySelectorAll('#entityOptions input[type="checkbox"]').forEach(cb => cb.checked = el.checked);
+            _syncEntityState();
+            applyFilters();
+        }
+
+        function updateSelectedEntities() {
+            _syncEntityState();
+            applyFilters();
+        }
+
+        function _syncEntityState() {
+            const options = Array.from(document.querySelectorAll('#entityOptions input[type="checkbox"]'));
+            const checked = options.filter(cb => cb.checked);
+            selectedEntities = new Set(checked.map(cb => cb.value));
+            const allCb = document.getElementById('entityAll');
+            allCb.checked = checked.length === options.length;
+            allCb.indeterminate = checked.length > 0 && checked.length < options.length;
+            document.getElementById('entitySelectLabel').textContent =
+                checked.length === options.length ? 'Entidades' : `Entidades (${checked.length}/${options.length})`;
+        }
+
+        function populateEntityFilter() {
+            const entities = [...new Set(tickets.map(t => t.entity).filter(Boolean))].sort();
+            document.getElementById('entityOptions').innerHTML = entities.map(e =>
+                `<label class="instance-dropdown-option"><input type="checkbox" value="${e.replace(/"/g,'&quot;')}" checked onchange="updateSelectedEntities()"> ${e}</label>`
+            ).join('');
+            selectedEntities = new Set(entities);
+            document.getElementById('entityAll').checked = true;
+            document.getElementById('entitySelectLabel').textContent = 'Entidades';
+        }
+
+        // ========== CATEGORY DROPDOWN ==========
+        function toggleCategoryDropdown() {
+            const c = document.getElementById('categoryDropdownContainer');
+            const wasOpen = c.classList.contains('open');
+            closeAllDropdowns(null);
+            if (!wasOpen) c.classList.add('open');
+        }
+
+        function toggleAllCategories(el) {
+            document.querySelectorAll('#categoryOptions input[type="checkbox"]').forEach(cb => cb.checked = el.checked);
+            _syncCategoryState();
+            applyFilters();
+        }
+
+        function updateSelectedCategories() {
+            _syncCategoryState();
+            applyFilters();
+        }
+
+        function _syncCategoryState() {
+            const options = Array.from(document.querySelectorAll('#categoryOptions input[type="checkbox"]'));
+            const checked = options.filter(cb => cb.checked);
+            selectedCategories = new Set(checked.map(cb => cb.value));
+            const allCb = document.getElementById('categoryAll');
+            allCb.checked = checked.length === options.length;
+            allCb.indeterminate = checked.length > 0 && checked.length < options.length;
+            document.getElementById('categorySelectLabel').textContent =
+                checked.length === options.length ? 'Categorias' : `Categorias (${checked.length}/${options.length})`;
+        }
+
+        function populateCategoryFilter() {
+            const cats = [...new Set(tickets.map(t => t.category).filter(Boolean))].sort();
+            document.getElementById('categoryOptions').innerHTML = cats.map(c =>
+                `<label class="instance-dropdown-option"><input type="checkbox" value="${c.replace(/"/g,'&quot;')}" checked onchange="updateSelectedCategories()"> ${c}</label>`
+            ).join('');
+            selectedCategories = new Set(cats);
+            document.getElementById('categoryAll').checked = true;
+            document.getElementById('categorySelectLabel').textContent = 'Categorias';
+        }
+
+        // ========== GROUP DROPDOWN ==========
+        function toggleGroupDropdown() {
+            const c = document.getElementById('groupDropdownContainer');
+            const wasOpen = c.classList.contains('open');
+            closeAllDropdowns(null);
+            if (!wasOpen) c.classList.add('open');
+        }
+
+        function toggleAllGroups(el) {
+            document.querySelectorAll('#groupOptions input[type="checkbox"]').forEach(cb => cb.checked = el.checked);
+            _syncGroupState();
+            applyFilters();
+        }
+
+        function updateSelectedGroups() {
+            _syncGroupState();
+            applyFilters();
+        }
+
+        function _syncGroupState() {
+            const options = Array.from(document.querySelectorAll('#groupOptions input[type="checkbox"]'));
+            const checked = options.filter(cb => cb.checked);
+            selectedGroups = new Set(checked.map(cb => cb.value));
+            const allCb = document.getElementById('groupAll');
+            allCb.checked = checked.length === options.length;
+            allCb.indeterminate = checked.length > 0 && checked.length < options.length;
+            document.getElementById('groupSelectLabel').textContent =
+                checked.length === options.length ? 'Responsáveis' : `Responsáveis (${checked.length}/${options.length})`;
+        }
+
+        function populateGroupFilter() {
+            const named = [...new Set(tickets.map(t => t.group).filter(Boolean))].sort();
+            const hasEmpty = tickets.some(t => !t.group);
+            const all = hasEmpty ? ['', ...named] : named;
+            document.getElementById('groupOptions').innerHTML = all.map(g =>
+                `<label class="instance-dropdown-option"><input type="checkbox" value="${g.replace(/"/g,'&quot;')}" checked onchange="updateSelectedGroups()"> ${g || '<em>Sem grupo</em>'}</label>`
+            ).join('');
+            selectedGroups = new Set(all);
+            document.getElementById('groupAll').checked = true;
+            document.getElementById('groupSelectLabel').textContent = 'Responsáveis';
+        }
+
+        // ========== QUICK FILTERS ==========
+        function toggleQuickFilter(type) {
+            if (activeQuickFilters.has(type)) {
+                activeQuickFilters.delete(type);
+            } else {
+                activeQuickFilters.add(type);
+            }
+            document.getElementById('btnSlaLate').classList.toggle('active', activeQuickFilters.has('slaLate'));
+            document.getElementById('btnPending').classList.toggle('active', activeQuickFilters.has('pending'));
+            applyFilters();
+        }
+
+        function clearAllFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('statusFilter').value = '';
+            document.getElementById('slaFilter').value = '';
+            activeQuickFilters.clear();
+            document.getElementById('btnSlaLate').classList.remove('active');
+            document.getElementById('btnPending').classList.remove('active');
+            // Reset all checkbox dropdowns to all-checked
+            document.getElementById('entityAll').checked = true;
+            toggleAllEntities({ checked: true });
+            document.getElementById('categoryAll').checked = true;
+            toggleAllCategories({ checked: true });
+            document.getElementById('groupAll').checked = true;
+            toggleAllGroups({ checked: true });
+            applyFilters();
+        }
+
+        // ========== FILTERS ==========
         function applyFilters() {
             const searchTerm = (document.getElementById('searchInput')?.value || '').toLowerCase();
             const statusFilter = document.getElementById('statusFilter')?.value || '';
             const slaFilter = document.getElementById('slaFilter')?.value || '';
 
             filteredTickets = tickets.filter(ticket => {
+                // Text search: ID, title or entity
                 if (searchTerm && !String(ticket.id).includes(searchTerm) &&
                     !ticket.title?.toLowerCase().includes(searchTerm) &&
-                    !ticket.entity?.toLowerCase().includes(searchTerm)) {
-                    return false;
-                }
+                    !ticket.entity?.toLowerCase().includes(searchTerm)) return false;
+
                 if (statusFilter && ticket.status !== statusFilter) return false;
                 if (slaFilter === 'ok' && ticket.isSlaLate) return false;
                 if (slaFilter === 'late' && !ticket.isSlaLate) return false;
 
                 // Instance filter
                 if (!selectedInstances.includes('Peta') && ticket.instance === 'PETA') return false;
-                if (!selectedInstances.includes('GMX') && ticket.instance === 'GMX') return false;
+                if (!selectedInstances.includes('GMX')  && ticket.instance === 'GMX')  return false;
+
+                // Entity filter (only when not all selected)
+                if (selectedEntities.size > 0 && !selectedEntities.has(ticket.entity)) return false;
+
+                // Category filter
+                if (selectedCategories.size > 0 && !selectedCategories.has(ticket.category)) return false;
+
+                // Group filter (empty group maps to '' key)
+                if (selectedGroups.size > 0 && !selectedGroups.has(ticket.group || '')) return false;
+
+                // Quick filters
+                if (activeQuickFilters.has('slaLate') && !ticket.isSlaLate) return false;
+                if (activeQuickFilters.has('pending') && ticket.status !== 'pending') return false;
 
                 return true;
             });
