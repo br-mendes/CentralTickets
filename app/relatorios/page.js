@@ -23,7 +23,7 @@ const sel = {
   color: 'var(--text-primary)', fontSize: '0.82rem',
 }
 
-const FULL_SELECT = 'ticket_id,title,entity,category,status_id,status_key,status_name,group_name,technician,is_sla_late,is_overdue_first,is_overdue_resolve,date_created,date_mod,date_solved,solution,instance'
+const FULL_SELECT = 'ticket_id,title,entity,category,status_id,status_key,status_name,group_name,technician,requester,urgency,location,request_type,is_sla_late,is_overdue_first,is_overdue_resolve,date_created,date_mod,date_solved,solution,resolution_duration,instance'
 const FALLBACK_SELECT = 'ticket_id,title,entity,category,status_id,status_key,status_name,group_name,technician,is_sla_late,is_overdue_first,is_overdue_resolve,date_created,date_mod,instance'
 
 export default function RelatoriosPage() {
@@ -40,6 +40,8 @@ export default function RelatoriosPage() {
   const [fStatus, setFStatus] = useState('')
   const [fTech, setFTech] = useState('')
   const [fGroup, setFGroup] = useState('')
+  const [fLocation, setFLocation] = useState('')
+  const [fUrgency, setFUrgency] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true); setError(null); setMissingColumns(false)
@@ -81,22 +83,26 @@ export default function RelatoriosPage() {
   const entities    = [...new Set(allTickets.map(t => processEntity(t.entity)).filter(v => v !== '—'))].sort()
   const technicians = [...new Set(allTickets.map(t => t.technician).filter(Boolean))].sort()
   const groups      = [...new Set(allTickets.map(t => lastGroupLabel(t.group_name)).filter(v => v !== '—'))].sort()
+  const locations   = [...new Set(allTickets.map(t => t.location).filter(Boolean))].sort()
 
   const filtered = allTickets.filter(t => {
     if (fInstance && (t.instance || '').toUpperCase() !== fInstance.toUpperCase()) return false
     if (fEntity  && processEntity(t.entity) !== fEntity) return false
     if (fStatus  && t.status_key !== fStatus) return false
-    if (fTech    && (t.technician || '') !== fTech) return false
-    if (fGroup   && lastGroupLabel(t.group_name) !== fGroup) return false
+    if (fTech     && (t.technician || '') !== fTech) return false
+    if (fGroup    && lastGroupLabel(t.group_name) !== fGroup) return false
+    if (fLocation && (t.location || '') !== fLocation) return false
+    if (fUrgency  && String(t.urgency || '') !== fUrgency) return false
     return true
   })
 
   const hasSolution = allTickets.some(t => 'date_solved' in t || 'solution' in t)
 
+  const URGENCY_LABEL: Record<string,string> = { '1':'Muito Baixa','2':'Baixa','3':'Média','4':'Alta','5':'Muito Alta','6':'Crítica' }
+
   function exportCSV() {
-    const headers = hasSolution
-      ? ['ID','Instância','Entidade','Categoria','Status','Grupo Responsável','Técnico','SLA Atendimento','SLA Solução','Abertura','Últ. Atualização','Data Solução','Solução']
-      : ['ID','Instância','Entidade','Categoria','Status','Grupo Responsável','Técnico','SLA Atendimento','SLA Solução','Abertura','Últ. Atualização']
+    const baseH = ['ID','Instância','Entidade','Categoria','Status','Urgência','Solicitante','Local','Canal','Grupo Responsável','Técnico','SLA Atendimento','SLA Solução','Abertura','Últ. Atualização']
+    const headers = hasSolution ? [...baseH, 'Data Solução', 'Solução'] : baseH
     const rows = filtered.map(t => {
       const base = [
         t.ticket_id,
@@ -104,6 +110,10 @@ export default function RelatoriosPage() {
         processEntity(t.entity),
         t.category || '',
         getStatusConfig(t.status_id, t.status_key).label,
+        URGENCY_LABEL[String(t.urgency)] || '—',
+        t.requester || '—',
+        t.location || '—',
+        t.request_type || '—',
         lastGroupLabel(t.group_name) || '—',
         t.technician || '—',
         t.is_overdue_first ? 'Fora do prazo' : 'No prazo',
@@ -111,9 +121,7 @@ export default function RelatoriosPage() {
         fmt(t.date_created),
         fmt(t.date_mod),
       ]
-      if (hasSolution) {
-        base.push(fmt(t.date_solved), t.solution || '—')
-      }
+      if (hasSolution) base.push(fmt(t.date_solved), t.solution || '—')
       return base
     })
     const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
@@ -177,11 +185,27 @@ export default function RelatoriosPage() {
         {groups.map(g => <option key={g} value={g}>{g}</option>)}
       </select>
     )},
+    { label: 'Local', el: (
+      <select value={fLocation} onChange={e => setFLocation(e.target.value)} style={{ ...sel, maxWidth: '160px' }}>
+        <option value="">Todos</option>
+        {locations.map(l => <option key={l} value={l}>{l}</option>)}
+      </select>
+    )},
+    { label: 'Urgência', el: (
+      <select value={fUrgency} onChange={e => setFUrgency(e.target.value)} style={sel}>
+        <option value="">Todas</option>
+        <option value="6">Crítica</option>
+        <option value="5">Muito Alta</option>
+        <option value="4">Alta</option>
+        <option value="3">Média</option>
+        <option value="2">Baixa</option>
+        <option value="1">Muito Baixa</option>
+      </select>
+    )},
   ]
 
-  const tableHeaders = hasSolution
-    ? ['ID','Instância','Entidade','Categoria','Status','Grupo','Técnico','SLA Atend.','SLA Solução','Abertura','Últ. Atualização','Data Solução','Solução']
-    : ['ID','Instância','Entidade','Categoria','Status','Grupo','Técnico','SLA Atend.','SLA Solução','Abertura','Últ. Atualização']
+  const baseHeaders = ['ID','Instância','Entidade','Categoria','Status','Urg.','Solicitante','Local','Grupo','Técnico','SLA Atend.','SLA Solução','Abertura','Últ. Atualização']
+  const tableHeaders = hasSolution ? [...baseHeaders, 'Data Solução', 'Solução'] : baseHeaders
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -218,7 +242,7 @@ CREATE INDEX IF NOT EXISTS idx_tickets_cache_date_solved ON tickets_cache(date_s
           Buscar
         </button>
         {allTickets.length > 0 && (
-          <button onClick={() => { setFInstance(''); setFEntity(''); setFStatus(''); setFTech(''); setFGroup('') }}
+          <button onClick={() => { setFInstance(''); setFEntity(''); setFStatus(''); setFTech(''); setFGroup(''); setFLocation(''); setFUrgency('') }}
             style={{ ...sel, cursor: 'pointer', alignSelf: 'flex-end' }}>
             Limpar filtros
           </button>
@@ -263,6 +287,11 @@ CREATE INDEX IF NOT EXISTS idx_tickets_cache_date_solved ON tickets_cache(date_s
                   <td className="col-entity" style={thTd}>{processEntity(t.entity)}</td>
                   <td className="col-entity" style={thTd}>{t.category || '—'}</td>
                   <td style={thTd}><StatusBadge statusId={t.status_id} statusKey={t.status_key} statusName={t.status_name} /></td>
+                  <td style={thTd}>
+                    {t.urgency ? <span style={{ fontWeight: 600, fontSize: '0.75rem', color: ['','#64748b','#3b82f6','#d97706','#ea580c','#dc2626','#7f1d1d'][t.urgency] }}>{URGENCY_LABEL[String(t.urgency)] || '—'}</span> : '—'}
+                  </td>
+                  <td style={{ ...thTd, color: 'var(--text-secondary)' }}>{t.requester || '—'}</td>
+                  <td style={{ ...thTd, color: 'var(--text-secondary)' }}>{t.location || '—'}</td>
                   <td className="col-group" style={{ ...thTd, color: 'var(--text-secondary)' }}>{lastGroupLabel(t.group_name)}</td>
                   <td className="col-technician" style={{ ...thTd, color: 'var(--text-secondary)' }}>{t.technician || '—'}</td>
                   <td style={thTd}><SLABadge isLate={t.is_overdue_first} /></td>

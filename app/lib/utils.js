@@ -110,6 +110,26 @@ export function applyGlobalFilters(tickets, { globalSearch, period, globalTechni
   return result
 }
 
+export const URGENCY_MAP = {
+  1: { label: 'Muito Baixa', color: '#64748b' },
+  2: { label: 'Baixa',       color: '#3b82f6' },
+  3: { label: 'Média',       color: '#d97706' },
+  4: { label: 'Alta',        color: '#ea580c' },
+  5: { label: 'Muito Alta',  color: '#dc2626' },
+  6: { label: 'Crítica',     color: '#7f1d1d' },
+}
+
+export const PRIORITY_MAP = URGENCY_MAP
+
+export function formatSeconds(seconds) {
+  if (!seconds || seconds <= 0) return '—'
+  const h = Math.floor(seconds / 3600)
+  const d = Math.floor(h / 24)
+  const rh = h % 24
+  if (d > 0) return rh > 0 ? `${d}d ${rh}h` : `${d}d`
+  return `${h}h`
+}
+
 const STATUS_MAP = {
   1: { label: 'Novo',           key: 'new',        color: '#2563eb' },
   2: { label: 'Em atendimento', key: 'processing', color: '#16a34a' },

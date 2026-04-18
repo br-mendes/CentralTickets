@@ -5,7 +5,7 @@ import { getSupabaseClient } from '@/lib/supabase/client'
 import { DoughnutChart, LineChart } from './components/Charts'
 import {
   processEntity, lastGroupLabel, fmt, calcDaysOverdue,
-  build30DayTrend, getStatusConfig, calcHoursAgo, formatWaitTime,
+  build30DayTrend, getStatusConfig, calcHoursAgo, formatWaitTime, formatSeconds, URGENCY_MAP,
 } from './lib/utils'
 
 const PRIORITY_LABELS = { 1: 'Muito Baixa', 2: 'Baixa', 3: 'Média', 4: 'Alta', 5: 'Urgente', 6: 'Crítica' }
@@ -61,7 +61,8 @@ export default function DashboardPage() {
       if (!sb) return
       const { data } = await sb
         .from('tickets_cache')
-        .select('ticket_id,title,entity,category,root_category,status_id,status_key,status_name,group_name,technician,is_sla_late,is_overdue_resolve,date_created,date_mod,due_date,instance,priority_id')
+        .select('ticket_id,title,entity,category,root_category,status_id,status_key,status_name,group_name,technician,requester,urgency,impact,is_sla_late,is_overdue_resolve,date_created,date_mod,due_date,instance,priority_id,type_id,resolution_duration,waiting_duration,location,request_type')
+        .eq('is_deleted', false)
         .order('date_mod', { ascending: false })
       setTickets(data || [])
       const { data: sync } = await sb.from('sync_control').select('last_sync').order('last_sync', { ascending: false }).limit(1).single()
@@ -152,6 +153,30 @@ export default function DashboardPage() {
     const pid = t.priority_id || 3
     acc[pid] = (acc[pid] || 0) + 1; return acc
   }, {})
+
+  // Urgência
+  const urgencyMap = tickets.reduce((acc, t) => {
+    const u = t.urgency || 3; acc[u] = (acc[u] || 0) + 1; return acc
+  }, {})
+
+  // Tempo médio de resolução (apenas tickets solucionados/fechados com resolution_duration > 0)
+  const resolvedWithTime = tickets.filter(t => (t.status_key === 'solved' || t.status_key === 'closed') && (t.resolution_duration || 0) > 0)
+  const avgResolutionSec = resolvedWithTime.length > 0
+    ? Math.round(resolvedWithTime.reduce((sum, t) => sum + (t.resolution_duration || 0), 0) / resolvedWithTime.length)
+    : 0
+
+  // Canal de requisição (request_type)
+  const reqTypeMap: Record<string, number> = {}
+  for (const t of tickets) {
+    const rt = t.request_type || 'Não informado'
+    reqTypeMap[rt] = (reqTypeMap[rt] || 0) + 1
+  }
+  const reqTypeRows = Object.entries(reqTypeMap).sort((a, b) => b[1] - a[1]).slice(0, 8)
+  const maxReqType  = reqTypeRows[0]?.[1] || 1
+
+  // Tipo de chamado (Incidente vs Requisição)
+  const incidents = tickets.filter(t => t.type_id === 1).length
+  const requests  = tickets.filter(t => t.type_id === 2 || !t.type_id).length
   const prioEntries = Object.entries(prioMap).sort((a, b) => Number(a[0]) - Number(b[0]))
   const prioLabels  = prioEntries.map(([k]) => PRIORITY_LABELS[k] || `P${k}`)
   const prioData    = prioEntries.map(([, v]) => v)
@@ -189,12 +214,15 @@ export default function DashboardPage() {
       </div>
 
       {/* Main stat cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(155px, 1fr))', gap: '14px' }}>
-        <StatCard label="Total"          value={total}                      color="var(--text-primary)" />
-        <StatCard label="Em Atendimento" value={byStatusKey.processing || 0} color="#16a34a" href="/tickets?status=processing" />
-        <StatCard label="Pendentes"      value={byStatusKey.pending || 0}    color="#ea580c" href="/tickets?status=pending" />
-        <StatCard label="Aprovação"      value={approvalTickets.length}      color="#7c3aed" href="/tickets?status=approval" />
-        <StatCard label="SLA Excedido"   value={slaLate}                    color="#dc2626" href="/tickets?sla=late" />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '14px' }}>
+        <StatCard label="Total"           value={total}                      color="var(--text-primary)" />
+        <StatCard label="Incidentes"      value={incidents}                  color="#dc2626" href="/incidentes" />
+        <StatCard label="Requisições"     value={requests}                   color="#3b82f6" href="/tickets" />
+        <StatCard label="Em Atendimento"  value={byStatusKey.processing || 0} color="#16a34a" href="/tickets?status=processing" />
+        <StatCard label="Pendentes"       value={byStatusKey.pending || 0}   color="#ea580c" href="/tickets?status=pending" />
+        <StatCard label="Aprovação"       value={approvalTickets.length}     color="#7c3aed" href="/tickets?status=approval" />
+        <StatCard label="SLA Excedido"    value={slaLate}                   color="#dc2626" href="/tickets?sla=late" />
+        {avgResolutionSec > 0 && <StatCard label="Tempo Médio Resolução" value={formatSeconds(avgResolutionSec)} color="#6b7280" sub={`${resolvedWithTime.length} tickets`} />}
       </div>
 
       {/* Instance breakdown */}
@@ -242,6 +270,45 @@ export default function DashboardPage() {
         <StatCard label="Taxa de Resolução (7d)" value={`${rate7.rate}%`}  color="#16a34a" sub={`${rate7.resolved} / ${rate7.total} tickets`} />
         <StatCard label="Taxa de Resolução (30d)" value={`${rate30.rate}%`} color="#16a34a" sub={`${rate30.resolved} / ${rate30.total} tickets`} />
         <StatCard label="Tempo Médio em Pendência" value={formatWaitTime(avgPendingHours)} color="#ea580c" sub={`${pendingTickets.length} tickets pendentes`} />
+      </div>
+
+      {/* Urgência + Canal */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+        <Card>
+          <SectionTitle>Distribuição por Urgência</SectionTitle>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+            {[6,5,4,3,2,1].map(u => {
+              const count = urgencyMap[u] || 0
+              const cfg = URGENCY_MAP[u]
+              const maxU = Math.max(...Object.values(urgencyMap as Record<number,number>), 1)
+              return (
+                <div key={u} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ width: '80px', fontSize: '0.78rem', color: cfg.color, fontWeight: 600, flexShrink: 0 }}>{cfg.label}</span>
+                  <div style={{ flex: 1, height: '8px', background: 'var(--border)', borderRadius: '9999px', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${(count / maxU) * 100}%`, background: cfg.color, borderRadius: '9999px' }} />
+                  </div>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600, width: '28px', textAlign: 'right', color: cfg.color }}>{count}</span>
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+        {reqTypeRows.length > 1 && (
+          <Card>
+            <SectionTitle>Canal de Requisição</SectionTitle>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+              {reqTypeRows.map(([name, count]) => (
+                <div key={name} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ width: '120px', fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0, color: 'var(--text-secondary)' }}>{name}</div>
+                  <div style={{ flex: 1, height: '8px', background: 'var(--border)', borderRadius: '9999px', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${(count / maxReqType) * 100}%`, background: 'var(--primary)', borderRadius: '9999px' }} />
+                  </div>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600, width: '28px', textAlign: 'right' }}>{count}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
       </div>
 
       {/* Tickets em Aprovação */}

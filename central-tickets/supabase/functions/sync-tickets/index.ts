@@ -1,683 +1,446 @@
-// Supabase Edge Function para sincronização de tickets
-// Suporta sincronização incremental via múltiplas invocações
-// Agendar via: Supabase Dashboard > Edge Functions > Schedules
+// Supabase Edge Function — sync GLPI tickets to tickets_cache
+// Modes:
+//   Full   (reset_peta / reset_gmx = true): wipes instance data and re-syncs all pages
+//   Incremental (default): fetches tickets modified in last INCREMENTAL_WINDOW_MINUTES
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
+const SUPABASE_URL              = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
 const GLPI_INSTANCES = {
   PETA: {
-    BASE_URL: Deno.env.get('GLPI_PETA_URL')!,
+    BASE_URL:   Deno.env.get('GLPI_PETA_URL')!,
     USER_TOKEN: Deno.env.get('GLPI_PETA_USER_TOKEN')!,
-    APP_TOKEN: Deno.env.get('GLPI_PETA_APP_TOKEN')!,
+    APP_TOKEN:  Deno.env.get('GLPI_PETA_APP_TOKEN')!,
   },
   GMX: {
-    BASE_URL: Deno.env.get('GLPI_GMX_URL')!,
+    BASE_URL:   Deno.env.get('GLPI_GMX_URL')!,
     USER_TOKEN: Deno.env.get('GLPI_GMX_USER_TOKEN')!,
-    APP_TOKEN: Deno.env.get('GLPI_GMX_APP_TOKEN')!,
-  }
+    APP_TOKEN:  Deno.env.get('GLPI_GMX_APP_TOKEN')!,
+  },
 }
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-const PAGE_SIZE = 25 // Tickets por página (padrão GLPI)
-const MAX_PAGES_PER_RUN = 10 // Máximo de páginas por execução (~250 tickets)
+const PAGE_SIZE                  = 25
+const MAX_PAGES_PER_RUN          = 8
+const INCREMENTAL_WINDOW_MINUTES = 15
 
-interface TicketData {
-  id: number
-  ticket_id: number
-  title: string
-  entity: string
-  entity_full: string
-  category: string
-  root_category: string
-  status_id: number
-  status_key: string
-  status_name: string
-  group_name: string
-  technician: string
-  technician_id: number
-  date_created: string | null
-  date_mod: string | null
-  due_date: string | null
-  date_solved: string | null
-  solution: string
-  is_sla_late: boolean
-  type_id: number
-  priority_id: number
-  instance: string
-}
+// GLPI search field IDs — https://glpi-project.org/fr/apidoc/
+const DISPLAY_FIELDS = [1,2,3,4,5,7,8,10,12,14,15,17,18,19,20,22,80,83,151]
+// 1=title  2=id  3=priority  4=urgency  5=impact  7=category  8=assigned_group
+// 10=requester  12=status  14=type  15=date_creation  17=solvedate  18=closedate
+// 19=date_mod  20=actiontime(s)  22=waiting_duration(s)  80=entity_completename
+// 83=location  151=due_date(TTR deadline)
 
-interface SyncResult {
-  success: boolean
-  count?: number
-  error?: string
-  completed?: boolean
-  pagesProcessed?: number
-  lastPage?: number
-  totalPages?: number
-}
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
-async function initSession(instance: typeof GLPI_INSTANCES.PETA | typeof GLPI_INSTANCES.GMX) {
-  const url = `${instance.BASE_URL}/initSession`
-  console.log(`[${instance.BASE_URL}] Iniciando sessão...`)
-
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `user_token ${instance.USER_TOKEN}`,
-      'App-Token': instance.APP_TOKEN,
-    },
-  })
-
-  if (!response.ok) {
-    const errorText = await response.text()
-    console.error(`[${instance.BASE_URL}] Erro initSession: ${response.status}`, errorText)
-    throw new Error(`Erro ao iniciar sessão: ${response.status}`)
-  }
-
-  const data = await response.json()
-  return data.session_token
-}
-
-async function getPageRange(instance: typeof GLPI_INSTANCES.PETA | typeof GLPI_INSTANCES.GMX, sessionToken: string, startPage: number, maxPages: number) {
-  const tickets: any[] = []
-  let page = startPage
-  const endPage = startPage + maxPages
-
-  // Primeiro, pega o totalcount da primeira página
-  const firstStart = page * PAGE_SIZE
-  const firstEnd = firstStart + PAGE_SIZE - 1
-
-  const firstSearchParams = new URLSearchParams({
-    'range': `${firstStart}-${firstEnd}`,
-    'expand_dropdowns': 'true',
-    'get_hateoas': 'false',
-  })
-
-  const firstUrl = `${instance.BASE_URL}/search/Ticket?${firstSearchParams.toString()}`
-  console.log(`[${instance.BASE_URL}] Primeiro request: range ${firstStart}-${firstEnd}, pageSize=${PAGE_SIZE}`)
-
-  let firstResponse = await fetch(firstUrl, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      'Session-Token': sessionToken,
-      'App-Token': instance.APP_TOKEN,
-    },
-  })
-
-  // Se 401, renova sessão e tenta novamente
-  if (firstResponse.status === 401) {
-    console.log(`[${instance.BASE_URL}] Sessão expirada, renovando...`)
-    sessionToken = await initSession(instance)
-    firstResponse = await fetch(firstUrl, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Session-Token': sessionToken,
-        'App-Token': instance.APP_TOKEN,
-      },
-    })
-  }
-
-  if (!firstResponse.ok) {
-    const errorText = await firstResponse.text()
-    console.error(`[${instance.BASE_URL}] Erro primeira página (${firstResponse.status}):`, errorText)
-    throw new Error(`Erro ao buscar primeira página: ${firstResponse.status} - ${errorText.substring(0, 100)}`)
-  }
-
-  const firstData = await firstResponse.json()
-  const totalCount = firstData.totalcount || 0
-  const totalPages = Math.ceil(totalCount / PAGE_SIZE)
-
-  console.log(`[${instance.BASE_URL}] Total: ${totalCount} tickets, ${totalPages} páginas`)
-
-  if (!firstData.data || firstData.data.length === 0) {
-    return { tickets: [], completed: true, lastPage: page, totalPages }
-  }
-
-  tickets.push(...firstData.data)
-  page++
-
-  // Processa as páginas restantes
-  while (page < endPage && page < totalPages) {
-    const start = page * PAGE_SIZE
-    const end = start + PAGE_SIZE - 1
-
-    const searchParams = new URLSearchParams({
-      'range': `${start}-${end}`,
-      'expand_dropdowns': 'true',
-      'get_hateoas': 'false',
-    })
-
-    const url = `${instance.BASE_URL}/search/Ticket?${searchParams.toString()}`
-    console.log(`[${instance.BASE_URL}] Buscando página ${page} (range: ${start}-${end})`)
-
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Session-Token': sessionToken,
-        'App-Token': instance.APP_TOKEN,
-      },
-    })
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error(`[${instance.BASE_URL}] Erro página ${page}: ${response.status}`, errorText)
-      if (response.status === 401) {
-        sessionToken = await initSession(instance)
-        continue
-      }
-      throw new Error(`Erro na busca: ${response.status}`)
-    }
-
-    const data = await response.json()
-
-    if (!data.data || data.data.length === 0) break
-
-    tickets.push(...data.data)
-    page++
-
-    // Verifica se chegou ao final
-    if (data.data.length < PAGE_SIZE || page >= totalPages) {
-      break
-    }
-  }
-
-  const completed = page >= totalPages
-  return { tickets, completed, lastPage: page, totalPages }
+function stripHtml(html: string): string {
+  return (html || '').replace(/<[^>]*>/g, ' ').replace(/&[^;]+;/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
 function processEntity(entityFull: string, instanceName: string): string {
-  if (!entityFull) return entityFull
-  if (instanceName === 'PETA') {
-    return entityFull.replace(/^PETA\s*GRUPO\s*>\s*/gi, '').trim()
-  } else if (instanceName === 'GMX') {
-    return entityFull.replace(/^GMX\s*TECNOLOGIA\s*>\s*/gi, '').trim()
-  }
+  if (!entityFull) return ''
+  if (instanceName === 'PETA') return entityFull.replace(/^PETA\s*GRUPO\s*>\s*/gi, '').trim()
+  if (instanceName === 'GMX')  return entityFull.replace(/^GMX\s*TECNOLOGIA\s*>\s*/gi, '').trim()
   return entityFull
 }
 
-function getRootCategory(category: string): string {
-  if (!category) return 'Não categorizado'
-  const parts = category.split(' > ')
-  return parts[0].trim()
+function getRootCategory(cat: string): string {
+  if (!cat) return 'Não categorizado'
+  return cat.split(' > ')[0].trim()
 }
 
-function getStatusKey(statusId: number): string {
-  switch (statusId) {
-    case 1: return 'new'
-    case 2:
-    case 3: return 'processing'
-    case 4: return 'pending'
-    case 5: return 'solved'
-    case 6: return 'closed'
-    case 7: return 'pending-approval'
-    default: return 'new'
-  }
+function getStatusKey(id: number): string {
+  if (id === 1) return 'new'
+  if (id === 2 || id === 3) return 'processing'
+  if (id === 4) return 'pending'
+  if (id === 5) return 'solved'
+  if (id === 6) return 'closed'
+  if (id === 7) return 'pending-approval'
+  return 'new'
 }
 
-function getStatusName(statusId: number): string {
-  switch (statusId) {
-    case 1: return 'Novo'
-    case 2:
-    case 3: return 'Em atendimento'
-    case 4: return 'Pendente'
-    case 5: return 'Solucionado'
-    case 6: return 'Fechado'
-    case 7: return 'Aprovação'
-    default: return 'Novo'
-  }
+function getStatusName(id: number): string {
+  if (id === 1) return 'Novo'
+  if (id === 2 || id === 3) return 'Em atendimento'
+  if (id === 4) return 'Pendente'
+  if (id === 5) return 'Solucionado'
+  if (id === 6) return 'Fechado'
+  if (id === 7) return 'Aprovação'
+  return 'Novo'
 }
 
 function checkSlaLate(dueDate: string | null): boolean {
-  if (!dueDate) return false
-  return new Date(dueDate) < new Date()
+  return !!dueDate && new Date(dueDate) < new Date()
 }
 
-function stripHtml(html: string): string {
-  return (html || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+function toISOSafe(val: any): string | null {
+  if (!val) return null
+  try { return new Date(val).toISOString() } catch { return null }
 }
 
-function processTickets(tickets: any[], instanceName: string): TicketData[] {
-  return tickets.map(ticket => {
-    const statusId = parseInt(ticket[12]) || 1
-    const entityFull = ticket[80] || ''
-    const dateCreated = ticket.date_creation || ticket[15] || ticket.date
-    const dateMod = ticket.date_mod || ticket[19] || ticket[91] || dateCreated
-    const dueDate = ticket[151]
+// ── GLPI session ─────────────────────────────────────────────────────────────
 
-    const typeId = parseInt(ticket[14]) || 2  // 1=Incident, 2=Request
-    const priorityId = parseInt(ticket[3]) || 1
+type Instance = typeof GLPI_INSTANCES.PETA
+
+async function initSession(inst: Instance): Promise<string> {
+  const res = await fetch(`${inst.BASE_URL}/initSession`, {
+    headers: { 'Content-Type': 'application/json', 'Authorization': `user_token ${inst.USER_TOKEN}`, 'App-Token': inst.APP_TOKEN },
+  })
+  if (!res.ok) throw new Error(`initSession ${res.status}`)
+  const d = await res.json()
+  return d.session_token
+}
+
+function glpiHeaders(token: string, inst: Instance) {
+  return { 'Content-Type': 'application/json', 'Session-Token': token, 'App-Token': inst.APP_TOKEN }
+}
+
+// ── Build search URL ──────────────────────────────────────────────────────────
+
+function buildSearchUrl(inst: Instance, start: number, end: number, sinceDate?: string): string {
+  const p = new URLSearchParams({ range: `${start}-${end}`, expand_dropdowns: 'true', get_hateoas: 'false' })
+  DISPLAY_FIELDS.forEach((id, i) => p.append(`forcedisplay[${i}]`, String(id)))
+  if (sinceDate) {
+    // Incremental: only tickets modified after sinceDate
+    p.append('criteria[0][field]', '19')          // date_mod
+    p.append('criteria[0][searchtype]', 'morethan')
+    p.append('criteria[0][value]', sinceDate)
+  }
+  return `${inst.BASE_URL}/search/Ticket?${p.toString()}`
+}
+
+// ── Fetch pages ───────────────────────────────────────────────────────────────
+
+async function fetchPage(url: string, inst: Instance, token: string): Promise<{ data: any[], totalcount: number }> {
+  let res = await fetch(url, { headers: glpiHeaders(token, inst) })
+  if (res.status === 401) {
+    token = await initSession(inst)
+    res = await fetch(url, { headers: glpiHeaders(token, inst) })
+  }
+  if (!res.ok) throw new Error(`GLPI search ${res.status}: ${(await res.text()).substring(0, 100)}`)
+  const json = await res.json()
+  return { data: json.data || [], totalcount: json.totalcount || 0 }
+}
+
+// ── Process raw ticket rows ───────────────────────────────────────────────────
+
+interface TicketData {
+  ticket_id: number; instance: string; title: string; content: string
+  entity: string; entity_full: string; category: string; root_category: string
+  status_id: number; status_key: string; status_name: string
+  group_name: string; technician: string; technician_id: number
+  requester: string; requester_id: number
+  urgency: number; impact: number; priority_id: number; type_id: number
+  date_created: string | null; date_mod: string | null; due_date: string | null
+  date_solved: string | null; date_close: string | null
+  resolution_duration: number; waiting_duration: number; location: string
+  sla_ttr_name: string; sla_tto_name: string; global_validation: number
+  is_sla_late: boolean; is_overdue_first: boolean; is_overdue_resolve: boolean
+  is_deleted: boolean; solution: string
+}
+
+function processTickets(rows: any[], instanceName: string): TicketData[] {
+  return rows.map(r => {
+    const statusId     = parseInt(r[12]) || 1
+    const dueDate      = r[151] || null
+    const isSlaLate    = checkSlaLate(dueDate)
+    const entityFull   = r[80] || ''
+    const category     = r[7] || 'Não categorizado'
 
     return {
-      id: 0,
-      ticket_id: parseInt(ticket[2]) || ticket.id,
-      title: ticket[1] || 'Sem título',
-      entity: processEntity(entityFull, instanceName),
-      entity_full: entityFull,
-      category: ticket[7] || 'Não categorizado',
-      root_category: getRootCategory(ticket[7]),
-      status_id: statusId,
-      status_key: getStatusKey(statusId),
-      status_name: getStatusName(statusId),
-      group_name: ticket[8] || 'Não atribuído',
-      technician: '',
-      technician_id: 0,
-      date_created: dateCreated,
-      date_mod: dateMod,
-      due_date: dueDate,
-      date_solved: null,
-      solution: '',
-      is_sla_late: checkSlaLate(dueDate),
-      type_id: typeId,
-      priority_id: priorityId,
-      instance: instanceName
+      ticket_id:          parseInt(r[2]) || r.id,
+      instance:           instanceName,
+      title:              r[1] || 'Sem título',
+      content:            '',
+      entity:             processEntity(entityFull, instanceName),
+      entity_full:        entityFull,
+      category,
+      root_category:      getRootCategory(category),
+      status_id:          statusId,
+      status_key:         getStatusKey(statusId),
+      status_name:        getStatusName(statusId),
+      group_name:         r[8] || '',
+      technician:         '',
+      technician_id:      0,
+      requester:          r[10] || '',
+      requester_id:       0,
+      urgency:            parseInt(r[4]) || 3,
+      impact:             parseInt(r[5]) || 3,
+      priority_id:        parseInt(r[3]) || 3,
+      type_id:            parseInt(r[14]) || 2,
+      date_created:       toISOSafe(r[15]),
+      date_mod:           toISOSafe(r[19]),
+      due_date:           toISOSafe(dueDate),
+      date_solved:        toISOSafe(r[17]),
+      date_close:         toISOSafe(r[18]),
+      resolution_duration: parseInt(r[20]) || 0,
+      waiting_duration:   parseInt(r[22]) || 0,
+      location:           r[83] || '',
+      sla_ttr_name:       '',
+      sla_tto_name:       '',
+      global_validation:  1,
+      is_sla_late:        isSlaLate,
+      is_overdue_first:   isSlaLate,
+      is_overdue_resolve: isSlaLate,
+      is_deleted:         false,
+      solution:           '',
     }
   })
 }
 
-async function fetchTechniciansForTickets(
-  tickets: TicketData[],
-  instance: typeof GLPI_INSTANCES.PETA | typeof GLPI_INSTANCES.GMX,
-  sessionToken: string
-): Promise<Map<number, { name: string, id: number }>> {
-  const techMap = new Map<number, { name: string, id: number }>()
+// ── Fetch technicians ─────────────────────────────────────────────────────────
 
-  // Fetch technicians in batches to avoid too many requests
-  const batchSize = 10
+async function fetchTechnicians(tickets: TicketData[], inst: Instance, token: string): Promise<Map<number, { name: string, id: number }>> {
+  const map = new Map<number, { name: string, id: number }>()
+  const batch = 10
 
-  for (let i = 0; i < tickets.length; i += batchSize) {
-    const batch = tickets.slice(i, i + batchSize)
-    const promises = batch.map(async (ticket) => {
+  for (let i = 0; i < tickets.length; i += batch) {
+    const slice = tickets.slice(i, i + batch)
+    const results = await Promise.all(slice.map(async t => {
       try {
-        const response = await fetch(
-          `${instance.BASE_URL}/Ticket/${ticket.ticket_id}/Ticket_User`,
-          {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              'Session-Token': sessionToken,
-              'App-Token': instance.APP_TOKEN,
-            },
-          }
-        )
-
-        if (!response.ok) return null
-
-        const data = await response.json()
-        if (!data || !Array.isArray(data)) return null
-
-        // Find assigned technician (type = 2)
-        const assignedTech = data.find((actor: any) => actor.type === 2)
-        if (!assignedTech || !assignedTech.users_id) return null
-
-        // Get user details
-        const userResponse = await fetch(
-          `${instance.BASE_URL}/User/${assignedTech.users_id}`,
-          {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              'Session-Token': sessionToken,
-              'App-Token': instance.APP_TOKEN,
-            },
-          }
-        )
-
-        if (!userResponse.ok) {
-          return { name: assignedTech.users_id.toString(), id: assignedTech.users_id }
-        }
-
-        const user = await userResponse.json()
-        const firstname = user.firstname || ''
-        const realname = user.realname || ''
-        const name = user.name || ''
-
-        let fullName = ''
-        if (firstname && realname) {
-          fullName = `${firstname} ${realname}`
-        } else if (firstname) {
-          fullName = firstname
-        } else if (realname) {
-          fullName = realname
-        } else {
-          fullName = name
-        }
-
-        return {
-          name: fullName || assignedTech.users_id.toString(),
-          id: assignedTech.users_id
-        }
-
-      } catch (error) {
-        console.error(`Erro ao buscar técnico para ticket ${ticket.ticket_id}:`, error)
-        return null
-      }
-    })
-
-    const results = await Promise.all(promises)
-    results.forEach((result, idx) => {
-      if (result) {
-        techMap.set(batch[idx].ticket_id, result)
-      }
-    })
-
-    // Small delay between batches
-    if (i + batchSize < tickets.length) {
-      await new Promise(resolve => setTimeout(resolve, 100))
-    }
+        const r1 = await fetch(`${inst.BASE_URL}/Ticket/${t.ticket_id}/Ticket_User`, { headers: glpiHeaders(token, inst) })
+        if (!r1.ok) return null
+        const actors = await r1.json()
+        if (!Array.isArray(actors)) return null
+        const tech = actors.find((a: any) => a.type === 2)
+        if (!tech?.users_id) return null
+        const r2 = await fetch(`${inst.BASE_URL}/User/${tech.users_id}`, { headers: glpiHeaders(token, inst) })
+        if (!r2.ok) return { id: tech.users_id, name: String(tech.users_id) }
+        const u = await r2.json()
+        const name = [u.firstname, u.realname].filter(Boolean).join(' ') || u.name || String(tech.users_id)
+        return { id: tech.users_id, name }
+      } catch { return null }
+    }))
+    results.forEach((res, idx) => { if (res) map.set(slice[idx].ticket_id, res) })
+    if (i + batch < tickets.length) await new Promise(r => setTimeout(r, 100))
   }
-
-  return techMap
+  return map
 }
 
-async function fetchSolutionsForTickets(
-  tickets: TicketData[],
-  instance: typeof GLPI_INSTANCES.PETA | typeof GLPI_INSTANCES.GMX,
-  sessionToken: string
-): Promise<Map<number, { solution: string, date_solved: string | null }>> {
-  const solutionMap = new Map<number, { solution: string, date_solved: string | null }>()
+// ── Fetch solutions ───────────────────────────────────────────────────────────
 
-  // Only fetch for solved/closed tickets
-  const solvedTickets = tickets.filter(t => t.status_key === 'solved' || t.status_key === 'closed')
-  if (solvedTickets.length === 0) return solutionMap
+async function fetchSolutions(tickets: TicketData[], inst: Instance, token: string): Promise<Map<number, { solution: string, date_solved: string | null }>> {
+  const map = new Map<number, { solution: string, date_solved: string | null }>()
+  const solved = tickets.filter(t => t.status_key === 'solved' || t.status_key === 'closed')
+  if (!solved.length) return map
 
-  const batchSize = 10
-
-  for (let i = 0; i < solvedTickets.length; i += batchSize) {
-    const batch = solvedTickets.slice(i, i + batchSize)
-    const promises = batch.map(async (ticket) => {
+  const batch = 10
+  for (let i = 0; i < solved.length; i += batch) {
+    const slice = solved.slice(i, i + batch)
+    const results = await Promise.all(slice.map(async t => {
       try {
-        const response = await fetch(
-          `${instance.BASE_URL}/Ticket/${ticket.ticket_id}/ITILSolution`,
-          {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              'Session-Token': sessionToken,
-              'App-Token': instance.APP_TOKEN,
-            },
-          }
-        )
-
-        if (!response.ok) return null
-
-        const data = await response.json()
-        if (!data || !Array.isArray(data) || data.length === 0) return null
-
-        // Get the most recent (last) solution entry
-        const sol = data[data.length - 1]
-        const content = stripHtml(sol.content || '')
-        const dateSolved = sol.date_creation || null
-
-        return { ticketId: ticket.ticket_id, solution: content, date_solved: dateSolved }
-
-      } catch (error) {
-        console.error(`Erro ao buscar solução para ticket ${ticket.ticket_id}:`, error)
-        return null
-      }
-    })
-
-    const results = await Promise.all(promises)
-    results.forEach(result => {
-      if (result) {
-        solutionMap.set(result.ticketId, { solution: result.solution, date_solved: result.date_solved })
-      }
-    })
-
-    if (i + batchSize < solvedTickets.length) {
-      await new Promise(resolve => setTimeout(resolve, 100))
-    }
+        const r = await fetch(`${inst.BASE_URL}/Ticket/${t.ticket_id}/ITILSolution`, { headers: glpiHeaders(token, inst) })
+        if (!r.ok) return null
+        const data = await r.json()
+        if (!Array.isArray(data) || !data.length) return null
+        const last = data[data.length - 1]
+        return { ticketId: t.ticket_id, solution: stripHtml(last.content || ''), date_solved: toISOSafe(last.date_creation) }
+      } catch { return null }
+    }))
+    results.forEach(res => { if (res) map.set(res.ticketId, { solution: res.solution, date_solved: res.date_solved }) })
+    if (i + batch < solved.length) await new Promise(r => setTimeout(r, 100))
   }
-
-  return solutionMap
+  return map
 }
 
-async function syncInstance(instanceName: 'PETA' | 'GMX', resumePage: number = 0): Promise<SyncResult> {
-  const instance = GLPI_INSTANCES[instanceName]
+// ── Upsert batch ──────────────────────────────────────────────────────────────
 
-  console.log(`Iniciando sincronização de ${instanceName} (a partir da página ${resumePage})...`)
-  console.log(`URL: ${instance.BASE_URL}`)
+async function upsertBatch(tickets: TicketData[]): Promise<void> {
+  const BATCH = 100
+  for (let i = 0; i < tickets.length; i += BATCH) {
+    const slice = tickets.slice(i, i + BATCH)
+    const { error } = await supabase.from('tickets_cache').upsert(
+      slice.map(t => ({
+        ticket_id: t.ticket_id, instance: t.instance,
+        title: t.title, content: t.content,
+        entity: t.entity, entity_full: t.entity_full,
+        category: t.category, root_category: t.root_category,
+        status_id: t.status_id, status_key: t.status_key, status_name: t.status_name,
+        group_name: t.group_name,
+        technician: t.technician, technician_id: t.technician_id,
+        requester: t.requester, requester_id: t.requester_id,
+        urgency: t.urgency, impact: t.impact, priority_id: t.priority_id, type_id: t.type_id,
+        date_created: t.date_created, date_mod: t.date_mod, due_date: t.due_date,
+        date_solved: t.date_solved || null, date_close: t.date_close,
+        resolution_duration: t.resolution_duration, waiting_duration: t.waiting_duration,
+        location: t.location, sla_ttr_name: t.sla_ttr_name, sla_tto_name: t.sla_tto_name,
+        global_validation: t.global_validation,
+        is_sla_late: t.is_sla_late, is_overdue_first: t.is_overdue_first, is_overdue_resolve: t.is_overdue_resolve,
+        is_deleted: t.is_deleted, solution: t.solution || null,
+        last_sync: new Date().toISOString(), updated_at: new Date().toISOString(),
+      })),
+      { onConflict: 'ticket_id,instance' }
+    )
+    if (error) console.error(`Upsert error batch ${i}:`, error.message)
+  }
+}
+
+// ── Sync instance ─────────────────────────────────────────────────────────────
+
+interface SyncResult { success: boolean; count: number; mode: string; error?: string; completed?: boolean; lastPage?: number; totalPages?: number }
+
+async function syncInstance(instanceName: 'PETA' | 'GMX', mode: 'full' | 'incremental'): Promise<SyncResult> {
+  const inst = GLPI_INSTANCES[instanceName]
+  console.log(`[${instanceName}] Starting ${mode} sync`)
 
   try {
-    // Verifica progresso anterior
-    const { data: syncData } = await supabase
-      .from('sync_control')
-      .select('last_page, total_pages')
-      .eq('instance', instanceName)
-      .single()
+    // Get sync control state
+    const { data: ctrl } = await supabase.from('sync_control').select('*').eq('instance', instanceName).single()
 
-    const startPage = resumePage || (syncData?.last_page || 0)
-    console.log(`${instanceName}: Continuando da página ${startPage}`)
+    let token = await initSession(inst)
+    let allTickets: TicketData[] = []
+    let completed = true
+    let lastPage = 0
+    let totalPages = 0
 
-    const sessionToken = await initSession(instance)
-    console.log(`${instanceName}: Sessão iniciada`)
-
-    // Busca um range de páginas
-    const { tickets: rawTickets, completed, lastPage, totalPages } = await getPageRange(instance, sessionToken, startPage, MAX_PAGES_PER_RUN)
-
-    const tickets = processTickets(rawTickets, instanceName)
-    const pagesProcessed = lastPage - startPage
-
-    console.log(`${instanceName}: ${tickets.length} tickets processados (páginas ${startPage}-${lastPage-1})`)
-
-    // Buscar técnicos para os tickets
-    let techMap: Map<number, { name: string, id: number }> = new Map()
-    if (tickets.length > 0) {
-      console.log(`${instanceName}: Buscando técnicos...`)
-      techMap = await fetchTechniciansForTickets(tickets, instance, sessionToken)
-
-      // Atualiza os tickets com as informações do técnico
-      tickets.forEach(ticket => {
-        const tech = techMap.get(ticket.ticket_id)
-        if (tech) {
-          ticket.technician = tech.name
-          ticket.technician_id = tech.id
-        }
-      })
-    }
-
-    // Buscar soluções para tickets solucionados/fechados
-    let solutionMap: Map<number, { solution: string, date_solved: string | null }> = new Map()
-    if (tickets.length > 0) {
-      console.log(`${instanceName}: Buscando soluções para tickets fechados/solucionados...`)
-      solutionMap = await fetchSolutionsForTickets(tickets, instance, sessionToken)
-
-      tickets.forEach(ticket => {
-        const sol = solutionMap.get(ticket.ticket_id)
-        if (sol) {
-          ticket.solution = sol.solution
-          ticket.date_solved = sol.date_solved
-        }
-      })
-    }
-
-    if (tickets.length > 0) {
-      // Upsert tickets em batch
-      const batchSize = 100
-      for (let i = 0; i < tickets.length; i += batchSize) {
-        const batch = tickets.slice(i, i + batchSize)
-        const { error } = await supabase
-          .from('tickets_cache')
-          .upsert(
-            batch.map(t => ({
-              ticket_id: t.ticket_id,
-              instance: t.instance,
-              title: t.title,
-              entity: t.entity,
-              entity_full: t.entity_full,
-              category: t.category,
-              root_category: t.root_category,
-              status_id: t.status_id,
-              status_key: t.status_key,
-              status_name: t.status_name,
-              group_name: t.group_name,
-              technician: t.technician,
-              technician_id: t.technician_id,
-              date_created: t.date_created,
-              date_mod: t.date_mod,
-              due_date: t.due_date,
-              date_solved: t.date_solved,
-              solution: t.solution || null,
-              is_sla_late: t.is_sla_late,
-              is_overdue_first: t.is_sla_late,
-              is_overdue_resolve: t.is_sla_late,
-              type_id: t.type_id,
-              priority_id: t.priority_id,
-              last_sync: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })),
-            { onConflict: 'ticket_id,instance' }
-          )
-
-        if (error) {
-          console.error(`Erro ao salvar batch ${i}:`, error)
-        }
+    if (mode === 'full') {
+      // --- Full sync: paginate from scratch ---
+      const startPage = (ctrl?.last_page && ctrl?.status !== 'success') ? (ctrl.last_page || 0) : 0
+      if (startPage === 0) {
+        // Fresh start: clear existing data
+        console.log(`[${instanceName}] Clearing existing data...`)
+        await supabase.from('tickets_cache').delete().eq('instance', instanceName)
+        await supabase.from('sync_control').delete().eq('instance', instanceName)
       }
+
+      let page = startPage
+      const endPage = startPage + MAX_PAGES_PER_RUN
+
+      while (page < endPage) {
+        const start = page * PAGE_SIZE
+        const end   = start + PAGE_SIZE - 1
+        const url   = buildSearchUrl(inst, start, end)
+
+        const { data, totalcount } = await fetchPage(url, inst, token)
+        if (page === startPage) {
+          totalPages = Math.ceil(totalcount / PAGE_SIZE)
+          console.log(`[${instanceName}] Total: ${totalcount} tickets / ${totalPages} pages`)
+        }
+        if (!data.length) break
+
+        allTickets.push(...processTickets(data, instanceName))
+        page++
+        lastPage = page
+
+        if (data.length < PAGE_SIZE || page >= totalPages) break
+      }
+
+      completed = lastPage >= totalPages
+
+    } else {
+      // --- Incremental: only recently modified tickets ---
+      const lastSync = ctrl?.last_sync ? new Date(ctrl.last_sync) : new Date(Date.now() - INCREMENTAL_WINDOW_MINUTES * 60000)
+      const sinceDate = new Date(lastSync.getTime() - INCREMENTAL_WINDOW_MINUTES * 60000)
+        .toISOString().replace('T', ' ').substring(0, 19)
+
+      console.log(`[${instanceName}] Incremental since: ${sinceDate}`)
+
+      let page = 0
+      while (true) {
+        const start = page * PAGE_SIZE
+        const end   = start + PAGE_SIZE - 1
+        const url   = buildSearchUrl(inst, start, end, sinceDate)
+        const { data, totalcount } = await fetchPage(url, inst, token)
+
+        if (page === 0) {
+          totalPages = Math.ceil(totalcount / PAGE_SIZE)
+          console.log(`[${instanceName}] Incremental: ${totalcount} changed tickets`)
+        }
+        if (!data.length) break
+        allTickets.push(...processTickets(data, instanceName))
+        page++
+        if (data.length < PAGE_SIZE || page >= totalPages) break
+      }
+      completed = true
     }
 
-    // Atualizar controle de sincronização
-    await supabase
-      .from('sync_control')
-      .upsert({
-        instance: instanceName,
-        last_sync: new Date().toISOString(),
-        status: completed ? 'success' : 'in_progress',
-        tickets_count: (syncData?.total_pages ? syncData.total_pages * PAGE_SIZE : 0),
-        last_page: lastPage,
-        total_pages: totalPages,
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'instance'
+    // Fetch technicians
+    if (allTickets.length > 0) {
+      console.log(`[${instanceName}] Fetching technicians for ${allTickets.length} tickets...`)
+      const techMap = await fetchTechnicians(allTickets, inst, token)
+      allTickets.forEach(t => {
+        const tech = techMap.get(t.ticket_id)
+        if (tech) { t.technician = tech.name; t.technician_id = tech.id }
       })
-
-    console.log(`${instanceName}: ${completed ? 'Sincronização concluída' : 'Página ' + lastPage + ' de ' + totalPages}`)
-    return {
-      success: true,
-      count: tickets.length,
-      completed,
-      pagesProcessed,
-      lastPage,
-      totalPages
     }
 
-  } catch (error) {
-    console.error(`${instanceName}: Erro na sincronização:`, error)
-
-    await supabase
-      .from('sync_control')
-      .upsert({
-        instance: instanceName,
-        status: 'failed',
-        error_message: error.message,
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'instance'
+    // Fetch solutions for solved/closed
+    if (allTickets.length > 0) {
+      console.log(`[${instanceName}] Fetching solutions...`)
+      const solMap = await fetchSolutions(allTickets, inst, token)
+      allTickets.forEach(t => {
+        const sol = solMap.get(t.ticket_id)
+        if (sol) { t.solution = sol.solution; if (sol.date_solved) t.date_solved = sol.date_solved }
       })
+    }
 
-    return { success: false, error: error.message }
+    // Upsert
+    if (allTickets.length > 0) {
+      console.log(`[${instanceName}] Upserting ${allTickets.length} tickets...`)
+      await upsertBatch(allTickets)
+    }
+
+    // Update sync_control
+    await supabase.from('sync_control').upsert({
+      instance: instanceName,
+      last_sync: new Date().toISOString(),
+      status: completed ? 'success' : 'in_progress',
+      last_page: completed ? 0 : lastPage,
+      total_pages: totalPages,
+      tickets_count: allTickets.length,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'instance' })
+
+    console.log(`[${instanceName}] Done. ${allTickets.length} tickets, completed=${completed}`)
+    return { success: true, count: allTickets.length, mode, completed, lastPage, totalPages }
+
+  } catch (err: any) {
+    console.error(`[${instanceName}] Error:`, err.message)
+    await supabase.from('sync_control').upsert({
+      instance: instanceName, status: 'failed', error_message: err.message, updated_at: new Date().toISOString(),
+    }, { onConflict: 'instance' })
+    return { success: false, count: 0, mode, error: err.message }
   }
 }
+
+// ── Entry point ───────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
-  console.log('Iniciando job de sincronização...')
-
-  const startTime = Date.now()
-
-  // Permite especificar qual instância sincronizar (opcional)
-  //Parâmetros: instance, reset_peta, reset_gmx
-  const { instance, reset_peta, reset_gmx, resume_peta, resume_gmx } = await req.json().catch(() => ({}))
+  const start = Date.now()
+  const body  = await req.json().catch(() => ({}))
+  const { reset_peta, reset_gmx, instance, mode } = body
 
   try {
-    // Verificar se precisa resetar (zerar e recomeçar)
-    if (reset_peta) {
-      console.log('Resetando PETA...')
-      await supabase.from('sync_control').delete().eq('instance', 'PETA')
-      await supabase.from('tickets_cache').delete().eq('instance', 'PETA')
-    }
-    if (reset_gmx) {
-      console.log('Resetando GMX...')
-      await supabase.from('sync_control').delete().eq('instance', 'GMX')
-      await supabase.from('tickets_cache').delete().eq('instance', 'GMX')
-    }
+    let petaResult: SyncResult = { success: true, count: 0, mode: 'skipped', completed: true }
+    let gmxResult:  SyncResult = { success: true, count: 0, mode: 'skipped', completed: true }
 
-    // Determinar qual instância precisa de sincronização
-    const { data: petaSync } = await supabase
-      .from('sync_control')
-      .select('last_page, total_pages, status')
-      .eq('instance', 'PETA')
-      .single()
+    const petaMode: 'full' | 'incremental' = (reset_peta || mode === 'full') ? 'full' : 'incremental'
+    const gmxMode:  'full' | 'incremental' = (reset_gmx  || mode === 'full') ? 'full' : 'incremental'
 
-    const { data: gmxSync } = await supabase
-      .from('sync_control')
-      .select('last_page, total_pages, status')
-      .eq('instance', 'GMX')
-      .single()
+    if (!instance || instance === 'PETA') petaResult = await syncInstance('PETA', petaMode)
+    if (!instance || instance === 'GMX')  gmxResult  = await syncInstance('GMX',  gmxMode)
 
-    // Decide qual instância processar (evita timeout processando ambas)
-    let petaResult: SyncResult = { success: true, completed: true }
-    let gmxResult: SyncResult = { success: true, completed: true }
+    const anyFailed  = !petaResult.success || !gmxResult.success
+    const allDone    = (petaResult.completed ?? true) && (gmxResult.completed ?? true)
+    const totalCount = petaResult.count + gmxResult.count
 
-    // Forçar sincronização se foi resetado ou não tem dados
-    const petaHasData = petaSync && petaSync.last_page && petaSync.last_page > 0
-    const gmxHasData = gmxSync && gmxSync.last_page && gmxSync.last_page > 0
+    await supabase.from('sync_logs').insert({
+      instance: 'ALL', finished_at: new Date().toISOString(),
+      status: anyFailed ? 'failed' : allDone ? 'success' : 'partial',
+      tickets_processed: totalCount,
+      error_message: petaResult.error || gmxResult.error || null,
+    })
 
-    const petaNeedsSync = reset_peta || !petaHasData || !petaSync || !petaSync.last_page || petaSync.last_page < (petaSync.total_pages || 12)
-    const gmxNeedsSync = reset_gmx || !gmxHasData || !gmxSync || !gmxSync.last_page || gmxSync.last_page < (gmxSync.total_pages || 78)
+    return new Response(JSON.stringify({
+      success: !anyFailed, duration_ms: Date.now() - start,
+      results: { peta: petaResult, gmx: gmxResult },
+      needsResume: !allDone,
+    }), { headers: { 'Content-Type': 'application/json' } })
 
-    // Processa apenas uma instância por vez para evitar timeout
-    if (petaNeedsSync && (!gmxNeedsSync || (petaSync?.last_page || 0) <= (gmxSync?.last_page || 0))) {
-      const startPagePeta = petaSync?.last_page || 0
-      petaResult = await syncInstance('PETA', startPagePeta)
-    } else if (gmxNeedsSync) {
-      const startPageGmx = gmxSync?.last_page || 0
-      gmxResult = await syncInstance('GMX', startPageGmx)
-    }
-
-    const duration = Date.now() - startTime
-
-    // Log final
-    const petaCompleted = petaResult.completed && petaResult.success
-    const gmxCompleted = gmxResult.completed && gmxResult.success
-    const allCompleted = petaCompleted && gmxCompleted
-    const anyFailed = !petaResult.success || !gmxResult.success
-
-    await supabase
-      .from('sync_logs')
-      .insert({
-        instance: 'ALL',
-        finished_at: new Date().toISOString(),
-        status: allCompleted ? 'success' : (anyFailed ? 'failed' : 'partial'),
-        tickets_processed: (petaResult.count || 0) + (gmxResult.count || 0),
-        error_message: !petaResult.success ? petaResult.error : (!gmxResult.success ? gmxResult.error : null)
-      })
-
-    return new Response(
-      JSON.stringify({
-        success: !anyFailed,
-        results: {
-          peta: petaResult,
-          gmx: gmxResult
-        },
-        duration_ms: duration,
-        needsResume: !allCompleted,
-        message: petaResult.completed ? 'PETA completo' : (gmxResult.completed ? 'GMX completo' : 'Progresso salvo')
-      }),
-      { headers: { 'Content-Type': 'application/json' } }
-    )
-
-  } catch (error) {
-    console.error('Erro geral:', error)
-
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    )
+  } catch (err: any) {
+    return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500, headers: { 'Content-Type': 'application/json' } })
   }
 })

@@ -6,6 +6,7 @@ import { processEntity, lastGroupLabel, fmt, calcHoursAgo, formatWaitTime } from
 import StatusBadge from '../components/StatusBadge'
 import InstanceBadge from '../components/InstanceBadge'
 import SLABadge from '../components/SLABadge'
+import UrgencyBadge from '../components/UrgencyBadge'
 
 const sel = {
   padding: '7px 10px',
@@ -23,21 +24,24 @@ function TicketsContent() {
   const [error, setError] = useState(null)
   const [lastUpdate, setLastUpdate] = useState(null)
 
-  /* page-level filters */
   const [search, setSearch] = useState('')
   const [fInstance, setFInstance] = useState('')
   const [fStatus, setFStatus] = useState('')
   const [fSLA, setFSLA] = useState('')
   const [fGroup, setFGroup] = useState('')
   const [fEntity, setFEntity] = useState('')
+  const [fUrgency, setFUrgency] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true); setError(null)
     try {
-      const { data, error: err } = await getSupabaseClient()
+      const sb = getSupabaseClient()
+      if (!sb) throw new Error('Supabase não configurado.')
+      const { data, error: err } = await sb
         .from('tickets_cache')
-        .select('ticket_id,title,entity,status_id,status_key,status_name,group_name,technician,is_sla_late,is_overdue_resolve,date_created,date_mod,due_date,instance')
+        .select('ticket_id,title,entity,status_id,status_key,status_name,group_name,technician,requester,urgency,is_sla_late,is_overdue_resolve,date_created,date_mod,due_date,instance')
         .in('status_key', ['new', 'processing', 'pending', 'pending-approval'])
+        .eq('is_deleted', false)
         .order('date_mod', { ascending: false })
       if (err) throw err
       setTickets(data || [])
@@ -54,32 +58,31 @@ function TicketsContent() {
     return () => clearInterval(iv)
   }, [load])
 
-  /* apply all filters: global first, then page-level */
   const filtered = applyFilters(tickets).filter(t => {
     if (fInstance && (t.instance || '').toUpperCase() !== fInstance.toUpperCase()) return false
-    if (fStatus && t.status_key !== fStatus) return false
+    if (fStatus  && t.status_key !== fStatus) return false
     if (fSLA === 'late' && !(t.is_sla_late || t.is_overdue_resolve)) return false
-    if (fSLA === 'ok'   && (t.is_sla_late || t.is_overdue_resolve)) return false
-    if (fGroup && lastGroupLabel(t.group_name) !== fGroup) return false
-    if (fEntity && processEntity(t.entity) !== fEntity) return false
+    if (fSLA === 'ok'   &&  (t.is_sla_late || t.is_overdue_resolve)) return false
+    if (fGroup   && lastGroupLabel(t.group_name) !== fGroup) return false
+    if (fEntity  && processEntity(t.entity) !== fEntity) return false
+    if (fUrgency && String(t.urgency) !== fUrgency) return false
     if (search) {
       const s = search.toLowerCase()
-      if (!String(t.ticket_id).includes(s) && !(t.title || '').toLowerCase().includes(s) && !processEntity(t.entity).toLowerCase().includes(s)) return false
+      if (!String(t.ticket_id).includes(s) && !(t.title || '').toLowerCase().includes(s) && !processEntity(t.entity).toLowerCase().includes(s) && !(t.requester || '').toLowerCase().includes(s)) return false
     }
     return true
   })
 
-  const groups    = [...new Set(tickets.map(t => lastGroupLabel(t.group_name)).filter(v => v !== '—'))].sort()
-  const entities  = [...new Set(tickets.map(t => processEntity(t.entity)).filter(v => v !== '—'))].sort()
-  const late      = filtered.filter(t => t.is_sla_late || t.is_overdue_resolve).length
-  const proc      = filtered.filter(t => t.status_key === 'processing').length
-  const pend      = filtered.filter(t => t.status_key === 'pending').length
-  const approval  = filtered.filter(t => t.status_key === 'pending-approval').length
+  const groups   = [...new Set(tickets.map(t => lastGroupLabel(t.group_name)).filter(v => v !== '—'))].sort()
+  const entities = [...new Set(tickets.map(t => processEntity(t.entity)).filter(v => v !== '—'))].sort()
+  const late     = filtered.filter(t => t.is_sla_late || t.is_overdue_resolve).length
+  const proc     = filtered.filter(t => t.status_key === 'processing').length
+  const pend     = filtered.filter(t => t.status_key === 'pending').length
+  const approval = filtered.filter(t => t.status_key === 'pending-approval').length
+  const critical = filtered.filter(t => (t.urgency || 0) >= 5).length
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-
-      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
         <div>
           <h1 style={{ fontSize: '1.4rem', fontWeight: 700 }}>Monitor.Tickets</h1>
@@ -98,6 +101,7 @@ function TicketsContent() {
           { label: 'Pendentes',      v: pend,            color: '#ea580c' },
           { label: 'Aprovação',      v: approval,        color: '#7c3aed' },
           { label: 'SLA Excedido',   v: late,            color: '#dc2626' },
+          { label: 'Urgência Alta+', v: critical,        color: '#b91c1c' },
           { label: 'Total filtrado', v: filtered.length, color: 'var(--text-secondary)' },
         ].map(s => (
           <div key={s.label} style={{
@@ -118,8 +122,8 @@ function TicketsContent() {
         borderRadius: 'var(--radius-lg)', padding: '14px',
         display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center',
       }}>
-        <input placeholder="Buscar ID, título, entidade..." value={search}
-          onChange={e => setSearch(e.target.value)} style={{ ...sel, minWidth: '200px', flex: 1 }} />
+        <input placeholder="Buscar ID, título, entidade, solicitante..." value={search}
+          onChange={e => setSearch(e.target.value)} style={{ ...sel, minWidth: '220px', flex: 1 }} />
 
         <select value={fInstance} onChange={e => setFInstance(e.target.value)} style={sel}>
           <option value="">Todas as instâncias</option>
@@ -133,6 +137,16 @@ function TicketsContent() {
           <option value="processing">Em atendimento</option>
           <option value="pending">Pendente</option>
           <option value="pending-approval">Aprovação</option>
+        </select>
+
+        <select value={fUrgency} onChange={e => setFUrgency(e.target.value)} style={sel}>
+          <option value="">Toda urgência</option>
+          <option value="6">Crítica</option>
+          <option value="5">Muito Alta</option>
+          <option value="4">Alta</option>
+          <option value="3">Média</option>
+          <option value="2">Baixa</option>
+          <option value="1">Muito Baixa</option>
         </select>
 
         <select value={fSLA} onChange={e => setFSLA(e.target.value)} style={sel}>
@@ -151,11 +165,10 @@ function TicketsContent() {
           {entities.map(e => <option key={e} value={e}>{e}</option>)}
         </select>
 
-        {/* Quick filters */}
         <button onClick={() => setFSLA('late')} style={{ ...sel, cursor: 'pointer', background: fSLA === 'late' ? '#fee2e2' : undefined, color: '#dc2626', fontWeight: 600 }}>SLA fora</button>
         <button onClick={() => setFStatus('pending')} style={{ ...sel, cursor: 'pointer', background: fStatus === 'pending' ? '#fff7ed' : undefined, color: '#ea580c', fontWeight: 600 }}>Pendentes</button>
         <button onClick={() => setFStatus('pending-approval')} style={{ ...sel, cursor: 'pointer', background: fStatus === 'pending-approval' ? '#f3e8ff' : undefined, color: '#7c3aed', fontWeight: 600 }}>Aprovação</button>
-        <button onClick={() => { setSearch(''); setFInstance(''); setFStatus(''); setFSLA(''); setFGroup(''); setFEntity('') }}
+        <button onClick={() => { setSearch(''); setFInstance(''); setFStatus(''); setFSLA(''); setFGroup(''); setFEntity(''); setFUrgency('') }}
           style={{ ...sel, cursor: 'pointer' }}>Limpar</button>
 
         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '4px' }}>{filtered.length} resultados</span>
@@ -173,7 +186,7 @@ function TicketsContent() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
             <thead>
               <tr style={{ background: 'var(--background)', borderBottom: '2px solid var(--border)' }}>
-                {['ID', 'Instância', 'Entidade', 'Status', 'Grupo Responsável', 'Técnico', 'Abertura', 'Últ. Atualização', 'Previsto', 'SLA'].map(h => (
+                {['ID', 'Urg.', 'Instância', 'Entidade', 'Status', 'Grupo', 'Técnico', 'Solicitante', 'Abertura', 'Últ. Atualização', 'Previsto', 'SLA'].map(h => (
                   <th key={h} style={{ padding: '9px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -189,18 +202,18 @@ function TicketsContent() {
                       <span style={{ fontWeight: 700, color: 'var(--primary)' }}>#{t.ticket_id}</span>
                       {t.title && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.title}</div>}
                     </td>
+                    <td style={{ padding: '9px 12px' }}><UrgencyBadge urgency={t.urgency} /></td>
                     <td style={{ padding: '9px 12px' }}><InstanceBadge instance={t.instance} /></td>
                     <td className="col-entity" style={{ padding: '9px 12px' }}>{processEntity(t.entity)}</td>
                     <td style={{ padding: '9px 12px' }}><StatusBadge statusId={t.status_id} statusKey={t.status_key} statusName={t.status_name} /></td>
                     <td className="col-group" style={{ padding: '9px 12px', color: 'var(--text-secondary)' }}>
-                      {lastGroupLabel(t.group_name) !== '—'
-                        ? lastGroupLabel(t.group_name)
-                        : <em style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>Sem grupo</em>}
+                      {lastGroupLabel(t.group_name) !== '—' ? lastGroupLabel(t.group_name) : <em style={{ color: 'var(--text-muted)' }}>Sem grupo</em>}
                     </td>
                     <td className="col-technician" style={{ padding: '9px 12px', color: 'var(--text-secondary)' }}>
-                      {t.technician
-                        ? t.technician
-                        : <em style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>Sem técnico</em>}
+                      {t.technician || <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em>}
+                    </td>
+                    <td style={{ padding: '9px 12px', color: 'var(--text-secondary)' }}>
+                      {t.requester || <em style={{ color: 'var(--text-muted)' }}>—</em>}
                     </td>
                     <td style={{ padding: '9px 12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>{fmt(t.date_created)}</td>
                     <td style={{ padding: '9px 12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>{formatWaitTime(calcHoursAgo(t.date_mod))}</td>
