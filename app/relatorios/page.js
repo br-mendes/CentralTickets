@@ -98,7 +98,7 @@ export default function RelatoriosPage() {
 
   const hasSolution = allTickets.some(t => 'date_solved' in t || 'solution' in t)
 
-  const URGENCY_LABEL: Record<string,string> = { '1':'Muito Baixa','2':'Baixa','3':'Média','4':'Alta','5':'Muito Alta','6':'Crítica' }
+  const URGENCY_LABEL = { '1':'Muito Baixa','2':'Baixa','3':'Média','4':'Alta','5':'Muito Alta','6':'Crítica' }
 
   function exportCSV() {
     const baseH = ['ID','Instância','Entidade','Categoria','Status','Urgência','Solicitante','Local','Canal','Grupo Responsável','Técnico','SLA Atendimento','SLA Solução','Abertura','Últ. Atualização']

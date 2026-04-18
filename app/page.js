@@ -166,7 +166,7 @@ export default function DashboardPage() {
     : 0
 
   // Canal de requisição (request_type)
-  const reqTypeMap: Record<string, number> = {}
+  const reqTypeMap = {}
   for (const t of tickets) {
     const rt = t.request_type || 'Não informado'
     reqTypeMap[rt] = (reqTypeMap[rt] || 0) + 1
@@ -280,7 +280,7 @@ export default function DashboardPage() {
             {[6,5,4,3,2,1].map(u => {
               const count = urgencyMap[u] || 0
               const cfg = URGENCY_MAP[u]
-              const maxU = Math.max(...Object.values(urgencyMap as Record<number,number>), 1)
+              const maxU = Math.max(...Object.values(urgencyMap), 1)
               return (
                 <div key={u} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <span style={{ width: '80px', fontSize: '0.78rem', color: cfg.color, fontWeight: 600, flexShrink: 0 }}>{cfg.label}</span>
