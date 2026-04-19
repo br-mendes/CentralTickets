@@ -186,7 +186,7 @@ function TicketsContent() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
             <thead>
               <tr style={{ background: 'var(--background)', borderBottom: '2px solid var(--border)' }}>
-                {['ID', 'Urg.', 'Instância', 'Entidade', 'Status', 'Grupo', 'Técnico', 'Solicitante', 'Abertura', 'Últ. Atualização', 'Previsto', 'SLA'].map(h => (
+                {['ID', 'Instância', 'Entidade', 'Status', 'Grupo', 'Técnico', 'Abertura', 'Últ. Atualização', 'Previsto', 'SLA'].map(h => (
                   <th key={h} style={{ padding: '9px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -202,7 +202,6 @@ function TicketsContent() {
                       <span style={{ fontWeight: 700, color: 'var(--primary)' }}>#{t.ticket_id}</span>
                       {t.title && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.title}</div>}
                     </td>
-                    <td style={{ padding: '9px 12px' }}><UrgencyBadge urgency={t.urgency} /></td>
                     <td style={{ padding: '9px 12px' }}><InstanceBadge instance={t.instance} /></td>
                     <td className="col-entity" style={{ padding: '9px 12px' }}>{processEntity(t.entity)}</td>
                     <td style={{ padding: '9px 12px' }}><StatusBadge statusId={t.status_id} statusKey={t.status_key} statusName={t.status_name} /></td>
@@ -211,9 +210,6 @@ function TicketsContent() {
                     </td>
                     <td className="col-technician" style={{ padding: '9px 12px', color: 'var(--text-secondary)' }}>
                       {t.technician || <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em>}
-                    </td>
-                    <td style={{ padding: '9px 12px', color: 'var(--text-secondary)' }}>
-                      {t.requester || <em style={{ color: 'var(--text-muted)' }}>—</em>}
                     </td>
                     <td style={{ padding: '9px 12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>{fmt(t.date_created)}</td>
                     <td style={{ padding: '9px 12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>{formatWaitTime(calcHoursAgo(t.date_mod))}</td>
