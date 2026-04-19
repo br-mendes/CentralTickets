@@ -263,7 +263,7 @@ async function upsert(tickets: TD[], withEnrichment: boolean): Promise<void> {
           status_id: t.status_id, status_key: t.status_key, status_name: t.status_name,
           group_name: t.group_name, requester: t.requester, requester_id: t.requester_id,
           urgency: t.urgency, impact: t.impact, priority_id: t.priority_id, type_id: t.type_id,
-          global_validation: t.global_validation,
+          global_validation: t.global_validation === 2,
           date_created: t.date_created, date_mod: t.date_mod, due_date: t.due_date,
           date_solved: t.date_solved, date_close: t.date_close,
           resolution_duration: t.resolution_duration, waiting_duration: t.waiting_duration,

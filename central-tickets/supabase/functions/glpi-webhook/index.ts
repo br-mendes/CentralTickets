@@ -241,7 +241,7 @@ async function handleTicket(
     status_id:              statusId,
     status_key:             getStatusKey(statusId, globalValidation),
     status_name:            getStatusName(statusId, globalValidation),
-    global_validation:      globalValidation,
+    global_validation:      globalValidation === 2,
     type_id:                typeId,
     priority_id:            priorityId,
     urgency,
@@ -355,7 +355,7 @@ async function handleApproval(
   const { error } = await supabase
     .from('tickets_cache')
     .update({
-      global_validation: approvalStatus,
+      global_validation: approvalStatus === 2,
       status_key:        newStatusKey,
       status_name:       newStatusName,
       updated_at:        new Date().toISOString(),
