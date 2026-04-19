@@ -47,7 +47,19 @@ const STRIP: Record<string, RegExp[]> = {
   ],
 }
 
-function norm(s: string, inst: string): string {
+/** Extract string from GLPI field value (may be string, number, or expanded object) */
+function glpiStr(v: unknown): string {
+  if (v === null || v === undefined) return ''
+  if (typeof v === 'string') return v
+  if (typeof v === 'object') {
+    const o = v as Record<string, unknown>
+    return String(o.completename ?? o.name ?? o.id ?? '')
+  }
+  return String(v)
+}
+
+function norm(v: unknown, inst: string): string {
+  const s = glpiStr(v)
   if (!s) return ''
   const t = s.trim()
   for (const p of (STRIP[inst] ?? [])) {
@@ -154,7 +166,7 @@ function processRows(rows: any[], inst: string): TD[] {
     return {
       ticket_id:           parseInt(r[2]) || r.id,
       instance:            inst,
-      title:               r[1] || 'Sem título',
+      title:               glpiStr(r[1]) || 'Sem título',
       entity:              norm(r[80] || '', inst),
       entity_full:         r[80] || '',
       category:            cat,
@@ -164,7 +176,7 @@ function processRows(rows: any[], inst: string): TD[] {
       status_name:         statusName(sid, gv),
       group_name:          norm(r[8] || '', inst),
       technician:          '', technician_id: 0,
-      requester:           r[10] || '', requester_id: 0,
+      requester:           glpiStr(r[10]), requester_id: 0,
       urgency:             parseInt(r[4]) || 3,
       impact:              parseInt(r[5]) || 3,
       priority_id:         parseInt(r[3]) || 3,
@@ -385,18 +397,19 @@ async function syncInstance(instName: 'PETA'|'GMX', mode: 'full'|'incremental'):
       await backfillSols(instName, inst, token)
     }
 
-    await supabase.from('sync_control').upsert({
+    const { error: ctrlErr } = await supabase.from('sync_control').upsert({
       instance: instName, last_sync: new Date().toISOString(),
       status: completed ? 'success' : 'in_progress',
       last_page: completed ? 0 : lastPage, total_pages: totalPages,
       tickets_count: all.length, updated_at: new Date().toISOString(),
-    }, { onConflict: 'instance' }).catch(e => console.warn(`[${instName}] ctrl:`, e.message))
+    }, { onConflict: 'instance' })
+    if (ctrlErr) console.warn(`[${instName}] ctrl:`, ctrlErr.message)
 
     return { success: true, count: all.length, mode, completed, lastPage, totalPages }
   } catch (err: any) {
     const msg = err?.message ?? String(err)
     console.error(`[${instName}] erro:`, msg)
-    await supabase.from('sync_control').upsert({ instance: instName, status: 'failed', error_message: msg, updated_at: new Date().toISOString() }, { onConflict: 'instance' }).catch(() => {})
+    await supabase.from('sync_control').upsert({ instance: instName, status: 'failed', error_message: msg, updated_at: new Date().toISOString() }, { onConflict: 'instance' })
     return { success: false, count: 0, mode, error: msg }
   }
 }
@@ -429,12 +442,13 @@ Deno.serve(async (req: Request): Promise<Response> => {
       (!instance || instance === 'GMX')  ? syncInstance('GMX',  gm) : Promise.resolve(skip('GMX')),
     ])
 
-    await supabase.from('sync_logs').insert({
+    const { error: logErr } = await supabase.from('sync_logs').insert({
       instance: 'ALL', finished_at: new Date().toISOString(),
       status: (!pr.success || !gr.success) ? 'failed' : ((pr.completed ?? true) && (gr.completed ?? true)) ? 'success' : 'partial',
       tickets_processed: pr.count + gr.count,
       error_message: pr.error ?? gr.error ?? null,
-    }).catch(e => console.warn('sync_logs:', e.message))
+    })
+    if (logErr) console.warn('sync_logs:', logErr.message)
 
     return ok({ success: !(!pr.success || !gr.success), duration_ms: Date.now() - start, results: { peta: pr, gmx: gr }, needsResume: !((pr.completed ?? true) && (gr.completed ?? true)) })
   } catch (err: any) {
