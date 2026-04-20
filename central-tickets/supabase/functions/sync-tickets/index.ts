@@ -22,7 +22,7 @@ const INSTANCES = {
 const MAX_PAGES_SWEEP       = 40
 const MAX_PAGES_INCREMENTAL = 8
 const INCREMENTAL_WINDOW    = 15  // minutos
-const BACKFILL_TECH         = 200 // tickets com técnico faltando por run
+const BACKFILL_TECH         = 100 // tickets com técnico faltando por run
 const BACKFILL_SOL          = 50  // tickets com solução faltando por run
 
 // Campos GLPI: 55 = global_validation (determina pending-approval)
@@ -140,6 +140,11 @@ function searchUrl(inst: Inst, start: number, end: number, since?: string): stri
 async function fetchPage(url: string, inst: Inst, token: string) {
   let r = await fetch(url, { headers: hdrs(token, inst) })
   if (r.status === 401) { token = await initSession(inst); r = await fetch(url, { headers: hdrs(token, inst) }) }
+  if (r.status === 429) {
+    console.warn('[fetchPage] rate limit 429, aguardando 3s')
+    await new Promise(res => setTimeout(res, 3000))
+    r = await fetch(url, { headers: hdrs(token, inst) })
+  }
   if (!r.ok) throw new Error(`GLPI ${r.status}: ${(await r.text()).substring(0, 200)}`)
   const j = await r.json()
   return { data: j.data ?? [], total: j.totalcount ?? 0, token }
@@ -164,14 +169,16 @@ interface TD {
 }
 
 function processRows(rows: any[], inst: string): TD[] {
-  return rows.map(r => {
+  return rows.flatMap(r => {
+    const tid = parseInt(r[2]) || parseInt(r.id) || 0
+    if (!tid) return []  // descarta linhas sem ticket_id válido
     const sid  = parseInt(r[12]) || 1
     const gv   = parseInt(r[55]) || 1
     const due  = r[151] || null
     const late = slaLate(due)
     const cat  = norm(r[7] || '', inst) || 'Não categorizado'
-    return {
-      ticket_id:           parseInt(r[2]) || r.id,
+    return [{
+      ticket_id:           tid,
       instance:            inst,
       title:               glpiStr(r[1]) || 'Sem título',
       entity:              norm(r[80] || '', inst),
@@ -200,7 +207,7 @@ function processRows(rows: any[], inst: string): TD[] {
       sla_ttr_name: '', sla_tto_name: '',
       is_sla_late: late, is_overdue_first: late, is_overdue_resolve: late,
       is_deleted: false, solution: '',
-    }
+    }]
   })
 }
 
@@ -226,7 +233,7 @@ async function fetchTechs(tickets: TD[], inst: Inst, token: string): Promise<Map
       } catch { return null }
     }))
     rs.forEach((res, idx) => { if (res) map.set(sl[idx].ticket_id, res) })
-    if (i + 10 < tickets.length) await new Promise(r => setTimeout(r, 100))
+    if (i + 10 < tickets.length) await new Promise(r => setTimeout(r, 300))
   }
   return map
 }
