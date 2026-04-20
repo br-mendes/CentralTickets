@@ -66,8 +66,18 @@ BEGIN
 END $$;
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 4. CRÍTICO: índice único para o upsert funcionar
---    Sem isso TODOS os upserts falham silenciosamente.
+-- 4a. Remove constraint única apenas em ticket_id (se existir).
+--     Se ela existir, o upsert de GMX#101 sobrescreve PETA#101 — causa exata
+--     do "salva uma instância e apaga a outra".
+-- ─────────────────────────────────────────────────────────────────────────────
+ALTER TABLE tickets_cache DROP CONSTRAINT IF EXISTS tickets_cache_ticket_id_key;
+ALTER TABLE tickets_cache DROP CONSTRAINT IF EXISTS tickets_cache_pkey_ticket;
+DROP INDEX IF EXISTS tickets_cache_ticket_id_unique;
+DROP INDEX IF EXISTS tickets_cache_ticket_id_idx;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 4b. CRÍTICO: índice único composto para o upsert funcionar.
+--     Permite que PETA#101 e GMX#101 coexistam sem conflito.
 -- ─────────────────────────────────────────────────────────────────────────────
 CREATE UNIQUE INDEX IF NOT EXISTS tickets_cache_ticket_instance_unique
   ON tickets_cache (ticket_id, instance);

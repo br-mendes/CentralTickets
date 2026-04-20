@@ -19,7 +19,7 @@ const INSTANCES = {
 
 // Full sweep: sem tech/solution fetch → rápido (40 páginas/run = 1000 tickets)
 // Incremental: com enrichment + backfill dos campos faltantes
-const MAX_PAGES_SWEEP       = 40
+const MAX_PAGES_SWEEP       = 100
 const MAX_PAGES_INCREMENTAL = 8
 const INCREMENTAL_WINDOW    = 15  // minutos
 const BACKFILL_TECH         = 100 // tickets com técnico faltando por run
@@ -360,6 +360,7 @@ async function syncInstance(instName: 'PETA'|'GMX', mode: 'full'|'incremental'):
         console.log(`[${instName}] full sync início`)
       }
       let page = startPage
+      let buf: TD[] = []
       while (page < startPage + MAX_PAGES_SWEEP) {
         const url = searchUrl(inst, page * 25, page * 25 + 24)
         const res = await fetchPage(url, inst, token)
@@ -369,9 +370,21 @@ async function syncInstance(instName: 'PETA'|'GMX', mode: 'full'|'incremental'):
           console.log(`[${instName}] total: ${res.total} tickets (${totalPages} pgs)`)
         }
         if (!res.data.length) break
-        all.push(...processRows(res.data, instName))
+        buf.push(...processRows(res.data, instName))
         page++; lastPage = page
-        if (res.data.length < 25 || page >= totalPages) break
+        const done = res.data.length < 25 || page >= totalPages
+        // Flush + checkpoint a cada 500 tickets ou ao atingir o fim/limite
+        if (buf.length >= 500 || done || page >= startPage + MAX_PAGES_SWEEP) {
+          await upsert(buf, false)
+          all.push(...buf)
+          buf = []
+          await supabase.from('sync_control').upsert({
+            instance: instName, status: 'in_progress', last_page: lastPage,
+            total_pages: totalPages, updated_at: new Date().toISOString(),
+          }, { onConflict: 'instance' })
+          console.log(`[${instName}] checkpoint pg ${lastPage}/${totalPages}`)
+        }
+        if (done) break
       }
       completed = lastPage >= totalPages
 
@@ -400,9 +413,8 @@ async function syncInstance(instName: 'PETA'|'GMX', mode: 'full'|'incremental'):
         const solMap = await fetchSols(all, inst, token)
         all.forEach(t => { const sol = solMap.get(t.ticket_id); if (sol) { t.solution = sol.solution; if (sol.date_solved) t.date_solved = sol.date_solved } })
         await upsert(all, true)
-      } else {
-        await upsert(all, false)
       }
+      // full mode: upsert já feito incrementalmente no loop (flush a cada 500 tickets)
       console.log(`[${instName}] ${all.length} tickets salvos`)
     }
 
