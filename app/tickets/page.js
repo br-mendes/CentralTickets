@@ -1,12 +1,11 @@
 'use client'
-import { useEffect, useState, useCallback, Suspense } from 'react'
+import { useEffect, useState, useCallback, useRef, Suspense } from 'react'
 import { getSupabaseClient } from '@/lib/supabase/client'
 import { useFilters } from '../context/FilterContext'
 import { processEntity, lastGroupLabel, fmt, calcHoursAgo, formatWaitTime } from '../lib/utils'
 import StatusBadge from '../components/StatusBadge'
 import InstanceBadge from '../components/InstanceBadge'
 import SLABadge from '../components/SLABadge'
-import UrgencyBadge from '../components/UrgencyBadge'
 
 const sel = {
   padding: '7px 10px',
@@ -23,6 +22,7 @@ function TicketsContent() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [lastUpdate, setLastUpdate] = useState(null)
+  const hasData = useRef(false)
 
   const [search, setSearch] = useState('')
   const [fInstance, setFInstance] = useState('')
@@ -33,7 +33,8 @@ function TicketsContent() {
   const [fUrgency, setFUrgency] = useState('')
 
   const load = useCallback(async () => {
-    setLoading(true); setError(null)
+    if (!hasData.current) setLoading(true)
+    setError(null)
     try {
       const sb = getSupabaseClient()
       if (!sb) throw new Error('Supabase não configurado.')
@@ -45,6 +46,7 @@ function TicketsContent() {
         .order('date_mod', { ascending: false })
       if (err) throw err
       setTickets(data || [])
+      hasData.current = true
       setLastUpdate(new Date())
       const techs = [...new Set((data || []).map(t => t.technician).filter(Boolean))].sort()
       setAvailableTechnicians(techs)
@@ -53,9 +55,22 @@ function TicketsContent() {
   }, [setAvailableTechnicians])
 
   useEffect(() => {
+    const sb = getSupabaseClient()
     load()
-    const iv = setInterval(load, 3 * 60 * 1000)
-    return () => clearInterval(iv)
+
+    // Polling a cada 30 segundos
+    const iv = setInterval(load, 30 * 1000)
+
+    // Realtime: atualiza imediatamente quando o banco muda
+    const channel = sb
+      .channel('monitor-tickets')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets_cache' }, load)
+      .subscribe()
+
+    return () => {
+      clearInterval(iv)
+      channel.unsubscribe()
+    }
   }, [load])
 
   const filtered = applyFilters(tickets).filter(t => {
