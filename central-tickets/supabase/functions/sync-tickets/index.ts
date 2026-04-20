@@ -344,13 +344,13 @@ async function syncInstance(instName: 'PETA'|'GMX', mode: 'full'|'incremental'):
     let completed = true, lastPage = 0, totalPages = 0
 
     if (mode === 'full') {
+      // Retoma de onde parou; se não há progresso, começa do zero (sem deletar — o entry point
+      // já fez o DELETE quando era um reset explícito)
       const startPage = (ctrl?.status === 'in_progress' && (ctrl?.last_page ?? 0) > 0) ? ctrl.last_page as number : 0
-      if (startPage === 0) {
-        console.log(`[${instName}] limpando dados`)
-        await supabase.from('tickets_cache').delete().eq('instance', instName)
-        await supabase.from('sync_control').delete().eq('instance', instName)
-      } else {
+      if (startPage > 0) {
         console.log(`[${instName}] retomando página ${startPage}`)
+      } else {
+        console.log(`[${instName}] full sync início`)
       }
       let page = startPage
       while (page < startPage + MAX_PAGES_SWEEP) {
@@ -440,10 +440,22 @@ Deno.serve(async (req: Request): Promise<Response> => {
       Promise.all([isCacheEmpty('PETA'), isCacheEmpty('GMX')]),
     ])
     const pc = petaRes.data, gc = gmxRes.data
-    const needsFull = (c: any) => !c || c.status === 'pending' || c.status === 'in_progress'
+    const needsFull = (c: any) => !c || ['pending','in_progress','failed'].includes(c.status)
 
     const pm: 'full'|'incremental' = (reset_peta || mode === 'full' || needsFull(pc) || isEmptyPeta) ? 'full' : 'incremental'
     const gm: 'full'|'incremental' = (reset_gmx  || mode === 'full' || needsFull(gc)  || isEmptyGmx)  ? 'full' : 'incremental'
+
+    // DELETE só acontece em reset explícito — nunca no fluxo automático
+    if (reset_peta) {
+      console.log('[entry] reset PETA: limpando dados')
+      await supabase.from('tickets_cache').delete().eq('instance', 'PETA')
+      await supabase.from('sync_control').delete().eq('instance', 'PETA')
+    }
+    if (reset_gmx) {
+      console.log('[entry] reset GMX: limpando dados')
+      await supabase.from('tickets_cache').delete().eq('instance', 'GMX')
+      await supabase.from('sync_control').delete().eq('instance', 'GMX')
+    }
 
     console.log(`[entry] PETA=${pm}(${pc?.status ?? 'novo'} empty=${isEmptyPeta}) GMX=${gm}(${gc?.status ?? 'novo'} empty=${isEmptyGmx})`)
 
