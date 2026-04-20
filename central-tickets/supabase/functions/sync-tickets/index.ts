@@ -215,8 +215,8 @@ function processRows(rows: any[], inst: string): TD[] {
 
 async function fetchTechs(tickets: TD[], inst: Inst, token: string): Promise<Map<number,{name:string,id:number}>> {
   const map = new Map<number,{name:string,id:number}>()
-  for (let i = 0; i < tickets.length; i += 10) {
-    const sl = tickets.slice(i, i + 10)
+  for (let i = 0; i < tickets.length; i += 5) {
+    const sl = tickets.slice(i, i + 5)
     const rs = await Promise.all(sl.map(async t => {
       try {
         let r1 = await fetch(`${inst.BASE_URL}/Ticket/${t.ticket_id}/Ticket_User`, { headers: hdrs(token, inst) })
@@ -244,8 +244,8 @@ async function fetchSols(tickets: TD[], inst: Inst, token: string): Promise<Map<
   const map = new Map<number,{solution:string,date_solved:string|null}>()
   const solved = tickets.filter(t => t.status_key === 'solved' || t.status_key === 'closed')
   if (!solved.length) return map
-  for (let i = 0; i < solved.length; i += 10) {
-    const sl = solved.slice(i, i + 10)
+  for (let i = 0; i < solved.length; i += 5) {
+    const sl = solved.slice(i, i + 5)
     const rs = await Promise.all(sl.map(async t => {
       try {
         let r = await fetch(`${inst.BASE_URL}/Ticket/${t.ticket_id}/ITILSolution`, { headers: hdrs(token, inst) })
