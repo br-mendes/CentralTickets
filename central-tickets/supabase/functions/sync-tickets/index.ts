@@ -100,6 +100,13 @@ function toISO(v: unknown): string | null {
 }
 function rootCat(c: string): string { return c ? c.split(' > ')[0].trim() : 'Não categorizado' }
 
+async function isCacheEmpty(instance: 'PETA'|'GMX'): Promise<boolean> {
+  const { count, error } = await supabase
+    .from('tickets_cache').select('*', { count: 'exact', head: true }).eq('instance', instance)
+  if (error) { console.warn(`[isCacheEmpty] ${instance}:`, error.message); return false }
+  return count === 0
+}
+
 // ── GLPI ──────────────────────────────────────────────────────────────────────
 
 type Inst = typeof INSTANCES.PETA
@@ -263,7 +270,7 @@ async function upsert(tickets: TD[], withEnrichment: boolean): Promise<void> {
           status_id: t.status_id, status_key: t.status_key, status_name: t.status_name,
           group_name: t.group_name, requester: t.requester, requester_id: t.requester_id,
           urgency: t.urgency, impact: t.impact, priority_id: t.priority_id, type_id: t.type_id,
-          global_validation: t.global_validation === 2,
+          global_validation: t.global_validation,
           date_created: t.date_created, date_mod: t.date_mod, due_date: t.due_date,
           date_solved: t.date_solved, date_close: t.date_close,
           resolution_duration: t.resolution_duration, waiting_duration: t.waiting_duration,
@@ -421,20 +428,24 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const ok = (b: Record<string,unknown>) => new Response(JSON.stringify(b), { headers: { 'Content-Type': 'application/json' } })
 
   try {
-    const body = await req.json().catch(() => ({})) as any
+    let body: any = {}
+    try { body = await req.json() } catch { /* cron sends empty body */ }
     const { reset_peta = false, reset_gmx = false, instance, mode } = body
 
-    const [petaRes, gmxRes] = await Promise.all([
-      supabase.from('sync_control').select('status,last_page').eq('instance', 'PETA').maybeSingle(),
-      supabase.from('sync_control').select('status,last_page').eq('instance', 'GMX').maybeSingle(),
+    const [[petaRes, gmxRes], [isEmptyPeta, isEmptyGmx]] = await Promise.all([
+      Promise.all([
+        supabase.from('sync_control').select('status,last_page').eq('instance', 'PETA').maybeSingle(),
+        supabase.from('sync_control').select('status,last_page').eq('instance', 'GMX').maybeSingle(),
+      ]),
+      Promise.all([isCacheEmpty('PETA'), isCacheEmpty('GMX')]),
     ])
     const pc = petaRes.data, gc = gmxRes.data
     const needsFull = (c: any) => !c || c.status === 'pending' || c.status === 'in_progress'
 
-    const pm: 'full'|'incremental' = (reset_peta || mode === 'full' || needsFull(pc)) ? 'full' : 'incremental'
-    const gm: 'full'|'incremental' = (reset_gmx  || mode === 'full' || needsFull(gc))  ? 'full' : 'incremental'
+    const pm: 'full'|'incremental' = (reset_peta || mode === 'full' || needsFull(pc) || isEmptyPeta) ? 'full' : 'incremental'
+    const gm: 'full'|'incremental' = (reset_gmx  || mode === 'full' || needsFull(gc)  || isEmptyGmx)  ? 'full' : 'incremental'
 
-    console.log(`[entry] PETA=${pm}(${pc?.status ?? 'novo'}) GMX=${gm}(${gc?.status ?? 'novo'})`)
+    console.log(`[entry] PETA=${pm}(${pc?.status ?? 'novo'} empty=${isEmptyPeta}) GMX=${gm}(${gc?.status ?? 'novo'} empty=${isEmptyGmx})`)
 
     const skip = (n: string): SR => ({ success: true, count: 0, mode: `skipped:${n}`, completed: true })
     const [pr, gr] = await Promise.all([
