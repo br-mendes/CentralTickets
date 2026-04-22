@@ -3,7 +3,7 @@ import Header from './components/Header'
 import { FilterProvider } from './context/FilterContext'
 
 export const metadata = {
-  title: 'CentralTickets',
+  title: 'Central de Tickets',
   description: 'Sistema interno de tickets GLPI — Peta/GMX',
 }
 
