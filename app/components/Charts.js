@@ -107,11 +107,12 @@ export function BarChart({ labels, data, colors, height = 220, horizontal = fals
             x: {
               ticks: { font: { size: 10 } },
               grid: { color: 'rgba(148,163,184,0.15)' },
-              beginAtZero: true,
+              beginAtZero: horizontal,
             },
             y: {
               ticks: { font: { size: 10 } },
               grid: { display: !horizontal, color: 'rgba(148,163,184,0.15)' },
+              beginAtZero: !horizontal,
             },
           },
           plugins: {
