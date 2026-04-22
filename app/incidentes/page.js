@@ -8,7 +8,7 @@ import InstanceBadge from '../components/InstanceBadge'
 import SLABadge from '../components/SLABadge'
 import UrgencyBadge from '../components/UrgencyBadge'
 
-const OPEN_STATUSES = 'new,processing,pending,pending-approval'
+const ACTIVE_STATUSES = 'new,processing,pending,pending-approval'
 
 const sel = {
   padding: '7px 10px',
@@ -41,6 +41,7 @@ function IncidentesContent() {
        const result = await fetchAllTickets({
          instance: 'PETA,GMX',
          typeId: 1,
+         statuses: ACTIVE_STATUSES,
        })
 
       const data = (result?.data || []).sort((a, b) => {
@@ -106,7 +107,7 @@ ALTER TABLE tickets_cache ADD COLUMN IF NOT EXISTS priority_id INTEGER DEFAULT 3
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
         <div>
           <h1 style={{ fontSize: '1.4rem', fontWeight: 700 }}>Incidentes</h1>
-          <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '2px' }}>Chamados do tipo Incidente — ativos · ordenados por urgência</p>
+          <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '2px' }}>Novo · Em atendimento · Pendente · Aprovação — ordenados por urgência</p>
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           {lastUpdate && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Atualizado: {lastUpdate.toLocaleTimeString('pt-BR')}</span>}
