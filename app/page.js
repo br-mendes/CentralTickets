@@ -14,30 +14,23 @@ const PRIORITY_COLORS = ['#94a3b8', '#3b82f6', '#f59e0b', '#f97316', '#dc2626', 
 
 function StatCard({ label, value, color, href, sub }) {
   const inner = (
-    <div style={{
-      background: 'var(--surface)', border: '1px solid var(--border)',
-      borderRadius: 'var(--radius-lg)', padding: '18px 20px', boxShadow: 'var(--shadow-sm)',
-    }}>
+    <div className="stat-card">
       <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>{label}</div>
       <div style={{ fontSize: '1.9rem', fontWeight: 700, color, lineHeight: 1.1 }}>{value ?? '—'}</div>
       {sub && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>{sub}</div>}
     </div>
   )
-  if (href) return <Link href={href} style={{ textDecoration: 'none', display: 'block' }}>{inner}</Link>
+  if (href) return <Link href={href} className="btn-link" style={{ textDecoration: 'none', display: 'block' }}>{inner}</Link>
   return inner
 }
 
 function SectionTitle({ children }) {
-  return <h2 style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>{children}</h2>
+  return <h2 className="section-title">{children}</h2>
 }
 
 function Card({ children, style }) {
   return (
-    <div style={{
-      background: 'var(--surface)', border: '1px solid var(--border)',
-      borderRadius: 'var(--radius-lg)', padding: '20px', boxShadow: 'var(--shadow-sm)',
-      ...style,
-    }}>
+    <div className="card" style={style}>
       {children}
     </div>
   )
@@ -201,9 +194,19 @@ export default function DashboardPage() {
        {/* Page title */}
        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '8px' }}>
          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-           <h1 style={{ fontSize: '1.4rem', fontWeight: 700 }}>Central de Tickets</h1>
+           <h1 className="section-title" style={{ fontSize: '1.4rem', fontWeight: 700 }}>Central de Tickets</h1>
            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '2px' }}>Visão geral dos tickets GLPI — Peta e GMX</p>
          </div>
+         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+           <button onClick={load} className="btn-primary">
+             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+               <path d="M4 4v5h5M4 20h9a9 9 0 0 0 0-18H4z" />
+             </svg>
+             Atualizar
+           </button>
+           {lastSync && <span className="text-muted-sm">Última sincronização: {fmt(lastSync)}</span>}
+         </div>
+       </div>
          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
            <button onClick={load} style={{
              padding: '6px 10px',

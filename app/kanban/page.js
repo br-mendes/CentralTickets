@@ -24,16 +24,8 @@ function TicketCard({ t }) {
   const waitH = isPending ? calcHoursAgo(t.date_mod) : 0
 
   return (
-    <div style={{
-      background: 'var(--surface)',
-      border: `1px solid ${isLate ? '#ef4444' : 'var(--border)'}`,
-      borderRadius: 'var(--radius-md)',
-      padding: '10px 12px',
-      display: 'flex', flexDirection: 'column', gap: '4px',
-      boxShadow: 'var(--shadow-sm)',
-      minWidth: '260px',
-      maxWidth: '100%',
-      width: '100%',
+    <div className="ticket-card" style={{ 
+      borderColor: isLate ? '#ef4444' : 'var(--border)' 
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', flexWrap: 'nowrap' }}>
         <span style={{ fontWeight: 700, color: 'var(--primary)', fontSize: '0.82rem', flexShrink: 0 }}>#{t.ticket_id}</span>
@@ -88,15 +80,11 @@ function KanbanColumn({ col, allTickets, filterInstance }) {
   const remaining = visible.length - shown
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '320px', minWidth: '300px', flexShrink: 0 }}>
+    <div className="kanban-column">
       {/* Column header */}
-      <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        padding: '9px 13px',
-        borderRadius: 'var(--radius-md)',
-        background: col.color + '1a',
-        border: `1px solid ${col.color}44`,
-        position: 'sticky', top: '60px', zIndex: 10,
+      <div className="kanban-column-header" style={{ 
+        background: col.color + '1a', 
+        border: `1px solid ${col.color}44` 
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
           <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: col.color, flexShrink: 0 }} />
