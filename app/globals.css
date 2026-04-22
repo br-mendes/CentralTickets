@@ -94,17 +94,25 @@ body {
 
 /* ── Row Animations ──────────────────────────────────────────────── */
 @keyframes flash-red {
-  0%, 100% { background-color: rgba(239,68,68,0.08); }
-  50%       { background-color: rgba(239,68,68,0.25); }
+  0%, 100% { background-color: rgba(220, 38, 38, 0.12); }
+  50%       { background-color: rgba(220, 38, 38, 0.35); }
 }
 @keyframes flash-yellow {
-  0%, 100% { background-color: rgba(245,158,11,0.08); }
-  50%       { background-color: rgba(245,158,11,0.22); }
+  0%, 100% { background-color: rgba(245, 158, 11, 0.1); }
+  50%       { background-color: rgba(245, 158, 11, 0.28); }
 }
 
 .sla-late    { animation: flash-red    1200ms ease-in-out infinite; }
 .alert-red   { animation: flash-red    1200ms ease-in-out infinite; }
 .alert-yellow{ animation: flash-yellow 1400ms ease-in-out infinite; }
+
+/* Dark mode: stronger contrast for alert rows */
+[data-theme="dark"] .sla-late {
+  background-color: rgba(220, 38, 38, 0.2) !important;
+}
+[data-theme="dark"] .alert-red {
+  background-color: rgba(220, 38, 38, 0.2) !important;
+}
 
 /* ── Table shared ────────────────────────────────────────────────── */
 .col-id         { width: 70px; }
