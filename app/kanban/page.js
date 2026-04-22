@@ -28,17 +28,19 @@ function TicketCard({ t }) {
       background: 'var(--surface)',
       border: `1px solid ${isLate ? '#ef4444' : 'var(--border)'}`,
       borderRadius: 'var(--radius-md)',
-      padding: '11px 12px',
-      display: 'flex', flexDirection: 'column', gap: '5px',
+      padding: '10px 12px',
+      display: 'flex', flexDirection: 'column', gap: '4px',
       boxShadow: 'var(--shadow-sm)',
+      minWidth: '240px',
+      maxWidth: '280px',
     }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px', flexWrap: 'wrap' }}>
         <span style={{ fontWeight: 700, color: 'var(--primary)', fontSize: '0.82rem' }}>#{t.ticket_id}</span>
         <InstanceBadge instance={t.instance} />
       </div>
 
       {t.title && (
-        <div style={{ fontSize: '0.75rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <div style={{ fontSize: '0.75rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.3 }}>
           {t.title}
         </div>
       )}
@@ -55,7 +57,7 @@ function TicketCard({ t }) {
         </div>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px', flexWrap: 'wrap', gap: '4px' }}>
         <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
           {t.technician || <em>Sem técnico</em>}
         </span>
@@ -85,7 +87,7 @@ function KanbanColumn({ col, allTickets, filterInstance }) {
   const remaining = visible.length - shown
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '270px', flexShrink: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '300px', minWidth: '280px', flexShrink: 0 }}>
       {/* Column header */}
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -202,7 +204,7 @@ export default function KanbanPage() {
       ) : error ? (
         <div style={{ color: '#dc2626', padding: '16px' }}>Erro: {error}</div>
       ) : (
-        <div style={{ display: 'flex', gap: '14px', overflowX: 'auto', paddingBottom: '20px', alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', gap: '14px', overflowX: 'auto', paddingBottom: '20px', alignItems: 'flex-start', flexWrap: 'nowrap' }}>
           {COLUMNS.map(col => (
             <KanbanColumn key={col.label} col={col} allTickets={filtered} filterInstance={fInstance} />
           ))}
