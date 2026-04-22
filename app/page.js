@@ -206,7 +206,7 @@ export default function DashboardPage() {
       {/* Page title */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '8px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <h1 className="section-title" style={{ fontSize: '1.4rem', fontWeight: 700 }}>Central de Tickets</h1>
+          <h1 style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Central de Tickets</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '2px' }}>Visão geral dos tickets GLPI — Peta e GMX</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>

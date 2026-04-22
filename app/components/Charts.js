@@ -83,11 +83,14 @@ export function BarChart({ labels, data, colors, height = 220, horizontal = fals
   const chartRef  = useRef(null)
 
   useEffect(() => {
-    if (!canvasRef.current) return
+    const canvas = canvasRef.current
+    if (!canvas) return
+    let cancelled = false
     import('chart.js/auto').then(({ Chart }) => {
+      if (cancelled) return
       if (chartRef.current) chartRef.current.destroy()
       const bg = Array.isArray(colors) ? colors : (colors || 'rgba(37,99,235,0.75)')
-      chartRef.current = new Chart(canvasRef.current, {
+      chartRef.current = new Chart(canvas, {
         type: 'bar',
         data: {
           labels,
@@ -122,7 +125,10 @@ export function BarChart({ labels, data, colors, height = 220, horizontal = fals
         },
       })
     })
-    return () => { if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null } }
+    return () => {
+      cancelled = true
+      if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null }
+    }
   }, [labels, data, colors, horizontal, label])
 
   return <div style={{ height, position: 'relative' }}><canvas ref={canvasRef} /></div>
