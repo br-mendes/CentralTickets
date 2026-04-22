@@ -10,7 +10,7 @@ import UrgencyBadge from '../components/UrgencyBadge'
 
 const OPEN_STATUSES = 'new,processing,pending,pending-approval'
 
-const inputStyle = {
+const sel = {
   padding: '7px 10px',
   borderRadius: 'var(--radius-md)',
   border: '1px solid var(--border)',

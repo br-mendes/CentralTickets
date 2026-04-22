@@ -197,37 +197,16 @@ export default function DashboardPage() {
            <h1 className="section-title" style={{ fontSize: '1.4rem', fontWeight: 700 }}>Central de Tickets</h1>
            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '2px' }}>Visão geral dos tickets GLPI — Peta e GMX</p>
          </div>
-         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-           <button onClick={load} className="btn-primary">
-             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-               <path d="M4 4v5h5M4 20h9a9 9 0 0 0 0-18H4z" />
-             </svg>
-             Atualizar
-           </button>
-           {lastSync && <span className="text-muted-sm">Última sincronização: {fmt(lastSync)}</span>}
-         </div>
-       </div>
-         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-           <button onClick={load} style={{
-             padding: '6px 10px',
-             borderRadius: 'var(--radius-md)',
-             border: '1px solid var(--border)',
-             background: 'var(--background)',
-             color: 'var(--text-primary)',
-             fontSize: '0.85rem',
-             cursor: 'pointer',
-             display: 'flex',
-             alignItems: 'center',
-             gap: '4px',
-           }}>
-             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-               <path d="M4 4v5h5M4 20h9a9 9 0 0 0 0-18H4z" />
-             </svg>
-             Atualizar
-           </button>
-           {lastSync && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Última sincronização: {fmt(lastSync)}</span>}
-         </div>
-       </div>
+<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button onClick={load} className="btn-primary">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M4 4v5h5M4 20h9a9 9 0 0 0 0-18H4z" />
+              </svg>
+              Atualizar
+            </button>
+            {lastSync && <span className="text-muted-sm">Última sincronização: {fmt(lastSync)}</span>}
+          </div>
+        </div>
 
       {/* Main stat cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '14px' }}>
@@ -411,48 +390,48 @@ export default function DashboardPage() {
             <DoughnutChart labels={prioLabels} data={prioData} colors={prioColors} height={200} />
           </Card>
         )}
-      </div>
+</div>
 
-       {/* By Technician */}
-       {techRows.length > 0 && (
-         <Card>
-           <SectionTitle>Tickets por Técnico (top 15)</SectionTitle>
-           <div style={{ overflowX: 'auto' }}>
-             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
-               <thead>
-                 <tr>
-                   {['Técnico', 'Total'].map(h => (
-                     <th key={h} style={thStyle}>{h}</th>
-                   ))}
-                 </tr>
-               </thead>
-               <tbody>
-                 {techRows.map(([name, total], i) => (
-                   <tr key={name} style={{ background: i % 2 === 0 ? 'var(--surface)' : 'var(--background)' }}>
-                     <td style={{ ...thTd, fontWeight: 600 }}>{name === '—' ? <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em> : name}</td>
-                     <td style={{ ...thTd, fontWeight: 700 }}>{total}</td>
-                   </tr>
-                 ))}
-               </tbody>
-             </table>
-           </div>
-         </Card>
-       )}
+      {/* By Technician */}
+      {techRows.length > 0 && (
+        <Card>
+          <SectionTitle>Tickets por Técnico (top 15)</SectionTitle>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+              <thead>
+                <tr>
+                  {['Técnico', 'Total'].map(h => (
+                    <th key={h} style={thStyle}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {techRows.map(([name, total], i) => (
+                  <tr key={name} style={{ background: i % 2 === 0 ? 'var(--surface)' : 'var(--background)' }}>
+                    <td style={{ ...thTd, fontWeight: 600 }}>{name === '—' ? <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em> : name}</td>
+                    <td style={{ ...thTd, fontWeight: 700 }}>{total}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
 
-       {/* Entity cards */}
-       {entityRows.length > 0 && (
-         <div>
-           <SectionTitle>Tickets por Entidade (top 12)</SectionTitle>
-           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '10px' }}>
-             {entityRows.slice(0, 12).map(([name, s]) => (
-               <Card key={name} style={{ padding: '14px 16px' }}>
-                 <div style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
-                 <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{s.total}</div>
-               </Card>
-             ))}
-           </div>
-         </div>
-       )}
+      {/* Entity cards */}
+      {entityRows.length > 0 && (
+        <div>
+          <SectionTitle>Tickets por Entidade (top 12)</SectionTitle>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '10px' }}>
+            {entityRows.slice(0, 12).map(([name, s]) => (
+              <Card key={name} style={{ padding: '14px 16px' }}>
+                <div style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{s.total}</div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* By Group */}
       {groupRows.length > 0 && (
