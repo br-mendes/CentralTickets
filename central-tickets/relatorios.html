@@ -1091,11 +1091,16 @@ th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                 let page = 0;
                 const pageSize = 2000;
                 let hasMore = true;
+                const selectedInstance = document.getElementById('instanceFilter')?.value || '';
+                const instanceFilter = selectedInstance
+                    ? [selectedInstance.toUpperCase()]
+                    : ['PETA', 'GMX'];
 
                 while (hasMore) {
                     const { data, error } = await window._sb
                         .from('tickets_cache')
                         .select('*')
+                        .in('instance', instanceFilter)
                         .order('date_mod', { ascending: false })
                         .range(page * pageSize, (page + 1) * pageSize - 1);
 

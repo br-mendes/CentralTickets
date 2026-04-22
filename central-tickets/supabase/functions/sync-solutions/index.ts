@@ -135,6 +135,7 @@ async function syncInstanceSolutions(instanceName: string, instanceConfig: typeo
             date_solved: solution.date_creation || new Date().toISOString()
           })
           .eq('id', ticket.id)
+          .eq('instance', ticket.instance)
         
         updated++
         

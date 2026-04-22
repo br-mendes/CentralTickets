@@ -3717,9 +3717,11 @@ ${JSON.stringify(error, null, 2)}
                 let hasMore = true;
 
                 while (hasMore) {
+                    const selectedInstanceKeys = selectedInstances.map(name => name.toUpperCase());
                     const { data, error } = await window._sb
                         .from('tickets_cache')
                         .select('*')
+                        .in('instance', selectedInstanceKeys)
                         .order('date_mod', { ascending: false })
                         .range(page * pageSize, (page + 1) * pageSize - 1);
 

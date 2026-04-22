@@ -125,7 +125,8 @@ Deno.serve(async (req) => {
         await supabase
           .from('tickets_cache')
           .update({ technician: tech.name })
-          .eq('id', ticket.id);
+          .eq('id', ticket.id)
+          .eq('instance', instance);
         
         updated++;
       }

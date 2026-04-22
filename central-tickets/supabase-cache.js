@@ -7,6 +7,18 @@ const SupabaseCache = {
     supabase: null,
     isInitialized: false,
 
+    normalizeInstances(instance = null) {
+        if (Array.isArray(instance)) {
+            return instance.map(i => String(i).toUpperCase());
+        }
+
+        if (instance) {
+            return [String(instance).toUpperCase()];
+        }
+
+        return ['PETA', 'GMX'];
+    },
+
     init(supabaseUrl, supabaseKey) {
         if (this.isInitialized && this.supabase) return this.supabase;
         this.supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
@@ -18,15 +30,14 @@ const SupabaseCache = {
         if (!this.supabase) return [];
 
         try {
+            const instances = this.normalizeInstances(instance);
+
             let query = this.supabase
                 .from('tickets_cache')
                 .select('*')
+                .in('instance', instances)
                 .order('date_mod', { ascending: false })
                 .limit(limit);
-
-            if (instance) {
-                query = query.eq('instance', instance);
-            }
 
             const { data, error } = await query;
             
@@ -42,13 +53,16 @@ const SupabaseCache = {
         }
     },
 
-    async getActiveTickets() {
+    async getActiveTickets(instance = null) {
         if (!this.supabase) return [];
         
         try {
+            const instances = this.normalizeInstances(instance);
+
             const { data, error } = await this.supabase
                 .from('tickets_cache')
                 .select('*')
+                .in('instance', instances)
                 .not('status_key', 'in', '(solved,closed)')
                 .order('date_mod', { ascending: false });
 
@@ -64,15 +78,17 @@ const SupabaseCache = {
         }
     },
 
-    async getWaitingTickets(hoursThreshold = 24) {
+    async getWaitingTickets(hoursThreshold = 24, instance = null) {
         if (!this.supabase) return [];
         
         try {
+            const instances = this.normalizeInstances(instance);
             const threshold = new Date(Date.now() - hoursThreshold * 60 * 60 * 1000).toISOString();
             
             const { data, error } = await this.supabase
                 .from('tickets_cache')
                 .select('*')
+                .in('instance', instances)
                 .not('status_key', 'in', '(solved,closed)')
                 .lt('date_mod', threshold)
                 .order('date_mod', { ascending: true });
@@ -93,16 +109,16 @@ const SupabaseCache = {
         if (!this.supabase) return [];
         
         try {
+            const instances = this.normalizeInstances(filters.instance || null);
+
             let query = this.supabase
                 .from('tickets_cache')
                 .select('*')
+                .in('instance', instances)
                 .gte(dateType === 'opening' ? 'date_created' : 'date_mod', startDate)
                 .lte(dateType === 'opening' ? 'date_created' : 'date_mod', endDate)
                 .order(dateType === 'opening' ? 'date_created' : 'date_mod', { ascending: false });
 
-            if (filters.instance) {
-                query = query.eq('instance', filters.instance);
-            }
             if (filters.entity) {
                 query = query.eq('entity', filters.entity);
             }
@@ -124,13 +140,16 @@ const SupabaseCache = {
         }
     },
 
-    async getStats() {
+    async getStats(instance = null) {
         if (!this.supabase) return null;
         
         try {
+            const instances = this.normalizeInstances(instance);
+
             const { data, error } = await this.supabase
                 .from('tickets_cache')
-                .select('instance, status_key, is_sla_late, root_category, entity, group_name');
+                .select('instance, status_key, is_sla_late, root_category, entity, group_name')
+                .in('instance', instances);
 
             if (error) throw error;
 
