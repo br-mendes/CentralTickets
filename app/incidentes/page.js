@@ -35,14 +35,13 @@ function IncidentesContent() {
   const [fEntity, setFEntity] = useState('')
   const [fUrgency, setFUrgency] = useState('')
 
-  const load = useCallback(async () => {
-    setLoading(true); setError(null); setMissingColumn(false)
-    try {
-      const result = await fetchAllTickets({
-        instance: 'PETA,GMX',
-        statuses: OPEN_STATUSES,
-        typeId: 1,
-      })
+   const load = useCallback(async () => {
+     setLoading(true); setError(null); setMissingColumn(false)
+     try {
+       const result = await fetchAllTickets({
+         instance: 'PETA,GMX',
+         typeId: 1,
+       })
 
       const data = (result?.data || []).sort((a, b) => {
         const urgencyDiff = (b.urgency || 0) - (a.urgency || 0)
@@ -209,8 +208,8 @@ ALTER TABLE tickets_cache ADD COLUMN IF NOT EXISTS priority_id INTEGER DEFAULT 3
                       <span style={{ fontWeight: 700, color: 'var(--primary)' }}>#{t.ticket_id}</span>
                       {t.title && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.title}</div>}
                     </td>
-                    <td style={{ padding: '9px 12px' }}><UrgencyBadge urgency={t.urgency} /></td>
-                    <td style={{ padding: '9px 12px' }}><UrgencyBadge urgency={t.impact} /></td>
+                     <td style={{ padding: '9px 12px' }}><UrgencyBadge urgency={t.urgency} showLabel={true} /></td>
+                     <td style={{ padding: '9px 12px' }}><UrgencyBadge urgency={t.impact} showLabel={true} /></td>
                     <td style={{ padding: '9px 12px' }}><InstanceBadge instance={t.instance} /></td>
                     <td className="col-entity" style={{ padding: '9px 12px' }}>{processEntity(t.entity)}</td>
                     <td style={{ padding: '9px 12px' }}><StatusBadge statusId={t.status_id} statusKey={t.status_key} statusName={t.status_name} /></td>

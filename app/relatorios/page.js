@@ -76,7 +76,7 @@ export default function RelatoriosPage() {
   const URGENCY_LABEL = { '1':'Muito Baixa','2':'Baixa','3':'Média','4':'Alta','5':'Muito Alta','6':'Crítica' }
 
   function exportCSV() {
-    const baseH = ['ID','Instância','Entidade','Categoria','Status','Urgência','Solicitante','Canal','Grupo Responsável','Técnico','SLA Atendimento','SLA Solução','Abertura','Últ. Atualização']
+    const baseH = ['ID','Instância','Entidade','Categoria','Status','Urgência','Canal','Grupo Responsável','Técnico','SLA Atendimento','SLA Solução','Abertura','Últ. Atualização']
     const headers = hasSolution ? [...baseH, 'Data Solução', 'Solução'] : baseH
     const rows = filtered.map(t => {
       const base = [
@@ -172,7 +172,7 @@ export default function RelatoriosPage() {
     )},
   ]
 
-  const baseHeaders = ['ID','Instância','Entidade','Categoria','Status','Urg.','Solicitante','Grupo','Técnico','SLA Atend.','SLA Solução','Abertura','Últ. Atualização']
+  const baseHeaders = ['ID','Instância','Entidade','Categoria','Status','Urg.','Grupo','Técnico','SLA Atend.','SLA Solução','Abertura','Últ. Atualização']
   const tableHeaders = hasSolution ? [...baseHeaders, 'Data Solução', 'Solução'] : baseHeaders
 
   return (
@@ -258,7 +258,6 @@ CREATE INDEX IF NOT EXISTS idx_tickets_cache_date_solved ON tickets_cache(date_s
                   <td style={thTd}>
                     {t.urgency ? <span style={{ fontWeight: 600, fontSize: '0.75rem', color: ['','#64748b','#3b82f6','#d97706','#ea580c','#dc2626','#7f1d1d'][t.urgency] }}>{URGENCY_LABEL[String(t.urgency)] || '—'}</span> : '—'}
                   </td>
-                  <td style={{ ...thTd, color: 'var(--text-secondary)' }}>{t.requester || '—'}</td>
                   <td className="col-group" style={{ ...thTd, color: 'var(--text-secondary)' }}>{lastGroupLabel(t.group_name)}</td>
                   <td className="col-technician" style={{ ...thTd, color: 'var(--text-secondary)' }}>{t.technician || '—'}</td>
                   <td style={thTd}><SLABadge isLate={t.is_overdue_first} /></td>

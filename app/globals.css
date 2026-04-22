@@ -94,17 +94,25 @@ body {
 
 /* ── Row Animations ──────────────────────────────────────────────── */
 @keyframes flash-red {
-  0%, 100% { background-color: rgba(239,68,68,0.08); }
-  50%       { background-color: rgba(239,68,68,0.25); }
+  0%, 100% { background-color: rgba(220, 38, 38, 0.12); }
+  50%       { background-color: rgba(220, 38, 38, 0.35); }
 }
 @keyframes flash-yellow {
-  0%, 100% { background-color: rgba(245,158,11,0.08); }
-  50%       { background-color: rgba(245,158,11,0.22); }
+  0%, 100% { background-color: rgba(245, 158, 11, 0.1); }
+  50%       { background-color: rgba(245, 158, 11, 0.28); }
 }
 
 .sla-late    { animation: flash-red    1200ms ease-in-out infinite; }
 .alert-red   { animation: flash-red    1200ms ease-in-out infinite; }
 .alert-yellow{ animation: flash-yellow 1400ms ease-in-out infinite; }
+
+/* Dark mode: stronger contrast for alert rows */
+[data-theme="dark"] .sla-late {
+  background-color: rgba(220, 38, 38, 0.2) !important;
+}
+[data-theme="dark"] .alert-red {
+  background-color: rgba(220, 38, 38, 0.2) !important;
+}
 
 /* ── Table shared ────────────────────────────────────────────────── */
 .col-id         { width: 70px; }
@@ -125,4 +133,81 @@ body {
   border-top-color: var(--primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
+}
+
+/* ── Button Styles ─────────────────────────────────────────────── */
+.btn-primary {
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.btn-primary:hover {
+  background: var(--primary-dark);
+}
+.btn-secondary {
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.btn-secondary:hover {
+  background: var(--surface);
+}
+.btn-link {
+  color: var(--primary);
+  text-decoration: none;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+.btn-link:hover {
+  text-decoration: underline;
+}
+
+/* ── Card Styles ─────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── Stat Card Styles ─────────────────────────────────────────── */
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── Section Title ─────────────────────────────────────────────── */
+.section-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 12px;
+}
+
+/* ── Text Utilities ─────────────────────────────────────────────── */
+.text-muted-sm {
+  font-size: 0.75rem;
+  color: var(--text-muted);
 }

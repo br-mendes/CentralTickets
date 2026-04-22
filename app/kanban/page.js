@@ -7,7 +7,6 @@ import InstanceBadge from '../components/InstanceBadge'
 import SLABadge from '../components/SLABadge'
 
 const COLUMNS = [
-  { keys: ['new'],              label: 'Novo',           color: '#2563eb' },
   { keys: ['processing'],       label: 'Em Atendimento', color: '#22c55e' },
   { keys: ['pending-approval'], label: 'Aprovação',      color: '#7c3aed' },
   { keys: ['pending'],          label: 'Pendente',       color: '#f97316' },
@@ -25,21 +24,16 @@ function TicketCard({ t }) {
   const waitH = isPending ? calcHoursAgo(t.date_mod) : 0
 
   return (
-    <div style={{
-      background: 'var(--surface)',
-      border: `1px solid ${isLate ? '#ef4444' : 'var(--border)'}`,
-      borderRadius: 'var(--radius-md)',
-      padding: '11px 12px',
-      display: 'flex', flexDirection: 'column', gap: '5px',
-      boxShadow: 'var(--shadow-sm)',
+    <div className="ticket-card" style={{ 
+      borderColor: isLate ? '#ef4444' : 'var(--border)' 
     }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontWeight: 700, color: 'var(--primary)', fontSize: '0.82rem' }}>#{t.ticket_id}</span>
-        <InstanceBadge instance={t.instance} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', flexWrap: 'nowrap' }}>
+        <span style={{ fontWeight: 700, color: 'var(--primary)', fontSize: '0.82rem', flexShrink: 0 }}>#{t.ticket_id}</span>
+        <span style={{ flexShrink: 0 }}><InstanceBadge instance={t.instance} /></span>
       </div>
 
       {t.title && (
-        <div style={{ fontSize: '0.75rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <div style={{ fontSize: '0.75rem', fontWeight: 500, wordBreak: 'break-word', lineHeight: 1.3, marginTop: '2px' }}>
           {t.title}
         </div>
       )}
@@ -56,11 +50,11 @@ function TicketCard({ t }) {
         </div>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
-        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '4px', gap: '4px' }}>
+        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '60%' }}>
           {t.technician || <em>Sem técnico</em>}
         </span>
-        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{fmt(t.date_created)}</span>
+        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', flexShrink: 0 }}>{fmt(t.date_created)}</span>
       </div>
 
       {isPending && waitH > 0 && (
@@ -86,15 +80,11 @@ function KanbanColumn({ col, allTickets, filterInstance }) {
   const remaining = visible.length - shown
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '270px', flexShrink: 0 }}>
+    <div className="kanban-column">
       {/* Column header */}
-      <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        padding: '9px 13px',
-        borderRadius: 'var(--radius-md)',
-        background: col.color + '1a',
-        border: `1px solid ${col.color}44`,
-        position: 'sticky', top: '60px', zIndex: 10,
+      <div className="kanban-column-header" style={{ 
+        background: col.color + '1a', 
+        border: `1px solid ${col.color}44` 
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
           <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: col.color, flexShrink: 0 }} />
@@ -203,7 +193,7 @@ export default function KanbanPage() {
       ) : error ? (
         <div style={{ color: '#dc2626', padding: '16px' }}>Erro: {error}</div>
       ) : (
-        <div style={{ display: 'flex', gap: '14px', overflowX: 'auto', paddingBottom: '20px', alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', gap: '14px', overflowX: 'auto', paddingBottom: '20px', alignItems: 'flex-start', flexWrap: 'nowrap' }}>
           {COLUMNS.map(col => (
             <KanbanColumn key={col.label} col={col} allTickets={filtered} filterInstance={fInstance} />
           ))}

@@ -14,30 +14,23 @@ const PRIORITY_COLORS = ['#94a3b8', '#3b82f6', '#f59e0b', '#f97316', '#dc2626', 
 
 function StatCard({ label, value, color, href, sub }) {
   const inner = (
-    <div style={{
-      background: 'var(--surface)', border: '1px solid var(--border)',
-      borderRadius: 'var(--radius-lg)', padding: '18px 20px', boxShadow: 'var(--shadow-sm)',
-    }}>
+    <div className="stat-card">
       <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>{label}</div>
       <div style={{ fontSize: '1.9rem', fontWeight: 700, color, lineHeight: 1.1 }}>{value ?? '—'}</div>
       {sub && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>{sub}</div>}
     </div>
   )
-  if (href) return <Link href={href} style={{ textDecoration: 'none', display: 'block' }}>{inner}</Link>
+  if (href) return <Link href={href} className="btn-link" style={{ textDecoration: 'none', display: 'block' }}>{inner}</Link>
   return inner
 }
 
 function SectionTitle({ children }) {
-  return <h2 style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>{children}</h2>
+  return <h2 className="section-title">{children}</h2>
 }
 
 function Card({ children, style }) {
   return (
-    <div style={{
-      background: 'var(--surface)', border: '1px solid var(--border)',
-      borderRadius: 'var(--radius-lg)', padding: '20px', boxShadow: 'var(--shadow-sm)',
-      ...style,
-    }}>
+    <div className="card" style={style}>
       {children}
     </div>
   )
@@ -113,18 +106,14 @@ export default function DashboardPage() {
   const catRows = Object.entries(catMap).sort((a, b) => b[1] - a[1]).slice(0, 10)
   const maxCat  = catRows[0]?.[1] || 1
 
-  // Técnico
-  const techMap = {}
-  for (const t of tickets) {
-    const tech = t.technician || '—'
-    if (!techMap[tech]) techMap[tech] = { total: 0, new: 0, processing: 0, pending: 0, approval: 0, solved: 0, closed: 0, peta: 0, gmx: 0 }
-    techMap[tech].total++
-    const sk = getStatusConfig(t.status_id, t.status_key).key
-    if (techMap[tech][sk] !== undefined) techMap[tech][sk]++
-    if ((t.instance || '').toUpperCase() === 'PETA') techMap[tech].peta++
-    else techMap[tech].gmx++
-  }
-  const techRows = Object.entries(techMap).sort((a, b) => b[1].total - a[1].total).slice(0, 20)
+   // Técnico (top 15, apenas total)
+   const techMap = {}
+   for (const t of tickets) {
+     const tech = t.technician || '—'
+     if (!techMap[tech]) techMap[tech] = 0
+     techMap[tech]++
+   }
+   const techRows = Object.entries(techMap).sort((a, b) => b[1] - a[1]).slice(0, 15)
 
   // Entidade
   const entityMap = {}
@@ -202,14 +191,22 @@ export default function DashboardPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
-      {/* Page title */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '8px' }}>
-        <div>
-          <h1 style={{ fontSize: '1.4rem', fontWeight: 700 }}>Dashboard</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '2px' }}>Visão geral dos tickets GLPI — Peta e GMX</p>
+       {/* Page title */}
+       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '8px' }}>
+         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+           <h1 className="section-title" style={{ fontSize: '1.4rem', fontWeight: 700 }}>Central de Tickets</h1>
+           <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '2px' }}>Visão geral dos tickets GLPI — Peta e GMX</p>
+         </div>
+<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button onClick={load} className="btn-primary">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M4 4v5h5M4 20h9a9 9 0 0 0 0-18H4z" />
+              </svg>
+              Atualizar
+            </button>
+            {lastSync && <span className="text-muted-sm">Última sincronização: {fmt(lastSync)}</span>}
+          </div>
         </div>
-        {lastSync && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Última sincronização: {fmt(lastSync)}</span>}
-      </div>
 
       {/* Main stat cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '14px' }}>
@@ -393,34 +390,26 @@ export default function DashboardPage() {
             <DoughnutChart labels={prioLabels} data={prioData} colors={prioColors} height={200} />
           </Card>
         )}
-      </div>
+</div>
 
       {/* By Technician */}
       {techRows.length > 0 && (
         <Card>
-          <SectionTitle>Tickets por Técnico (top {techRows.length})</SectionTitle>
+          <SectionTitle>Tickets por Técnico (top 15)</SectionTitle>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
               <thead>
                 <tr>
-                  {['Técnico', 'Total', 'Novo', 'Em Atend.', 'Pendente', 'Aprovação', 'Solucionado', 'Fechado', 'PETA', 'GMX'].map(h => (
+                  {['Técnico', 'Total'].map(h => (
                     <th key={h} style={thStyle}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {techRows.map(([name, s], i) => (
+                {techRows.map(([name, total], i) => (
                   <tr key={name} style={{ background: i % 2 === 0 ? 'var(--surface)' : 'var(--background)' }}>
                     <td style={{ ...thTd, fontWeight: 600 }}>{name === '—' ? <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em> : name}</td>
-                    <td style={{ ...thTd, fontWeight: 700 }}>{s.total}</td>
-                    <td style={{ ...thTd, color: '#2563eb' }}>{s.new}</td>
-                    <td style={{ ...thTd, color: '#16a34a' }}>{s.processing}</td>
-                    <td style={{ ...thTd, color: '#ea580c' }}>{s.pending}</td>
-                    <td style={{ ...thTd, color: '#7c3aed' }}>{s.approval}</td>
-                    <td style={{ ...thTd, color: '#52525b' }}>{s.solved}</td>
-                    <td style={{ ...thTd, color: '#374151' }}>{s.closed}</td>
-                    <td style={{ ...thTd, color: '#2563eb' }}>{s.peta}</td>
-                    <td style={{ ...thTd, color: '#ea580c' }}>{s.gmx}</td>
+                    <td style={{ ...thTd, fontWeight: 700 }}>{total}</td>
                   </tr>
                 ))}
               </tbody>
@@ -432,16 +421,12 @@ export default function DashboardPage() {
       {/* Entity cards */}
       {entityRows.length > 0 && (
         <div>
-          <SectionTitle>Tickets por Entidade (top {entityRows.length})</SectionTitle>
+          <SectionTitle>Tickets por Entidade (top 12)</SectionTitle>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '10px' }}>
-            {entityRows.map(([name, s]) => (
+            {entityRows.slice(0, 12).map(([name, s]) => (
               <Card key={name} style={{ padding: '14px 16px' }}>
                 <div style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
                 <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{s.total}</div>
-                <div style={{ display: 'flex', gap: '10px', marginTop: '4px', fontSize: '0.75rem' }}>
-                  <span style={{ color: '#2563eb' }}>P:{s.peta}</span>
-                  <span style={{ color: '#ea580c' }}>G:{s.gmx}</span>
-                </div>
               </Card>
             ))}
           </div>
@@ -468,26 +453,7 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      {/* Quick links */}
-      <Card>
-        <SectionTitle>Acessos Rápidos</SectionTitle>
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          {[
-            { href: '/tickets',    label: 'Monitor.Tickets' },
-            { href: '/incidentes', label: 'Incidentes' },
-            { href: '/kanban',     label: 'Kanban' },
-            { href: '/relatorios', label: 'Relatórios' },
-          ].map(l => (
-            <Link key={l.href} href={l.href} style={{
-              padding: '8px 14px', borderRadius: 'var(--radius-md)',
-              background: 'var(--background)', border: '1px solid var(--border)',
-              color: 'var(--text-primary)', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 500,
-            }}>
-              {l.label}
-            </Link>
-          ))}
-        </div>
-      </Card>
+
     </div>
   )
 }
