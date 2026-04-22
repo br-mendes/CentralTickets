@@ -6,7 +6,7 @@ import { fetchAllTickets } from './lib/tickets-api'
 import { DoughnutChart, LineChart, BarChart } from './components/Charts'
 import {
   processEntity, lastGroupLabel, fmt, calcDaysOverdue,
-  build30DayTrend, getStatusConfig, calcHoursAgo, formatWaitTime, formatSeconds, URGENCY_MAP,
+  build30DayTrend, getStatusConfig, calcHoursAgo, formatWaitTime, formatSeconds,
 } from './lib/utils'
 
 const PRIORITY_LABELS = { 1: 'Muito Baixa', 2: 'Baixa', 3: 'Média', 4: 'Alta', 5: 'Urgente', 6: 'Crítica' }
@@ -114,18 +114,17 @@ export default function DashboardPage() {
   const catRows = Object.entries(catMap).sort((a, b) => b[1] - a[1]).slice(0, 10)
   const maxCat  = catRows[0]?.[1] || 1
 
-  // Técnico (top 10, BarChart)
+  // Técnico (top 10 — ranked list)
   const techMap = {}
   for (const t of tickets) {
     const tech = t.technician || '—'
     if (!techMap[tech]) techMap[tech] = 0
     techMap[tech]++
   }
-  const techRows   = Object.entries(techMap).sort((a, b) => b[1] - a[1]).slice(0, 10)
-  const techLabels = techRows.map(([name]) => name === '—' ? 'Sem técnico' : name)
-  const techData   = techRows.map(([, count]) => count)
+  const techRows = Object.entries(techMap).sort((a, b) => b[1] - a[1]).slice(0, 10)
+  const maxTech  = techRows[0]?.[1] || 1
 
-  // Entidade
+  // Entidade (top 16)
   const entityMap = {}
   for (const t of tickets) {
     const e = processEntity(t.entity) || '—'
@@ -134,7 +133,7 @@ export default function DashboardPage() {
     if ((t.instance || '').toUpperCase() === 'PETA') entityMap[e].peta++
     else entityMap[e].gmx++
   }
-  const entityRows = Object.entries(entityMap).sort((a, b) => b[1].total - a[1].total).slice(0, 12)
+  const entityRows = Object.entries(entityMap).sort((a, b) => b[1].total - a[1].total).slice(0, 16)
 
   // Grupo
   const groupMap = {}
@@ -149,11 +148,6 @@ export default function DashboardPage() {
   const prioMap = tickets.reduce((acc, t) => {
     const pid = t.priority_id || 3
     acc[pid] = (acc[pid] || 0) + 1; return acc
-  }, {})
-
-  // Urgência
-  const urgencyMap = tickets.reduce((acc, t) => {
-    const u = t.urgency || 3; acc[u] = (acc[u] || 0) + 1; return acc
   }, {})
 
   // Tempo médio de resolução
@@ -312,44 +306,23 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      {/* Urgência + Canal de Requisição */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+      {/* Canal de Requisição */}
+      {reqTypeRows.length > 1 && (
         <Card>
-          <SectionTitle>Distribuição por Urgência</SectionTitle>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
-            {[6,5,4,3,2,1].map(u => {
-              const count = urgencyMap[u] || 0
-              const cfg = URGENCY_MAP[u]
-              const maxU = Math.max(...Object.values(urgencyMap), 1)
-              return (
-                <div key={u} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ width: '80px', fontSize: '0.78rem', color: cfg.color, fontWeight: 600, flexShrink: 0 }}>{cfg.label}</span>
-                  <div style={{ flex: 1, height: '8px', background: 'var(--border)', borderRadius: '9999px', overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${(count / maxU) * 100}%`, background: cfg.color, borderRadius: '9999px' }} />
-                  </div>
-                  <span style={{ fontSize: '0.8rem', fontWeight: 600, width: '28px', textAlign: 'right', color: cfg.color }}>{count}</span>
+          <SectionTitle>Canal de Requisição</SectionTitle>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '7px 24px' }}>
+            {reqTypeRows.map(([name, count]) => (
+              <div key={name} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '130px', fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0, color: 'var(--text-secondary)' }}>{name}</div>
+                <div style={{ flex: 1, height: '8px', background: 'var(--border)', borderRadius: '9999px', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${(count / maxReqType) * 100}%`, background: 'var(--primary)', borderRadius: '9999px' }} />
                 </div>
-              )
-            })}
+                <span style={{ fontSize: '0.8rem', fontWeight: 600, width: '28px', textAlign: 'right' }}>{count}</span>
+              </div>
+            ))}
           </div>
         </Card>
-        {reqTypeRows.length > 1 && (
-          <Card>
-            <SectionTitle>Canal de Requisição</SectionTitle>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
-              {reqTypeRows.map(([name, count]) => (
-                <div key={name} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{ width: '120px', fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0, color: 'var(--text-secondary)' }}>{name}</div>
-                  <div style={{ flex: 1, height: '8px', background: 'var(--border)', borderRadius: '9999px', overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${(count / maxReqType) * 100}%`, background: 'var(--primary)', borderRadius: '9999px' }} />
-                  </div>
-                  <span style={{ fontSize: '0.8rem', fontWeight: 600, width: '28px', textAlign: 'right' }}>{count}</span>
-                </div>
-              ))}
-            </div>
-          </Card>
-        )}
-      </div>
+      )}
 
       {/* Tickets em Aprovação */}
       {approvalTickets.length > 0 && (
@@ -401,26 +374,33 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Técnicos — BarChart horizontal (top 10) */}
+      {/* Técnicos — ranked list (top 10) */}
       {techRows.length > 0 && (
         <Card>
-          <SectionTitle>Tickets por Técnico (top 10)</SectionTitle>
-          <BarChart
-            labels={techLabels}
-            data={techData}
-            colors="rgba(37,99,235,0.72)"
-            height={Math.max(180, techRows.length * 28)}
-            horizontal={true}
-          />
+          <SectionTitle>Tickets por Técnico (top {techRows.length})</SectionTitle>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '8px 32px' }}>
+            {techRows.map(([name, count], i) => (
+              <div key={name} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', width: '18px', textAlign: 'right', flexShrink: 0, fontWeight: 600 }}>{i + 1}</span>
+                <div style={{ width: '150px', fontSize: '0.8rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  {name === '—' ? <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em> : name}
+                </div>
+                <div style={{ flex: 1, height: '10px', background: 'var(--border)', borderRadius: '9999px', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', borderRadius: '9999px', width: `${(count / maxTech) * 100}%`, background: 'linear-gradient(90deg, var(--primary), var(--primary-dark))' }} />
+                </div>
+                <span style={{ fontSize: '0.82rem', fontWeight: 700, width: '28px', textAlign: 'right', color: 'var(--primary)', flexShrink: 0 }}>{count}</span>
+              </div>
+            ))}
+          </div>
         </Card>
       )}
 
       {/* Entity cards */}
       {entityRows.length > 0 && (
         <div>
-          <SectionTitle>Tickets por Entidade (top 12)</SectionTitle>
+          <SectionTitle>Tickets por Entidade (top {Math.min(entityRows.length, 16)})</SectionTitle>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '10px' }}>
-            {entityRows.slice(0, 12).map(([name, s]) => (
+            {entityRows.slice(0, 16).map(([name, s]) => (
               <Card key={name} style={{ padding: '14px 16px' }}>
                 <div style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
                 <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{s.total}</div>
