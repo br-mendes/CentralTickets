@@ -1,3 +1,128 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --background: #f8fafc;
+  --surface: #ffffff;
+  --border: #e2e8f0;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --status-new: #3b82f6;
+  --status-processing: #22c55e;
+  --status-pending: #f97316;
+  --status-approval: #f97316;
+  --status-solved: #6b7280;
+  --status-closed: #1f2937;
+  --sla-ok: #10b981;
+  --sla-late: #ef4444;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+}
+
+[data-theme="dark"] {
+  --background: #0f172a;
+  --surface: #1e293b;
+  --border: #334155;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background-color: var(--background);
+  color: var(--text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+/* ── Status Badges ───────────────────────────────────────────────── */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.status-badge.new      { background: rgba(59,130,246,0.15);  color: #2563eb; }
+.status-badge.processing { background: rgba(34,197,94,0.15); color: #16a34a; }
+.status-badge.pending  { background: rgba(249,115,22,0.15);  color: #ea580c; }
+.status-badge.approval { background: rgba(249,115,22,0.15);  color: #ea580c; }
+.status-badge.solved   { background: rgba(107,114,128,0.15); color: #52525b; }
+.status-badge.closed   { background: rgba(31,41,55,0.25);    color: #374151; }
+.status-badge.unknown  { background: rgba(148,163,184,0.15); color: #64748b; }
+
+/* ── Instance Badges ─────────────────────────────────────────────── */
+.instance-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+.instance-badge.peta { background: rgba(37,99,235,0.12); color: #2563eb; }
+.instance-badge.gmx  { background: rgba(234,88,12,0.12); color: #ea580c; }
+
+/* ── SLA Badges ──────────────────────────────────────────────────── */
+.sla-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.sla-badge.ok   { background: rgba(34,197,94,0.15);  color: #16a34a; }
+.sla-badge.late { background: rgba(239,68,68,0.15);   color: #dc2626; }
+
+/* ── Row Animations ──────────────────────────────────────────────── */
+@keyframes flash-red {
+  0%, 100% { background-color: rgba(239,68,68,0.08); }
+  50%       { background-color: rgba(239,68,68,0.25); }
+}
+@keyframes flash-yellow {
+  0%, 100% { background-color: rgba(245,158,11,0.08); }
+  50%       { background-color: rgba(245,158,11,0.22); }
+}
+
+.sla-late    { animation: flash-red    1200ms ease-in-out infinite; }
+.alert-red   { animation: flash-red    1200ms ease-in-out infinite; }
+.alert-yellow{ animation: flash-yellow 1400ms ease-in-out infinite; }
+
+/* ── Table shared ────────────────────────────────────────────────── */
+.col-id         { width: 70px; }
+.col-instance   { width: 80px; }
+.col-entity     { max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+.col-technician { width: 140px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+.col-group      { width: 160px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+.col-status     { width: 130px; }
+.col-date       { width: 110px; }
+.col-sla        { width: 105px; }
+.col-solution   { max-width: 250px; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── Spinner ─────────────────────────────────────────────────────── */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  width: 36px; height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}

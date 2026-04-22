@@ -41,7 +41,7 @@ export default async function GLPITickets({ params }) {
       <div className="bg-white p-4 rounded shadow">
         <ul className="space-y-2">
           {tickets.map(ticket => (
-            <li key={`${ticket.id}-${source}`} className="border-b pb-2">
+            <li key={ticket.id} className="border-b pb-2">
               <a
                 href={`/tickets/${ticket.id}`}
                 className="text-blue-500 hover:underline"

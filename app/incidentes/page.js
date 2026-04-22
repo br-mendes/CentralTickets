@@ -1,11 +1,12 @@
 'use client'
-import { useEffect, useState, useCallback, useRef, Suspense } from 'react'
+import { useEffect, useState, useCallback, Suspense } from 'react'
 import { getSupabaseClient } from '@/lib/supabase/client'
 import { useFilters } from '../context/FilterContext'
 import { processEntity, lastGroupLabel, fmt, calcHoursAgo, formatWaitTime } from '../lib/utils'
 import StatusBadge from '../components/StatusBadge'
 import InstanceBadge from '../components/InstanceBadge'
 import SLABadge from '../components/SLABadge'
+import UrgencyBadge from '../components/UrgencyBadge'
 
 const sel = {
   padding: '7px 10px',
@@ -16,13 +17,13 @@ const sel = {
   fontSize: '0.82rem',
 }
 
-function TicketsContent() {
+function IncidentesContent() {
   const { applyFilters, setAvailableTechnicians } = useFilters()
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [lastUpdate, setLastUpdate] = useState(null)
-  const hasData = useRef(false)
+  const [missingColumn, setMissingColumn] = useState(false)
 
   const [search, setSearch] = useState('')
   const [fInstance, setFInstance] = useState('')
@@ -33,44 +34,39 @@ function TicketsContent() {
   const [fUrgency, setFUrgency] = useState('')
 
   const load = useCallback(async () => {
-    if (!hasData.current) setLoading(true)
-    setError(null)
+    setLoading(true); setError(null); setMissingColumn(false)
     try {
       const sb = getSupabaseClient()
       if (!sb) throw new Error('Supabase não configurado.')
+
       const { data, error: err } = await sb
         .from('tickets_cache')
-        .select('ticket_id,title,entity,status_id,status_key,status_name,group_name,technician,requester,urgency,is_sla_late,is_overdue_resolve,date_created,date_mod,due_date,instance')
+        .select('ticket_id,title,entity,status_id,status_key,status_name,group_name,technician,requester,urgency,impact,is_sla_late,is_overdue_resolve,date_created,date_mod,due_date,instance,type_id')
         .in('status_key', ['new', 'processing', 'pending', 'pending-approval'])
+        .eq('type_id', 1)
         .eq('is_deleted', false)
+        .order('urgency', { ascending: false })
         .order('date_mod', { ascending: false })
-      if (err) throw err
+
+      if (err) {
+        if (err.message && err.message.includes('type_id')) { setMissingColumn(true); return }
+        throw err
+      }
+
       setTickets(data || [])
-      hasData.current = true
       setLastUpdate(new Date())
       const techs = [...new Set((data || []).map(t => t.technician).filter(Boolean))].sort()
       setAvailableTechnicians(techs)
-    } catch (e) { setError(e.message) }
-    finally { setLoading(false) }
+    } catch (e) {
+      if (e.message && e.message.includes('type_id')) setMissingColumn(true)
+      else setError(e.message)
+    } finally { setLoading(false) }
   }, [setAvailableTechnicians])
 
   useEffect(() => {
-    const sb = getSupabaseClient()
     load()
-
-    // Polling a cada 30 segundos
-    const iv = setInterval(load, 30 * 1000)
-
-    // Realtime: atualiza imediatamente quando o banco muda
-    const channel = sb
-      .channel('monitor-tickets')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets_cache' }, load)
-      .subscribe()
-
-    return () => {
-      clearInterval(iv)
-      channel.unsubscribe()
-    }
+    const iv = setInterval(load, 3 * 60 * 1000)
+    return () => clearInterval(iv)
   }, [load])
 
   const filtered = applyFilters(tickets).filter(t => {
@@ -93,15 +89,28 @@ function TicketsContent() {
   const late     = filtered.filter(t => t.is_sla_late || t.is_overdue_resolve).length
   const proc     = filtered.filter(t => t.status_key === 'processing').length
   const pend     = filtered.filter(t => t.status_key === 'pending').length
-  const approval = filtered.filter(t => t.status_key === 'pending-approval').length
+  const aprov    = filtered.filter(t => t.status_key === 'pending-approval').length
   const critical = filtered.filter(t => (t.urgency || 0) >= 5).length
+
+  if (missingColumn) {
+    return (
+      <div style={{ padding: '32px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', textAlign: 'center' }}>
+        <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#ea580c', marginBottom: '8px' }}>Migração de banco necessária</div>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Execute migration-v3.sql no painel do Supabase.</p>
+        <pre style={{ marginTop: '16px', padding: '12px', background: 'var(--background)', borderRadius: 'var(--radius-md)', fontSize: '0.78rem', textAlign: 'left', overflowX: 'auto' }}>
+{`ALTER TABLE tickets_cache ADD COLUMN IF NOT EXISTS type_id INTEGER DEFAULT 2;
+ALTER TABLE tickets_cache ADD COLUMN IF NOT EXISTS priority_id INTEGER DEFAULT 3;`}
+        </pre>
+      </div>
+    )
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
         <div>
-          <h1 style={{ fontSize: '1.4rem', fontWeight: 700 }}>Monitor.Tickets</h1>
-          <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '2px' }}>Novo • Em atendimento • Pendente • Aprovação</p>
+          <h1 style={{ fontSize: '1.4rem', fontWeight: 700 }}>Incidentes</h1>
+          <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '2px' }}>Chamados do tipo Incidente — ativos · ordenados por urgência</p>
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           {lastUpdate && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Atualizado: {lastUpdate.toLocaleTimeString('pt-BR')}</span>}
@@ -109,15 +118,14 @@ function TicketsContent() {
         </div>
       </div>
 
-      {/* Summary pills */}
       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
         {[
-          { label: 'Em atendimento', v: proc,            color: '#16a34a' },
-          { label: 'Pendentes',      v: pend,            color: '#ea580c' },
-          { label: 'Aprovação',      v: approval,        color: '#7c3aed' },
-          { label: 'SLA Excedido',   v: late,            color: '#dc2626' },
-          { label: 'Urgência Alta+', v: critical,        color: '#b91c1c' },
-          { label: 'Total filtrado', v: filtered.length, color: 'var(--text-secondary)' },
+          { label: 'Em atendimento',  v: proc,            color: '#16a34a' },
+          { label: 'Pendentes',       v: pend,            color: '#ea580c' },
+          { label: 'Aprovação',       v: aprov,           color: '#7c3aed' },
+          { label: 'SLA Excedido',    v: late,            color: '#dc2626' },
+          { label: 'Urgência Muito Alta+', v: critical,   color: '#b91c1c' },
+          { label: 'Total filtrado',  v: filtered.length, color: 'var(--text-secondary)' },
         ].map(s => (
           <div key={s.label} style={{
             display: 'flex', alignItems: 'center', gap: '7px',
@@ -131,21 +139,18 @@ function TicketsContent() {
         ))}
       </div>
 
-      {/* Filters */}
       <div style={{
         background: 'var(--surface)', border: '1px solid var(--border)',
         borderRadius: 'var(--radius-lg)', padding: '14px',
         display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center',
       }}>
         <input placeholder="Buscar ID, título, entidade, solicitante..." value={search}
-          onChange={e => setSearch(e.target.value)} style={{ ...sel, minWidth: '220px', flex: 1 }} />
-
+          onChange={e => setSearch(e.target.value)} style={{ ...sel, minWidth: '200px', flex: 1 }} />
         <select value={fInstance} onChange={e => setFInstance(e.target.value)} style={sel}>
           <option value="">Todas as instâncias</option>
           <option value="PETA">Peta</option>
           <option value="GMX">GMX</option>
         </select>
-
         <select value={fStatus} onChange={e => setFStatus(e.target.value)} style={sel}>
           <option value="">Todos os status</option>
           <option value="new">Novo</option>
@@ -153,55 +158,45 @@ function TicketsContent() {
           <option value="pending">Pendente</option>
           <option value="pending-approval">Aprovação</option>
         </select>
-
         <select value={fUrgency} onChange={e => setFUrgency(e.target.value)} style={sel}>
           <option value="">Toda urgência</option>
           <option value="6">Crítica</option>
           <option value="5">Muito Alta</option>
           <option value="4">Alta</option>
           <option value="3">Média</option>
-          <option value="2">Baixa</option>
-          <option value="1">Muito Baixa</option>
         </select>
-
         <select value={fSLA} onChange={e => setFSLA(e.target.value)} style={sel}>
           <option value="">Todos os SLA</option>
           <option value="late">SLA Excedido</option>
           <option value="ok">No Prazo</option>
         </select>
-
         <select value={fGroup} onChange={e => setFGroup(e.target.value)} style={{ ...sel, maxWidth: '160px' }}>
           <option value="">Todos os grupos</option>
           {groups.map(g => <option key={g} value={g}>{g}</option>)}
         </select>
-
         <select value={fEntity} onChange={e => setFEntity(e.target.value)} style={{ ...sel, maxWidth: '160px' }}>
           <option value="">Todas as entidades</option>
           {entities.map(e => <option key={e} value={e}>{e}</option>)}
         </select>
-
         <button onClick={() => setFSLA('late')} style={{ ...sel, cursor: 'pointer', background: fSLA === 'late' ? '#fee2e2' : undefined, color: '#dc2626', fontWeight: 600 }}>SLA fora</button>
         <button onClick={() => setFStatus('pending')} style={{ ...sel, cursor: 'pointer', background: fStatus === 'pending' ? '#fff7ed' : undefined, color: '#ea580c', fontWeight: 600 }}>Pendentes</button>
-        <button onClick={() => setFStatus('pending-approval')} style={{ ...sel, cursor: 'pointer', background: fStatus === 'pending-approval' ? '#f3e8ff' : undefined, color: '#7c3aed', fontWeight: 600 }}>Aprovação</button>
         <button onClick={() => { setSearch(''); setFInstance(''); setFStatus(''); setFSLA(''); setFGroup(''); setFEntity(''); setFUrgency('') }}
           style={{ ...sel, cursor: 'pointer' }}>Limpar</button>
-
         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '4px' }}>{filtered.length} resultados</span>
       </div>
 
-      {/* Table */}
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '48px' }}><div className="spinner" /></div>
       ) : error ? (
         <div style={{ color: '#dc2626', padding: '16px' }}>Erro: {error}</div>
       ) : filtered.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>Nenhum ticket encontrado.</div>
+        <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>Nenhum incidente encontrado.</div>
       ) : (
         <div style={{ overflowX: 'auto', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
             <thead>
               <tr style={{ background: 'var(--background)', borderBottom: '2px solid var(--border)' }}>
-                {['ID', 'Instância', 'Entidade', 'Status', 'Grupo', 'Técnico', 'Abertura', 'Últ. Atualização', 'Previsto', 'SLA'].map(h => (
+                {['ID', 'Urg.', 'Imp.', 'Instância', 'Entidade', 'Status', 'Grupo', 'Técnico', 'Solicitante', 'Abertura', 'Últ. Atualização', 'Previsto', 'SLA'].map(h => (
                   <th key={h} style={{ padding: '9px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -217,6 +212,8 @@ function TicketsContent() {
                       <span style={{ fontWeight: 700, color: 'var(--primary)' }}>#{t.ticket_id}</span>
                       {t.title && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.title}</div>}
                     </td>
+                    <td style={{ padding: '9px 12px' }}><UrgencyBadge urgency={t.urgency} /></td>
+                    <td style={{ padding: '9px 12px' }}><UrgencyBadge urgency={t.impact} /></td>
                     <td style={{ padding: '9px 12px' }}><InstanceBadge instance={t.instance} /></td>
                     <td className="col-entity" style={{ padding: '9px 12px' }}>{processEntity(t.entity)}</td>
                     <td style={{ padding: '9px 12px' }}><StatusBadge statusId={t.status_id} statusKey={t.status_key} statusName={t.status_name} /></td>
@@ -225,6 +222,9 @@ function TicketsContent() {
                     </td>
                     <td className="col-technician" style={{ padding: '9px 12px', color: 'var(--text-secondary)' }}>
                       {t.technician || <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em>}
+                    </td>
+                    <td style={{ padding: '9px 12px', color: 'var(--text-secondary)' }}>
+                      {t.requester || <em style={{ color: 'var(--text-muted)' }}>—</em>}
                     </td>
                     <td style={{ padding: '9px 12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>{fmt(t.date_created)}</td>
                     <td style={{ padding: '9px 12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>{formatWaitTime(calcHoursAgo(t.date_mod))}</td>
@@ -241,10 +241,10 @@ function TicketsContent() {
   )
 }
 
-export default function TicketsAtivosPage() {
+export default function IncidentesPage() {
   return (
     <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', padding: '48px' }}><div className="spinner" /></div>}>
-      <TicketsContent />
+      <IncidentesContent />
     </Suspense>
   )
 }

@@ -1,22 +1,32 @@
-// app/layout.js
 import './globals.css'
+import Header from './components/Header'
+import { FilterProvider } from './context/FilterContext'
 
 export const metadata = {
-  title: 'CentralTickets - Sistema Interno',
-  description: 'Sistema interno de tickets para Peta/GMX',
+  title: 'CentralTickets',
+  description: 'Sistema interno de tickets GLPI — Peta/GMX',
 }
 
 export default function RootLayout({ children }) {
   return (
     <html lang="pt-BR">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+      </head>
       <body>
-        <header className="bg-blue-600 text-white p-4">
-          <h1 className="text-2xl font-bold">CentralTickets</h1>
-        </header>
-        <main className="p-4">{children}</main>
-        <footer className="bg-gray-200 p-4 text-center">
-          <p>© 2026 CentralTickets - GMX/Peta Tecnologia</p>
-        </footer>
+        <FilterProvider>
+          <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+            <Header />
+            <main style={{ flex: 1, padding: '24px', maxWidth: '1800px', margin: '0 auto', width: '100%' }}>
+              {children}
+            </main>
+            <footer style={{ borderTop: '1px solid var(--border)', padding: '10px 24px', textAlign: 'center', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+              © 2026 CentralTickets — GMX/Peta Tecnologia
+            </footer>
+          </div>
+        </FilterProvider>
       </body>
     </html>
   )
