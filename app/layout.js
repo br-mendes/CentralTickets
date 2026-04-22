@@ -5,6 +5,9 @@ import { FilterProvider } from './context/FilterContext'
 export const metadata = {
   title: 'Central de Tickets',
   description: 'Sistema interno de tickets GLPI — Peta/GMX',
+  icons: {
+    icon: '/favicon-peta.png',
+  },
 }
 
 export default function RootLayout({ children }) {
@@ -22,9 +25,6 @@ export default function RootLayout({ children }) {
             <main style={{ flex: 1, padding: '24px', maxWidth: '1800px', margin: '0 auto', width: '100%' }}>
               {children}
             </main>
-            <footer style={{ borderTop: '1px solid var(--border)', padding: '10px 24px', textAlign: 'center', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-              © 2026 CentralTickets — GMX/Peta Tecnologia
-            </footer>
           </div>
         </FilterProvider>
       </body>

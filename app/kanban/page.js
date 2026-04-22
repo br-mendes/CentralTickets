@@ -7,7 +7,6 @@ import InstanceBadge from '../components/InstanceBadge'
 import SLABadge from '../components/SLABadge'
 
 const COLUMNS = [
-  { keys: ['new'],              label: 'Novo',           color: '#2563eb' },
   { keys: ['processing'],       label: 'Em Atendimento', color: '#22c55e' },
   { keys: ['pending-approval'], label: 'Aprovação',      color: '#7c3aed' },
   { keys: ['pending'],          label: 'Pendente',       color: '#f97316' },
