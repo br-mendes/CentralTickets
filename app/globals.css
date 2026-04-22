@@ -141,60 +141,39 @@ body {
 }
 
 /* ── Button Styles ─────────────────────────────────────────────── */
-.btn-primary {
+.btn-primary, .btn-export, .btn-secondary {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 7px 14px;
   border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+}
+.btn-primary {
   border: none;
   background: var(--primary);
   color: #fff;
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  white-space: nowrap;
 }
-.btn-primary:hover {
-  background: var(--primary-dark);
-}
+.btn-primary:hover { background: var(--primary-dark); }
+
 .btn-export {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 14px;
-  border-radius: var(--radius-md);
   border: none;
   background: #16a34a;
   color: #fff;
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  white-space: nowrap;
 }
-.btn-export:hover {
-  background: #15803d;
-}
+.btn-export:hover { background: #15803d; }
+
 .btn-secondary {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 14px;
-  border-radius: var(--radius-md);
   border: 1px solid var(--border);
   background: var(--background);
   color: var(--text-primary);
-  font-size: 0.82rem;
   font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  white-space: nowrap;
 }
-.btn-secondary:hover {
-  background: var(--surface);
-}
+.btn-secondary:hover { background: var(--surface); }
 .btn-link {
   color: var(--primary);
   text-decoration: none;

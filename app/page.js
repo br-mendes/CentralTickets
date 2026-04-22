@@ -307,7 +307,7 @@ export default function DashboardPage() {
       )}
 
       {/* Canal de Requisição */}
-      {reqTypeRows.length > 1 && (
+      {reqTypeRows.length > 0 && (
         <Card>
           <SectionTitle>Canal de Requisição</SectionTitle>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '7px 24px' }}>
