@@ -1,12 +1,14 @@
 'use client'
 import { useEffect, useState, useCallback, Suspense } from 'react'
-import { getSupabaseClient } from '@/lib/supabase/client'
+import { fetchAllTickets } from '../lib/tickets-api'
 import { useFilters } from '../context/FilterContext'
 import { processEntity, lastGroupLabel, fmt, calcHoursAgo, formatWaitTime } from '../lib/utils'
 import StatusBadge from '../components/StatusBadge'
 import InstanceBadge from '../components/InstanceBadge'
 import SLABadge from '../components/SLABadge'
 import UrgencyBadge from '../components/UrgencyBadge'
+
+const OPEN_STATUSES = 'new,processing,pending,pending-approval'
 
 const sel = {
   padding: '7px 10px',
@@ -36,26 +38,20 @@ function IncidentesContent() {
   const load = useCallback(async () => {
     setLoading(true); setError(null); setMissingColumn(false)
     try {
-      const sb = getSupabaseClient()
-      if (!sb) throw new Error('Supabase não configurado.')
+      const result = await fetchAllTickets({
+        statuses: OPEN_STATUSES,
+        typeId: 1,
+      })
 
-      const { data, error: err } = await sb
-        .from('tickets_cache')
-        .select('ticket_id,title,entity,status_id,status_key,status_name,group_name,technician,requester,urgency,impact,is_sla_late,is_overdue_resolve,date_created,date_mod,due_date,instance,type_id')
-        .in('status_key', ['new', 'processing', 'pending', 'pending-approval'])
-        .eq('type_id', 1)
-        .eq('is_deleted', false)
-        .order('urgency', { ascending: false })
-        .order('date_mod', { ascending: false })
+      const data = (result?.data || []).sort((a, b) => {
+        const urgencyDiff = (b.urgency || 0) - (a.urgency || 0)
+        if (urgencyDiff !== 0) return urgencyDiff
+        return new Date(b.date_mod || 0).getTime() - new Date(a.date_mod || 0).getTime()
+      })
 
-      if (err) {
-        if (err.message && err.message.includes('type_id')) { setMissingColumn(true); return }
-        throw err
-      }
-
-      setTickets(data || [])
+      setTickets(data)
       setLastUpdate(new Date())
-      const techs = [...new Set((data || []).map(t => t.technician).filter(Boolean))].sort()
+      const techs = [...new Set(data.map(t => t.technician).filter(Boolean))].sort()
       setAvailableTechnicians(techs)
     } catch (e) {
       if (e.message && e.message.includes('type_id')) setMissingColumn(true)

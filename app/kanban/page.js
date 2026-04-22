@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
-import { getSupabaseClient } from '@/lib/supabase/client'
+import { fetchAllTickets } from '../lib/tickets-api'
 import { useFilters } from '../context/FilterContext'
 import { processEntity, fmt, formatWaitTime, calcHoursAgo } from '../lib/utils'
 import InstanceBadge from '../components/InstanceBadge'
@@ -17,6 +17,7 @@ const COLUMNS = [
 
 const INITIAL = 50
 const STEP    = 50
+const KANBAN_STATUSES = 'new,processing,pending,pending-approval,solved,closed'
 
 function TicketCard({ t }) {
   const isLate = t.is_sla_late || t.is_overdue_resolve
@@ -142,16 +143,8 @@ export default function KanbanPage() {
   const load = useCallback(async () => {
     setLoading(true); setError(null)
     try {
-      const sb = getSupabaseClient()
-      if (!sb) throw new Error('Supabase não configurado.')
-      const { data, error: err } = await sb
-        .from('tickets_cache')
-        .select('ticket_id,title,entity,category,status_id,status_key,status_name,date_created,date_mod,due_date,is_sla_late,is_overdue_resolve,technician,instance')
-        .in('status_key', ['new', 'processing', 'pending', 'pending-approval', 'solved', 'closed'])
-        .order('date_mod', { ascending: false })
-        .limit(600)
-      if (err) throw err
-      const all = data || []
+      const result = await fetchAllTickets({ statuses: KANBAN_STATUSES })
+      const all = result?.data || []
       setTickets(all)
       setLastUpdate(new Date())
       const techs = [...new Set(all.map(t => t.technician).filter(Boolean))].sort()

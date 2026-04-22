@@ -1,11 +1,14 @@
 'use client'
 import { useEffect, useState, useCallback, useRef, Suspense } from 'react'
-import { getSupabaseClient } from '@/lib/supabase/client'
+import { fetchTicketsPage } from '../lib/tickets-api'
 import { useFilters } from '../context/FilterContext'
 import { processEntity, lastGroupLabel, fmt, calcHoursAgo, formatWaitTime } from '../lib/utils'
 import StatusBadge from '../components/StatusBadge'
 import InstanceBadge from '../components/InstanceBadge'
 import SLABadge from '../components/SLABadge'
+
+const PAGE_SIZE = 200
+const OPEN_STATUSES = 'new,processing,pending,pending-approval'
 
 const sel = {
   padding: '7px 10px',
@@ -20,8 +23,12 @@ function TicketsContent() {
   const { applyFilters, setAvailableTechnicians } = useFilters()
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState(null)
   const [lastUpdate, setLastUpdate] = useState(null)
+  const [hasMore, setHasMore] = useState(false)
+  const [nextStart, setNextStart] = useState(0)
+  const [totalTickets, setTotalTickets] = useState(0)
   const hasData = useRef(false)
 
   const [search, setSearch] = useState('')
@@ -32,44 +39,73 @@ function TicketsContent() {
   const [fEntity, setFEntity] = useState('')
   const [fUrgency, setFUrgency] = useState('')
 
-  const load = useCallback(async () => {
-    if (!hasData.current) setLoading(true)
+  const load = useCallback(async (reset = true) => {
+    if (!hasData.current || reset) setLoading(true)
     setError(null)
     try {
-      const sb = getSupabaseClient()
-      if (!sb) throw new Error('Supabase não configurado.')
-      const { data, error: err } = await sb
-        .from('tickets_cache')
-        .select('ticket_id,title,entity,status_id,status_key,status_name,group_name,technician,requester,urgency,is_sla_late,is_overdue_resolve,date_created,date_mod,due_date,instance')
-        .in('status_key', ['new', 'processing', 'pending', 'pending-approval'])
-        .eq('is_deleted', false)
-        .order('date_mod', { ascending: false })
-      if (err) throw err
-      setTickets(data || [])
+      const result = await fetchTicketsPage({
+        statuses: OPEN_STATUSES,
+        start: 0,
+        end: PAGE_SIZE - 1,
+      })
+      const data = result?.data || []
+      const pagination = result?.pagination || {}
+
+      setTickets(data)
+      setHasMore(Boolean(pagination.hasMore))
+      setNextStart(pagination.nextStart || data.length)
+      setTotalTickets(pagination.total || data.length)
       hasData.current = true
       setLastUpdate(new Date())
-      const techs = [...new Set((data || []).map(t => t.technician).filter(Boolean))].sort()
+      const techs = [...new Set(data.map(t => t.technician).filter(Boolean))].sort()
       setAvailableTechnicians(techs)
     } catch (e) { setError(e.message) }
     finally { setLoading(false) }
   }, [setAvailableTechnicians])
 
+  const loadMore = useCallback(async () => {
+    if (!hasMore || loadingMore) return
+
+    setLoadingMore(true)
+    setError(null)
+
+    try {
+      const result = await fetchTicketsPage({
+        statuses: OPEN_STATUSES,
+        start: nextStart,
+        end: nextStart + PAGE_SIZE - 1,
+      })
+
+      const pageData = result?.data || []
+      const pagination = result?.pagination || {}
+
+      setTickets(prev => {
+        const map = new Map(prev.map(t => [`${t.ticket_id}-${t.instance}`, t]))
+        pageData.forEach(t => map.set(`${t.ticket_id}-${t.instance}`, t))
+        const merged = Array.from(map.values())
+        const techs = [...new Set(merged.map(t => t.technician).filter(Boolean))].sort()
+        setAvailableTechnicians(techs)
+        return merged
+      })
+
+      setHasMore(Boolean(pagination.hasMore))
+      setNextStart(pagination.nextStart || (nextStart + pageData.length))
+      setTotalTickets(pagination.total || totalTickets)
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setLoadingMore(false)
+    }
+  }, [hasMore, loadingMore, nextStart, setAvailableTechnicians, totalTickets])
+
   useEffect(() => {
-    const sb = getSupabaseClient()
     load()
 
-    // Polling a cada 30 segundos
-    const iv = setInterval(load, 30 * 1000)
-
-    // Realtime: atualiza imediatamente quando o banco muda
-    const channel = sb
-      .channel('monitor-tickets')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets_cache' }, load)
-      .subscribe()
+    // Polling periódico: reinicia da primeira página
+    const iv = setInterval(() => load(true), 3 * 60 * 1000)
 
     return () => {
       clearInterval(iv)
-      channel.unsubscribe()
     }
   }, [load])
 
@@ -105,7 +141,7 @@ function TicketsContent() {
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           {lastUpdate && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Atualizado: {lastUpdate.toLocaleTimeString('pt-BR')}</span>}
-          <button onClick={load} style={{ ...sel, cursor: 'pointer', background: 'var(--primary)', color: '#fff', border: 'none', fontWeight: 600 }}>Atualizar</button>
+          <button onClick={() => load(true)} style={{ ...sel, cursor: 'pointer', background: 'var(--primary)', color: '#fff', border: 'none', fontWeight: 600 }}>Atualizar</button>
         </div>
       </div>
 
@@ -186,7 +222,9 @@ function TicketsContent() {
         <button onClick={() => { setSearch(''); setFInstance(''); setFStatus(''); setFSLA(''); setFGroup(''); setFEntity(''); setFUrgency('') }}
           style={{ ...sel, cursor: 'pointer' }}>Limpar</button>
 
-        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '4px' }}>{filtered.length} resultados</span>
+        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '4px' }}>
+          {filtered.length} resultados carregados ({tickets.length}/{totalTickets || tickets.length})
+        </span>
       </div>
 
       {/* Table */}
@@ -197,45 +235,59 @@ function TicketsContent() {
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>Nenhum ticket encontrado.</div>
       ) : (
-        <div style={{ overflowX: 'auto', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
-            <thead>
-              <tr style={{ background: 'var(--background)', borderBottom: '2px solid var(--border)' }}>
-                {['ID', 'Instância', 'Entidade', 'Status', 'Grupo', 'Técnico', 'Abertura', 'Últ. Atualização', 'Previsto', 'SLA'].map(h => (
-                  <th key={h} style={{ padding: '9px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((t, i) => {
-                const isLate = t.is_sla_late || t.is_overdue_resolve
-                return (
-                  <tr key={`${t.ticket_id}-${t.instance}`}
-                    className={isLate ? 'sla-late' : ''}
-                    style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'var(--surface)' : 'var(--background)' }}>
-                    <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>
-                      <span style={{ fontWeight: 700, color: 'var(--primary)' }}>#{t.ticket_id}</span>
-                      {t.title && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.title}</div>}
-                    </td>
-                    <td style={{ padding: '9px 12px' }}><InstanceBadge instance={t.instance} /></td>
-                    <td className="col-entity" style={{ padding: '9px 12px' }}>{processEntity(t.entity)}</td>
-                    <td style={{ padding: '9px 12px' }}><StatusBadge statusId={t.status_id} statusKey={t.status_key} statusName={t.status_name} /></td>
-                    <td className="col-group" style={{ padding: '9px 12px', color: 'var(--text-secondary)' }}>
-                      {lastGroupLabel(t.group_name) !== '—' ? lastGroupLabel(t.group_name) : <em style={{ color: 'var(--text-muted)' }}>Sem grupo</em>}
-                    </td>
-                    <td className="col-technician" style={{ padding: '9px 12px', color: 'var(--text-secondary)' }}>
-                      {t.technician || <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em>}
-                    </td>
-                    <td style={{ padding: '9px 12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>{fmt(t.date_created)}</td>
-                    <td style={{ padding: '9px 12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>{formatWaitTime(calcHoursAgo(t.date_mod))}</td>
-                    <td style={{ padding: '9px 12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>{fmt(t.due_date)}</td>
-                    <td style={{ padding: '9px 12px' }}><SLABadge isLate={isLate} /></td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+        <>
+          <div style={{ overflowX: 'auto', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+              <thead>
+                <tr style={{ background: 'var(--background)', borderBottom: '2px solid var(--border)' }}>
+                  {['ID', 'Instância', 'Entidade', 'Status', 'Grupo', 'Técnico', 'Abertura', 'Últ. Atualização', 'Previsto', 'SLA'].map(h => (
+                    <th key={h} style={{ padding: '9px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((t, i) => {
+                  const isLate = t.is_sla_late || t.is_overdue_resolve
+                  return (
+                    <tr key={`${t.ticket_id}-${t.instance}`}
+                      className={isLate ? 'sla-late' : ''}
+                      style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'var(--surface)' : 'var(--background)' }}>
+                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>
+                        <span style={{ fontWeight: 700, color: 'var(--primary)' }}>#{t.ticket_id}</span>
+                        {t.title && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.title}</div>}
+                      </td>
+                      <td style={{ padding: '9px 12px' }}><InstanceBadge instance={t.instance} /></td>
+                      <td className="col-entity" style={{ padding: '9px 12px' }}>{processEntity(t.entity)}</td>
+                      <td style={{ padding: '9px 12px' }}><StatusBadge statusId={t.status_id} statusKey={t.status_key} statusName={t.status_name} /></td>
+                      <td className="col-group" style={{ padding: '9px 12px', color: 'var(--text-secondary)' }}>
+                        {lastGroupLabel(t.group_name) !== '—' ? lastGroupLabel(t.group_name) : <em style={{ color: 'var(--text-muted)' }}>Sem grupo</em>}
+                      </td>
+                      <td className="col-technician" style={{ padding: '9px 12px', color: 'var(--text-secondary)' }}>
+                        {t.technician || <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em>}
+                      </td>
+                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>{fmt(t.date_created)}</td>
+                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>{formatWaitTime(calcHoursAgo(t.date_mod))}</td>
+                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>{fmt(t.due_date)}</td>
+                      <td style={{ padding: '9px 12px' }}><SLABadge isLate={isLate} /></td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {hasMore && (
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px' }}>
+              <button
+                onClick={loadMore}
+                disabled={loadingMore}
+                style={{ ...sel, cursor: loadingMore ? 'not-allowed' : 'pointer', fontWeight: 600 }}
+              >
+                {loadingMore ? 'Carregando...' : 'Carregar mais tickets'}
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   )

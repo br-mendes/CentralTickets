@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { getSupabaseClient } from '@/lib/supabase/client'
+import { fetchAllTickets } from './lib/tickets-api'
 import { DoughnutChart, LineChart } from './components/Charts'
 import {
   processEntity, lastGroupLabel, fmt, calcDaysOverdue,
@@ -57,14 +58,11 @@ export default function DashboardPage() {
 
   const load = useCallback(async () => {
     try {
+      const { data } = await fetchAllTickets()
+      setTickets(data || [])
+
       const sb = getSupabaseClient()
       if (!sb) return
-      const { data } = await sb
-        .from('tickets_cache')
-        .select('ticket_id,title,entity,category,root_category,status_id,status_key,status_name,group_name,technician,requester,urgency,impact,is_sla_late,is_overdue_resolve,date_created,date_mod,due_date,instance,priority_id,type_id,resolution_duration,waiting_duration,location,request_type')
-        .eq('is_deleted', false)
-        .order('date_mod', { ascending: false })
-      setTickets(data || [])
       const { data: sync } = await sb.from('sync_control').select('last_sync').order('last_sync', { ascending: false }).limit(1).single()
       if (sync) setLastSync(sync.last_sync)
     } catch { /* no-op */ } finally { setLoading(false) }

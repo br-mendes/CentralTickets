@@ -1,6 +1,6 @@
 'use client'
 import { useState, useCallback } from 'react'
-import { getSupabaseClient } from '@/lib/supabase/client'
+import { fetchAllTickets } from '../lib/tickets-api'
 import { processEntity, lastGroupLabel, fmt, getStatusConfig } from '../lib/utils'
 import InstanceBadge from '../components/InstanceBadge'
 import StatusBadge from '../components/StatusBadge'
@@ -22,9 +22,6 @@ const sel = {
   border: '1px solid var(--border)', background: 'var(--background)',
   color: 'var(--text-primary)', fontSize: '0.82rem',
 }
-
-const FULL_SELECT = 'ticket_id,title,entity,category,status_id,status_key,status_name,group_name,technician,requester,urgency,request_type,is_sla_late,is_overdue_first,is_overdue_resolve,date_created,date_mod,date_solved,solution,resolution_duration,instance'
-const FALLBACK_SELECT = 'ticket_id,title,entity,category,status_id,status_key,status_name,group_name,technician,is_sla_late,is_overdue_first,is_overdue_resolve,date_created,date_mod,instance'
 
 export default function RelatoriosPage() {
   const now = new Date()
@@ -48,33 +45,14 @@ export default function RelatoriosPage() {
       const startDate = new Date(year, month - 1, 1).toISOString()
       const endDate   = new Date(year, month, 0, 23, 59, 59).toISOString()
       const dateCol   = dateType === 'opening' ? 'date_created' : 'date_mod'
-      const sb = getSupabaseClient()
-
-      let data, err
-      // Try full query with solution columns first
-      ;({ data, error: err } = await sb
-        .from('tickets_cache')
-        .select(FULL_SELECT)
-        .gte(dateCol, startDate)
-        .lte(dateCol, endDate)
-        .order(dateCol, { ascending: false }))
-
-      if (err) {
-        if (err.message && (err.message.includes('date_solved') || err.message.includes('solution'))) {
-          // Columns don't exist yet — fall back to query without them
-          setMissingColumns(true)
-          ;({ data, error: err } = await sb
-            .from('tickets_cache')
-            .select(FALLBACK_SELECT)
-            .gte(dateCol, startDate)
-            .lte(dateCol, endDate)
-            .order(dateCol, { ascending: false }))
-          if (err) throw err
-        } else {
-          throw err
-        }
-      }
-      setAllTickets(data || [])
+      const result = await fetchAllTickets({
+        dateField: dateCol,
+        fromDate: startDate,
+        toDate: endDate,
+      })
+      const data = result?.data || []
+      setMissingColumns(data.length > 0 && !('date_solved' in data[0] && 'solution' in data[0]))
+      setAllTickets(data)
     } catch (e) { setError(e.message) }
     finally { setLoading(false) }
   }, [dateType, year, month])
