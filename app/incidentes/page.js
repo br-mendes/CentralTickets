@@ -39,6 +39,7 @@ function IncidentesContent() {
     setLoading(true); setError(null); setMissingColumn(false)
     try {
       const result = await fetchAllTickets({
+        instance: 'PETA,GMX',
         statuses: OPEN_STATUSES,
         typeId: 1,
       })

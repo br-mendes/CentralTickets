@@ -46,6 +46,7 @@ export default function RelatoriosPage() {
       const endDate   = new Date(year, month, 0, 23, 59, 59).toISOString()
       const dateCol   = dateType === 'opening' ? 'date_created' : 'date_mod'
       const result = await fetchAllTickets({
+        instance: 'PETA,GMX',
         dateField: dateCol,
         fromDate: startDate,
         toDate: endDate,

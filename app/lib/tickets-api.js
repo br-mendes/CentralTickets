@@ -1,8 +1,9 @@
 const DEFAULT_PAGE_SIZE = 200
+const DEFAULT_INSTANCE = 'PETA,GMX'
 
 export async function fetchTicketsPage(params = {}) {
   const {
-    instance = '',
+    instance = DEFAULT_INSTANCE,
     statuses = '',
     typeId = null,
     dateField = '',

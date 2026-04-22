@@ -16,8 +16,10 @@ function Field({ label, children }) {
   )
 }
 
-export default async function TicketDetailPage({ params }) {
+export default async function TicketDetailPage({ params, searchParams }) {
   const { id } = params
+  const instanceParam = (searchParams?.instance || '').toUpperCase()
+  const instances = instanceParam ? [instanceParam] : ['PETA', 'GMX']
   let ticket = null
   let fetchError = null
 
@@ -26,7 +28,8 @@ export default async function TicketDetailPage({ params }) {
       .from('tickets_cache')
       .select('*')
       .eq('ticket_id', id)
-      .limit(2)
+      .in('instance', instances)
+      .order('date_mod', { ascending: false })
 
     if (error) { fetchError = error.message }
     else if (data && data.length > 0) { ticket = data[0] }

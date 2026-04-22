@@ -143,7 +143,7 @@ export default function KanbanPage() {
   const load = useCallback(async () => {
     setLoading(true); setError(null)
     try {
-      const result = await fetchAllTickets({ statuses: KANBAN_STATUSES })
+      const result = await fetchAllTickets({ instance: 'PETA,GMX', statuses: KANBAN_STATUSES })
       const all = result?.data || []
       setTickets(all)
       setLastUpdate(new Date())

@@ -9,6 +9,7 @@ import SLABadge from '../components/SLABadge'
 
 const PAGE_SIZE = 200
 const OPEN_STATUSES = 'new,processing,pending,pending-approval'
+const ALL_INSTANCES = 'PETA,GMX'
 
 const sel = {
   padding: '7px 10px',
@@ -39,11 +40,14 @@ function TicketsContent() {
   const [fEntity, setFEntity] = useState('')
   const [fUrgency, setFUrgency] = useState('')
 
+  const instanceFilter = fInstance ? fInstance.toUpperCase() : ALL_INSTANCES
+
   const load = useCallback(async (reset = true) => {
     if (!hasData.current || reset) setLoading(true)
     setError(null)
     try {
       const result = await fetchTicketsPage({
+        instance: instanceFilter,
         statuses: OPEN_STATUSES,
         start: 0,
         end: PAGE_SIZE - 1,
@@ -61,7 +65,7 @@ function TicketsContent() {
       setAvailableTechnicians(techs)
     } catch (e) { setError(e.message) }
     finally { setLoading(false) }
-  }, [setAvailableTechnicians])
+  }, [instanceFilter, setAvailableTechnicians])
 
   const loadMore = useCallback(async () => {
     if (!hasMore || loadingMore) return
@@ -71,6 +75,7 @@ function TicketsContent() {
 
     try {
       const result = await fetchTicketsPage({
+        instance: instanceFilter,
         statuses: OPEN_STATUSES,
         start: nextStart,
         end: nextStart + PAGE_SIZE - 1,
@@ -96,10 +101,10 @@ function TicketsContent() {
     } finally {
       setLoadingMore(false)
     }
-  }, [hasMore, loadingMore, nextStart, setAvailableTechnicians, totalTickets])
+  }, [hasMore, instanceFilter, loadingMore, nextStart, setAvailableTechnicians, totalTickets])
 
   useEffect(() => {
-    load()
+    load(true)
 
     // Polling periódico: reinicia da primeira página
     const iv = setInterval(() => load(true), 3 * 60 * 1000)
@@ -107,7 +112,7 @@ function TicketsContent() {
     return () => {
       clearInterval(iv)
     }
-  }, [load])
+  }, [instanceFilter, load])
 
   const filtered = applyFilters(tickets).filter(t => {
     if (fInstance && (t.instance || '').toUpperCase() !== fInstance.toUpperCase()) return false
