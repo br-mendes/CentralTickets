@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { getSupabaseClient } from '@/lib/supabase/client'
 import { fetchAllTickets } from './lib/tickets-api'
-import { DoughnutChart, LineChart } from './components/Charts'
+import { DoughnutChart, LineChart, BarChart } from './components/Charts'
 import {
   processEntity, lastGroupLabel, fmt, calcDaysOverdue,
   build30DayTrend, getStatusConfig, calcHoursAgo, formatWaitTime, formatSeconds, URGENCY_MAP,
@@ -11,6 +11,14 @@ import {
 
 const PRIORITY_LABELS = { 1: 'Muito Baixa', 2: 'Baixa', 3: 'Média', 4: 'Alta', 5: 'Urgente', 6: 'Crítica' }
 const PRIORITY_COLORS = ['#94a3b8', '#3b82f6', '#f59e0b', '#f97316', '#dc2626', '#7f1d1d']
+
+const RefreshIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="23 4 23 10 17 10" />
+    <polyline points="1 20 1 14 7 14" />
+    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+  </svg>
+)
 
 function StatCard({ label, value, color, href, sub }) {
   const inner = (
@@ -106,14 +114,16 @@ export default function DashboardPage() {
   const catRows = Object.entries(catMap).sort((a, b) => b[1] - a[1]).slice(0, 10)
   const maxCat  = catRows[0]?.[1] || 1
 
-   // Técnico (top 15, apenas total)
-   const techMap = {}
-   for (const t of tickets) {
-     const tech = t.technician || '—'
-     if (!techMap[tech]) techMap[tech] = 0
-     techMap[tech]++
-   }
-   const techRows = Object.entries(techMap).sort((a, b) => b[1] - a[1]).slice(0, 15)
+  // Técnico (top 10, BarChart)
+  const techMap = {}
+  for (const t of tickets) {
+    const tech = t.technician || '—'
+    if (!techMap[tech]) techMap[tech] = 0
+    techMap[tech]++
+  }
+  const techRows   = Object.entries(techMap).sort((a, b) => b[1] - a[1]).slice(0, 10)
+  const techLabels = techRows.map(([name]) => name === '—' ? 'Sem técnico' : name)
+  const techData   = techRows.map(([, count]) => count)
 
   // Entidade
   const entityMap = {}
@@ -146,7 +156,7 @@ export default function DashboardPage() {
     const u = t.urgency || 3; acc[u] = (acc[u] || 0) + 1; return acc
   }, {})
 
-  // Tempo médio de resolução (apenas tickets solucionados/fechados com resolution_duration > 0)
+  // Tempo médio de resolução
   const resolvedWithTime = tickets.filter(t => (t.status_key === 'solved' || t.status_key === 'closed') && (t.resolution_duration || 0) > 0)
   const avgResolutionSec = resolvedWithTime.length > 0
     ? Math.round(resolvedWithTime.reduce((sum, t) => sum + (t.resolution_duration || 0), 0) / resolvedWithTime.length)
@@ -161,9 +171,11 @@ export default function DashboardPage() {
   const reqTypeRows = Object.entries(reqTypeMap).sort((a, b) => b[1] - a[1]).slice(0, 8)
   const maxReqType  = reqTypeRows[0]?.[1] || 1
 
-  // Tipo de chamado (Incidente vs Requisição)
+  // Tipo de chamado
   const incidents = tickets.filter(t => t.type_id === 1).length
   const requests  = tickets.filter(t => t.type_id === 2 || !t.type_id).length
+
+  // Prioridade — para BarChart vertical
   const prioEntries = Object.entries(prioMap).sort((a, b) => Number(a[0]) - Number(b[0]))
   const prioLabels  = prioEntries.map(([k]) => PRIORITY_LABELS[k] || `P${k}`)
   const prioData    = prioEntries.map(([, v]) => v)
@@ -191,22 +203,19 @@ export default function DashboardPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
-       {/* Page title */}
-       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '8px' }}>
-         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-           <h1 className="section-title" style={{ fontSize: '1.4rem', fontWeight: 700 }}>Central de Tickets</h1>
-           <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '2px' }}>Visão geral dos tickets GLPI — Peta e GMX</p>
-         </div>
-<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <button onClick={load} className="btn-primary">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M4 4v5h5M4 20h9a9 9 0 0 0 0-18H4z" />
-              </svg>
-              Atualizar
-            </button>
-            {lastSync && <span className="text-muted-sm">Última sincronização: {fmt(lastSync)}</span>}
-          </div>
+      {/* Page title */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <h1 className="section-title" style={{ fontSize: '1.4rem', fontWeight: 700 }}>Central de Tickets</h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '2px' }}>Visão geral dos tickets GLPI — Peta e GMX</p>
         </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {lastSync && <span className="text-muted-sm">Última sincronização: {fmt(lastSync)}</span>}
+          <button onClick={load} className="btn-primary">
+            <RefreshIcon /> Atualizar
+          </button>
+        </div>
+      </div>
 
       {/* Main stat cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '14px' }}>
@@ -218,6 +227,25 @@ export default function DashboardPage() {
         <StatCard label="Aprovação"       value={approvalTickets.length}     color="#7c3aed" href="/tickets?status=approval" />
         <StatCard label="SLA Excedido"    value={slaLate}                   color="#dc2626" href="/tickets?sla=late" />
         {avgResolutionSec > 0 && <StatCard label="Tempo Médio Resolução" value={formatSeconds(avgResolutionSec)} color="#6b7280" sub={`${resolvedWithTime.length} tickets`} />}
+      </div>
+
+      {/* Charts row — Status + Trend */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '16px' }}>
+        <Card>
+          <SectionTitle>Tickets por Status</SectionTitle>
+          <DoughnutChart labels={chartStatusLabels} data={chartStatusData} colors={chartStatusColors} height={200} />
+        </Card>
+        <Card>
+          <SectionTitle>Últimos 30 Dias</SectionTitle>
+          <LineChart labels={trend.labels} datasets={lineDatasets} height={200} />
+        </Card>
+      </div>
+
+      {/* Taxa de Resolução + Tempo em Pendência */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '14px' }}>
+        <StatCard label="Taxa de Resolução (7d)"   value={`${rate7.rate}%`}  color="#16a34a" sub={`${rate7.resolved} / ${rate7.total} tickets`} />
+        <StatCard label="Taxa de Resolução (30d)"  value={`${rate30.rate}%`} color="#16a34a" sub={`${rate30.resolved} / ${rate30.total} tickets`} />
+        <StatCard label="Tempo Médio em Pendência" value={formatWaitTime(avgPendingHours)} color="#ea580c" sub={`${pendingTickets.length} tickets pendentes`} />
       </div>
 
       {/* Instance breakdown */}
@@ -248,26 +276,43 @@ export default function DashboardPage() {
         )
       })}
 
-      {/* Charts row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '16px' }}>
+      {/* SLA Crítico Top 8 */}
+      {slaCritico.length > 0 && (
         <Card>
-          <SectionTitle>Tickets por Status</SectionTitle>
-          <DoughnutChart labels={chartStatusLabels} data={chartStatusData} colors={chartStatusColors} height={200} />
+          <SectionTitle>SLA Crítico (Top 8)</SectionTitle>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+              <thead>
+                <tr>
+                  {['ID', 'Título', 'Entidade', 'Status', 'Técnico', 'Atraso'].map(h => (
+                    <th key={h} style={thStyle}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {slaCritico.map((t, i) => (
+                  <tr key={`${t.ticket_id}-${t.instance}`} style={{ background: i % 2 === 0 ? 'var(--surface)' : 'var(--background)' }}>
+                    <td style={{ ...thTd, fontWeight: 700, color: 'var(--primary)' }}>#{t.ticket_id}</td>
+                    <td style={{ ...thTd, maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.title || '—'}</td>
+                    <td style={{ ...thTd, maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{processEntity(t.entity)}</td>
+                    <td style={thTd}>
+                      <span className={`status-badge ${getStatusConfig(t.status_id, t.status_key).key}`}>
+                        {getStatusConfig(t.status_id, t.status_key).label}
+                      </span>
+                    </td>
+                    <td style={thTd}>{t.technician || <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em>}</td>
+                    <td style={{ ...thTd, color: '#dc2626', fontWeight: 700 }}>
+                      {t.daysOverdue > 0 ? `${t.daysOverdue}d atraso` : '< 1d'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </Card>
-        <Card>
-          <SectionTitle>Últimos 30 Dias</SectionTitle>
-          <LineChart labels={trend.labels} datasets={lineDatasets} height={200} />
-        </Card>
-      </div>
+      )}
 
-      {/* Taxa de Resolução + Tempo em Pendência */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '14px' }}>
-        <StatCard label="Taxa de Resolução (7d)" value={`${rate7.rate}%`}  color="#16a34a" sub={`${rate7.resolved} / ${rate7.total} tickets`} />
-        <StatCard label="Taxa de Resolução (30d)" value={`${rate30.rate}%`} color="#16a34a" sub={`${rate30.resolved} / ${rate30.total} tickets`} />
-        <StatCard label="Tempo Médio em Pendência" value={formatWaitTime(avgPendingHours)} color="#ea580c" sub={`${pendingTickets.length} tickets pendentes`} />
-      </div>
-
-      {/* Urgência + Canal */}
+      {/* Urgência + Canal de Requisição */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
         <Card>
           <SectionTitle>Distribuição por Urgência</SectionTitle>
@@ -330,43 +375,7 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      {/* SLA Crítico Top 8 */}
-      {slaCritico.length > 0 && (
-        <Card>
-          <SectionTitle>SLA Crítico (Top 8)</SectionTitle>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
-              <thead>
-                <tr>
-                  {['ID', 'Título', 'Entidade', 'Status', 'Técnico', 'Atraso'].map(h => (
-                    <th key={h} style={thStyle}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {slaCritico.map((t, i) => (
-                  <tr key={`${t.ticket_id}-${t.instance}`} style={{ background: i % 2 === 0 ? 'var(--surface)' : 'var(--background)' }}>
-                    <td style={{ ...thTd, fontWeight: 700, color: 'var(--primary)' }}>#{t.ticket_id}</td>
-                    <td style={{ ...thTd, maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.title || '—'}</td>
-                    <td style={{ ...thTd, maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{processEntity(t.entity)}</td>
-                    <td style={thTd}>
-                      <span className={`status-badge ${getStatusConfig(t.status_id, t.status_key).key}`}>
-                        {getStatusConfig(t.status_id, t.status_key).label}
-                      </span>
-                    </td>
-                    <td style={thTd}>{t.technician || <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em>}</td>
-                    <td style={{ ...thTd, color: '#dc2626', fontWeight: 700 }}>
-                      {t.daysOverdue > 0 ? `${t.daysOverdue}d atraso` : '< 1d'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      )}
-
-      {/* Categoria Raiz + Prioridade */}
+      {/* Categoria Raiz + Prioridade (BarChart) */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
         {catRows.length > 0 && (
           <Card>
@@ -387,34 +396,22 @@ export default function DashboardPage() {
         {prioData.length > 0 && (
           <Card>
             <SectionTitle>Distribuição por Prioridade</SectionTitle>
-            <DoughnutChart labels={prioLabels} data={prioData} colors={prioColors} height={200} />
+            <BarChart labels={prioLabels} data={prioData} colors={prioColors} height={220} horizontal={false} />
           </Card>
         )}
-</div>
+      </div>
 
-      {/* By Technician */}
+      {/* Técnicos — BarChart horizontal (top 10) */}
       {techRows.length > 0 && (
         <Card>
-          <SectionTitle>Tickets por Técnico (top 15)</SectionTitle>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
-              <thead>
-                <tr>
-                  {['Técnico', 'Total'].map(h => (
-                    <th key={h} style={thStyle}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {techRows.map(([name, total], i) => (
-                  <tr key={name} style={{ background: i % 2 === 0 ? 'var(--surface)' : 'var(--background)' }}>
-                    <td style={{ ...thTd, fontWeight: 600 }}>{name === '—' ? <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em> : name}</td>
-                    <td style={{ ...thTd, fontWeight: 700 }}>{total}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <SectionTitle>Tickets por Técnico (top 10)</SectionTitle>
+          <BarChart
+            labels={techLabels}
+            data={techData}
+            colors="rgba(37,99,235,0.72)"
+            height={Math.max(180, techRows.length * 28)}
+            horizontal={true}
+          />
         </Card>
       )}
 
@@ -433,7 +430,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* By Group */}
+      {/* Por Grupo */}
       {groupRows.length > 0 && (
         <Card>
           <SectionTitle>Tickets por Grupo (top {groupRows.length})</SectionTitle>
@@ -452,7 +449,6 @@ export default function DashboardPage() {
           </div>
         </Card>
       )}
-
 
     </div>
   )

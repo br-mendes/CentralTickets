@@ -5,11 +5,54 @@ import { useEffect, useState } from 'react'
 import { useFilters } from '../context/FilterContext'
 
 const NAV = [
-  { href: '/',            label: 'Dashboard' },
-  { href: '/tickets',     label: 'Monitor.Tickets' },
-  { href: '/incidentes',  label: 'Incidentes' },
-  { href: '/relatorios',  label: 'Relatórios' },
-  { href: '/kanban',      label: 'Kanban' },
+  {
+    href: '/',
+    label: 'Dashboard',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
+        <rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
+      </svg>
+    ),
+  },
+  {
+    href: '/tickets',
+    label: 'Monitor.Tickets',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+      </svg>
+    ),
+  },
+  {
+    href: '/incidentes',
+    label: 'Incidentes',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+        <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+      </svg>
+    ),
+  },
+  {
+    href: '/relatorios',
+    label: 'Relatórios',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" />
+      </svg>
+    ),
+  },
+  {
+    href: '/kanban',
+    label: 'Kanban',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" />
+        <line x1="9" y1="3" x2="9" y2="21" /><line x1="15" y1="3" x2="15" y2="21" />
+      </svg>
+    ),
+  },
 ]
 
 const selStyle = {
@@ -85,6 +128,9 @@ export default function Header() {
             const active = pathname === item.href
             return (
               <Link key={item.href} href={item.href} style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
                 padding: '5px 11px',
                 borderRadius: '6px',
                 fontSize: '0.8rem',
@@ -95,6 +141,7 @@ export default function Header() {
                 border: `1px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
                 transition: 'all 0.15s',
               }}>
+                {item.icon}
                 {item.label}
               </Link>
             )
