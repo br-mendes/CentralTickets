@@ -2,10 +2,11 @@
 import { useEffect, useState, useCallback, Suspense } from 'react'
 import { fetchAllTickets } from '../lib/tickets-api'
 import { useFilters } from '../context/FilterContext'
-import { processEntity, lastGroupLabel, fmt, calcHoursAgo, formatWaitTime, URGENCY_MAP } from '../lib/utils'
+import { processEntity, lastGroupLabel, fmt, calcHoursAgo, formatWaitTime } from '../lib/utils'
 import StatusBadge from '../components/StatusBadge'
 import InstanceBadge from '../components/InstanceBadge'
 import SLABadge from '../components/SLABadge'
+import UrgencyBadge from '../components/UrgencyBadge'
 
 const OPEN_STATUSES = 'new,processing,pending,pending-approval'
 

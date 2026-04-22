@@ -64,16 +64,16 @@ export default function Header() {
 
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '9px', flexShrink: 0, marginRight: '4px' }}>
-          <div style={{
-            width: '34px', height: '34px', borderRadius: '8px',
-            background: 'linear-gradient(135deg, var(--primary), var(--primary-dark))',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-              <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-              <polyline points="14 2 14 8 20 8" />
-            </svg>
-          </div>
+          <img
+            src="/favicon-peta.png"
+            alt="Logo"
+            style={{
+              width: '34px',
+              height: '34px',
+              borderRadius: '8px',
+              filter: 'brightness(0) invert(1)',
+            }}
+          />
           <div>
             <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>Central de Tickets</div>
             <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)' }}>GLPI Dashboard</div>
@@ -114,7 +114,7 @@ export default function Header() {
             </svg>
             <input
               type="text"
-              placeholder="Buscar ID ou título..."
+              placeholder="Buscar ID do ticket..."
               value={globalSearch}
               onChange={e => setGlobalSearch(e.target.value)}
               style={{
