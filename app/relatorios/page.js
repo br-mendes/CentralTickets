@@ -37,7 +37,7 @@ export default function RelatoriosPage() {
   const [fStatus, setFStatus] = useState('')
   const [fTech, setFTech] = useState('')
   const [fGroup, setFGroup] = useState('')
-  const [fUrgency, setFUrgency] = useState('')
+  const [fPriority, setFPriority] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true); setError(null); setMissingColumns(false)
@@ -67,7 +67,7 @@ export default function RelatoriosPage() {
     if (fStatus  && t.status_key !== fStatus) return false
     if (fTech     && (t.technician || '') !== fTech) return false
     if (fGroup    && lastGroupLabel(t.group_name) !== fGroup) return false
-    if (fUrgency  && String(t.urgency || '') !== fUrgency) return false
+    if (fPriority && String(t.priority_id || '') !== fPriority) return false
     return true
   })
 
@@ -159,11 +159,11 @@ export default function RelatoriosPage() {
         {groups.map(g => <option key={g} value={g}>{g}</option>)}
       </select>
     )},
-    { label: 'Urgência', el: (
-      <select value={fUrgency} onChange={e => setFUrgency(e.target.value)} style={sel}>
+    { label: 'Prioridade', el: (
+      <select value={fPriority} onChange={e => setFPriority(e.target.value)} style={sel}>
         <option value="">Todas</option>
         <option value="6">Crítica</option>
-        <option value="5">Muito Alta</option>
+        <option value="5">Urgente</option>
         <option value="4">Alta</option>
         <option value="3">Média</option>
         <option value="2">Baixa</option>
@@ -206,11 +206,14 @@ CREATE INDEX IF NOT EXISTS idx_tickets_cache_date_solved ON tickets_cache(date_s
             {el}
           </div>
         ))}
-        <button onClick={load} style={{ ...sel, cursor: 'pointer', background: 'var(--primary)', color: '#fff', border: 'none', fontWeight: 600, alignSelf: 'flex-end' }}>
+        <button onClick={load} className="btn-primary" style={{ alignSelf: 'flex-end' }}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
           Buscar
         </button>
         {allTickets.length > 0 && (
-          <button onClick={() => { setFInstance(''); setFEntity(''); setFStatus(''); setFTech(''); setFGroup(''); setFUrgency('') }}
+          <button onClick={() => { setFInstance(''); setFEntity(''); setFStatus(''); setFTech(''); setFGroup(''); setFPriority('') }}
             style={{ ...sel, cursor: 'pointer', alignSelf: 'flex-end' }}>
             Limpar filtros
           </button>
@@ -221,7 +224,11 @@ CREATE INDEX IF NOT EXISTS idx_tickets_cache_date_solved ON tickets_cache(date_s
       {allTickets.length > 0 && (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
           <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{filtered.length} de {allTickets.length} tickets</span>
-          <button onClick={exportCSV} style={{ ...sel, cursor: 'pointer', background: '#16a34a', color: '#fff', border: 'none', fontWeight: 600 }}>
+          <button onClick={exportCSV} className="btn-export">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
             Exportar CSV
           </button>
         </div>

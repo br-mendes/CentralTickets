@@ -94,25 +94,30 @@ body {
 
 /* ── Row Animations ──────────────────────────────────────────────── */
 @keyframes flash-red {
-  0%, 100% { background-color: rgba(220, 38, 38, 0.12); }
-  50%       { background-color: rgba(220, 38, 38, 0.35); }
+  0%, 100% { background-color: rgba(220, 38, 38, 0.18); }
+  50%       { background-color: rgba(220, 38, 38, 0.58); }
 }
 @keyframes flash-yellow {
-  0%, 100% { background-color: rgba(245, 158, 11, 0.1); }
-  50%       { background-color: rgba(245, 158, 11, 0.28); }
+  0%, 100% { background-color: rgba(245, 158, 11, 0.14); }
+  50%       { background-color: rgba(245, 158, 11, 0.48); }
+}
+/* Dark mode: usa vermelho/laranja claro para contrastar com fundo escuro */
+@keyframes flash-red-dark {
+  0%, 100% { background-color: rgba(252, 100, 100, 0.22); }
+  50%       { background-color: rgba(252, 100, 100, 0.60); }
+}
+@keyframes flash-yellow-dark {
+  0%, 100% { background-color: rgba(251, 191, 36, 0.22); }
+  50%       { background-color: rgba(251, 191, 36, 0.55); }
 }
 
-.sla-late    { animation: flash-red    1200ms ease-in-out infinite; }
-.alert-red   { animation: flash-red    1200ms ease-in-out infinite; }
-.alert-yellow{ animation: flash-yellow 1400ms ease-in-out infinite; }
+.sla-late    { animation: flash-red    1100ms ease-in-out infinite; }
+.alert-red   { animation: flash-red    1100ms ease-in-out infinite; }
+.alert-yellow{ animation: flash-yellow 1300ms ease-in-out infinite; }
 
-/* Dark mode: stronger contrast for alert rows */
-[data-theme="dark"] .sla-late {
-  background-color: rgba(220, 38, 38, 0.2) !important;
-}
-[data-theme="dark"] .alert-red {
-  background-color: rgba(220, 38, 38, 0.2) !important;
-}
+[data-theme="dark"] .sla-late,
+[data-theme="dark"] .alert-red  { animation: flash-red-dark    1100ms ease-in-out infinite; }
+[data-theme="dark"] .alert-yellow { animation: flash-yellow-dark 1300ms ease-in-out infinite; }
 
 /* ── Table shared ────────────────────────────────────────────────── */
 .col-id         { width: 70px; }
@@ -136,34 +141,39 @@ body {
 }
 
 /* ── Button Styles ─────────────────────────────────────────────── */
-.btn-primary {
-  padding: 6px 10px;
+.btn-primary, .btn-export, .btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
   border-radius: var(--radius-md);
-  border: none;
-  background: var(--primary);
-  color: #fff;
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.2s;
+  white-space: nowrap;
 }
-.btn-primary:hover {
-  background: var(--primary-dark);
+.btn-primary {
+  border: none;
+  background: var(--primary);
+  color: #fff;
 }
+.btn-primary:hover { background: var(--primary-dark); }
+
+.btn-export {
+  border: none;
+  background: #16a34a;
+  color: #fff;
+}
+.btn-export:hover { background: #15803d; }
+
 .btn-secondary {
-  padding: 6px 10px;
-  border-radius: var(--radius-md);
   border: 1px solid var(--border);
   background: var(--background);
   color: var(--text-primary);
-  font-size: 0.82rem;
   font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s;
 }
-.btn-secondary:hover {
-  background: var(--surface);
-}
+.btn-secondary:hover { background: var(--surface); }
 .btn-link {
   color: var(--primary);
   text-decoration: none;

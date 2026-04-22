@@ -77,3 +77,59 @@ export function LineChart({ labels, datasets, height = 220 }) {
 
   return <div style={{ height, position: 'relative' }}><canvas ref={canvasRef} /></div>
 }
+
+export function BarChart({ labels, data, colors, height = 220, horizontal = false, label = 'Tickets' }) {
+  const canvasRef = useRef(null)
+  const chartRef  = useRef(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    let cancelled = false
+    import('chart.js/auto').then(({ Chart }) => {
+      if (cancelled) return
+      if (chartRef.current) chartRef.current.destroy()
+      const bg = Array.isArray(colors) ? colors : (colors || 'rgba(37,99,235,0.75)')
+      chartRef.current = new Chart(canvas, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label,
+            data,
+            backgroundColor: bg,
+            borderRadius: 5,
+            borderWidth: 0,
+          }],
+        },
+        options: {
+          indexAxis: horizontal ? 'y' : 'x',
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              ticks: { font: { size: 10 } },
+              grid: { color: 'rgba(148,163,184,0.15)' },
+              beginAtZero: horizontal,
+            },
+            y: {
+              ticks: { font: { size: 10 } },
+              grid: { display: !horizontal, color: 'rgba(148,163,184,0.15)' },
+              beginAtZero: !horizontal,
+            },
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: ctx => ` ${ctx.parsed[horizontal ? 'x' : 'y']} tickets` } },
+          },
+        },
+      })
+    })
+    return () => {
+      cancelled = true
+      if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null }
+    }
+  }, [labels, data, colors, horizontal, label])
+
+  return <div style={{ height, position: 'relative' }}><canvas ref={canvasRef} /></div>
+}
