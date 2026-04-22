@@ -71,7 +71,6 @@ export default function Header() {
               width: '34px',
               height: '34px',
               borderRadius: '8px',
-              filter: 'brightness(0) invert(1)',
             }}
           />
           <div>
