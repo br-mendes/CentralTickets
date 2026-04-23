@@ -61,7 +61,7 @@ export default function RelatoriosPage() {
   }, [dateType, year, month])
 
   const entities    = [...new Set(allTickets.map(t => processEntity(t.entity)).filter(v => v !== '—'))].sort()
-  const technicians = [...new Set(allTickets.map(t => t.technician).filter(Boolean))].sort()
+  const technicians = [...new Set(allTickets.map(t => t.technician?.trim()).filter(Boolean))].sort()
   const groups      = [...new Set(allTickets.map(t => lastGroupLabel(t.group_name)).filter(v => v !== '—'))].sort()
   const filtered = allTickets.filter(t => {
     if (fInstance && (t.instance || '').toUpperCase() !== fInstance.toUpperCase()) return false
