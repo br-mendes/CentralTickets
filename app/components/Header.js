@@ -35,6 +35,10 @@ export default function Header() {
     }
   }, [])
 
+  useEffect(() => {
+    if (pathname === '/') setGlobalSearch('')
+  }, [pathname, setGlobalSearch])
+
   function toggle() {
     const next = !dark
     setDark(next)

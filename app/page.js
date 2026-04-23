@@ -6,11 +6,8 @@ import { fetchAllTickets } from './lib/tickets-api'
 import { DoughnutChart, LineChart } from './components/Charts'
 import {
   processEntity, lastGroupLabel, fmt, calcDaysOverdue,
-  build30DayTrend, getStatusConfig, calcHoursAgo, formatWaitTime, formatSeconds, URGENCY_MAP,
+  build30DayTrend, getStatusConfig, calcHoursAgo, formatWaitTime, formatSeconds, URGENCY_MAP, PRIORITY_MAP,
 } from './lib/utils'
-
-const PRIORITY_LABELS = { 1: 'Muito Baixa', 2: 'Baixa', 3: 'Média', 4: 'Alta', 5: 'Urgente', 6: 'Crítica' }
-const PRIORITY_COLORS = ['#94a3b8', '#3b82f6', '#f59e0b', '#f97316', '#dc2626', '#7f1d1d']
 
 function StatCard({ label, value, color, href, sub }) {
   const inner = (
@@ -73,14 +70,15 @@ export default function DashboardPage() {
     const k = getStatusConfig(t.status_id, t.status_key).key
     acc[k] = (acc[k] || 0) + 1; return acc
   }, {})
+  const isSlaLateActive = t => (t.is_sla_late || t.is_overdue_resolve) && t.status_key !== 'closed' && t.status_key !== 'solved'
   const slaLate = tickets.filter(t => t.is_sla_late || t.is_overdue_resolve).length
-  const slaLateNotResolved = tickets.filter(t => (t.is_sla_late || t.is_overdue_resolve) && t.status_key !== 'closed' && t.status_key !== 'solved').length
+  const slaLateNotResolved = tickets.filter(isSlaLateActive).length
   const peta = tickets.filter(t => (t.instance || '').toUpperCase() === 'PETA')
   const gmx  = tickets.filter(t => (t.instance || '').toUpperCase() === 'GMX')
 
   // SLA Crítico Top 8
   const slaCritico = tickets
-    .filter(t => (t.is_sla_late || t.is_overdue_resolve) && t.status_key !== 'closed' && t.status_key !== 'solved')
+    .filter(isSlaLateActive)
     .map(t => ({ ...t, daysOverdue: calcDaysOverdue(t.due_date) }))
     .sort((a, b) => b.daysOverdue - a.daysOverdue)
     .slice(0, 8)
@@ -166,9 +164,9 @@ export default function DashboardPage() {
   const incidents = tickets.filter(t => t.type_id === 1).length
   const requests  = tickets.filter(t => t.type_id === 2 || !t.type_id).length
   const prioEntries = Object.entries(prioMap).sort((a, b) => Number(a[0]) - Number(b[0]))
-  const prioLabels  = prioEntries.map(([k]) => PRIORITY_LABELS[k] || `P${k}`)
+  const prioLabels  = prioEntries.map(([k]) => PRIORITY_MAP[k]?.label || `P${k}`)
   const prioData    = prioEntries.map(([, v]) => v)
-  const prioColors  = prioEntries.map(([k]) => PRIORITY_COLORS[Number(k) - 1] || '#94a3b8')
+  const prioColors  = prioEntries.map(([k]) => PRIORITY_MAP[k]?.color || '#94a3b8')
 
   // Charts
   const trend = build30DayTrend(tickets)

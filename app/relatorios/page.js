@@ -1,12 +1,13 @@
 'use client'
 import { useState, useCallback } from 'react'
 import { fetchAllTickets } from '../lib/tickets-api'
-import { processEntity, lastGroupLabel, fmt, getStatusConfig } from '../lib/utils'
+import { processEntity, lastGroupLabel, fmt, getStatusConfig, PRIORITY_MAP } from '../lib/utils'
 import InstanceBadge from '../components/InstanceBadge'
 import StatusBadge from '../components/StatusBadge'
 import SLABadge from '../components/SLABadge'
 
 const MONTHS = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+const PRIORITY_LABEL = Object.fromEntries(Object.entries(PRIORITY_MAP).filter(([k]) => !isNaN(k)).map(([k, v]) => [String(k), v.label]))
 const STATUS_OPTS = [
   { v: '', l: 'Todos' },
   { v: 'unresolved', l: 'Não solucionado (Novo / Pendente / Atend. / Aprova.)' },
@@ -72,7 +73,8 @@ export default function RelatoriosPage() {
       } else if (fStatus === 'unresolved') {
         if (!['new', 'pending', 'processing', 'approval', 'pending-approval'].includes(t.status_key)) return false
       } else {
-        if (t.status_key !== fStatus) return false
+        const match = t.status_key === fStatus || (fStatus === 'pending-approval' && t.status_key === 'approval')
+        if (!match) return false
       }
     }
     if (fTech    && (t.technician || '').trim() !== fTech) return false
@@ -82,8 +84,6 @@ export default function RelatoriosPage() {
   })
 
   const hasSolution = allTickets.some(t => 'date_solved' in t || 'solution' in t)
-
-  const PRIORITY_LABEL = { '1':'Muito Baixa','2':'Baixa','3':'Média','4':'Alta','5':'Muito Alta','6':'Crítica' }
 
   function exportCSV() {
     const baseH = ['ID','Instância','Entidade','Categoria','Status','Prioridade','Canal','Grupo Responsável','Técnico','SLA Atendimento','SLA Solução','Abertura','Últ. Atualização']
@@ -266,7 +266,7 @@ CREATE INDEX IF NOT EXISTS idx_tickets_cache_date_solved ON tickets_cache(date_s
                   <td className="col-entity" style={thTd}>{t.category || '—'}</td>
                   <td style={thTd}><StatusBadge statusId={t.status_id} statusKey={t.status_key} statusName={t.status_name} /></td>
                   <td style={thTd}>
-                    {t.priority_id ? <span style={{ fontWeight: 600, fontSize: '0.75rem', color: ['','#64748b','#3b82f6','#d97706','#ea580c','#dc2626','#7f1d1d'][t.priority_id] }}>{PRIORITY_LABEL[String(t.priority_id)] || '—'}</span> : '—'}
+                    {t.priority_id ? <span style={{ fontWeight: 600, fontSize: '0.75rem', color: PRIORITY_MAP[t.priority_id]?.color }}>{PRIORITY_MAP[t.priority_id]?.label || '—'}</span> : '—'}
                   </td>
                   <td className="col-group" style={{ ...thTd, color: 'var(--text-secondary)' }}>{lastGroupLabel(t.group_name)}</td>
                   <td className="col-technician" style={{ ...thTd, color: 'var(--text-secondary)' }}>{(t.technician && t.technician.trim()) || <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em>}</td>
