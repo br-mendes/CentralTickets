@@ -74,6 +74,7 @@ export default function DashboardPage() {
     acc[k] = (acc[k] || 0) + 1; return acc
   }, {})
   const slaLate = tickets.filter(t => t.is_sla_late || t.is_overdue_resolve).length
+  const slaLateNotResolved = tickets.filter(t => (t.is_sla_late || t.is_overdue_resolve) && t.status_key !== 'closed' && t.status_key !== 'solved').length
   const peta = tickets.filter(t => (t.instance || '').toUpperCase() === 'PETA')
   const gmx  = tickets.filter(t => (t.instance || '').toUpperCase() === 'GMX')
 
@@ -216,8 +217,21 @@ export default function DashboardPage() {
         <StatCard label="Em Atendimento"  value={byStatusKey.processing || 0} color="#16a34a" href="/tickets?status=processing" />
         <StatCard label="Pendentes"       value={byStatusKey.pending || 0}   color="#ea580c" href="/tickets?status=pending" />
         <StatCard label="Aprovação"       value={approvalTickets.length}     color="#7c3aed" href="/tickets?status=approval" />
-        <StatCard label="SLA Excedido"    value={slaLate}                   color="#dc2626" href="/tickets?sla=late" />
+        <StatCard label="SLA Exc. (Não res.)" value={slaLateNotResolved}     color="#dc2626" href="/tickets?sla=late" />
+        <StatCard label="SLA Excedido"    value={slaLate}                   color="#b91c1c" href="/tickets?sla=late" />
         {avgResolutionSec > 0 && <StatCard label="Tempo Médio Resolução" value={formatSeconds(avgResolutionSec)} color="#6b7280" sub={`${resolvedWithTime.length} tickets`} />}
+      </div>
+
+      {/* Charts row */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '16px' }}>
+        <Card>
+          <SectionTitle>Tickets por Status</SectionTitle>
+          <DoughnutChart labels={chartStatusLabels} data={chartStatusData} colors={chartStatusColors} height={200} />
+        </Card>
+        <Card>
+          <SectionTitle>Últimos 30 Dias</SectionTitle>
+          <LineChart labels={trend.labels} datasets={lineDatasets} height={200} />
+        </Card>
       </div>
 
       {/* Instance breakdown */}
@@ -247,18 +261,6 @@ export default function DashboardPage() {
           </Card>
         )
       })}
-
-      {/* Charts row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '16px' }}>
-        <Card>
-          <SectionTitle>Tickets por Status</SectionTitle>
-          <DoughnutChart labels={chartStatusLabels} data={chartStatusData} colors={chartStatusColors} height={200} />
-        </Card>
-        <Card>
-          <SectionTitle>Últimos 30 Dias</SectionTitle>
-          <LineChart labels={trend.labels} datasets={lineDatasets} height={200} />
-        </Card>
-      </div>
 
       {/* Taxa de Resolução + Tempo em Pendência */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '14px' }}>

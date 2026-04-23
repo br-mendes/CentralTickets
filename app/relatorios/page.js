@@ -9,6 +9,8 @@ import SLABadge from '../components/SLABadge'
 const MONTHS = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
 const STATUS_OPTS = [
   { v: '', l: 'Todos' },
+  { v: 'unresolved', l: 'Não solucionado (Novo / Pendente / Atend. / Aprova.)' },
+  { v: 'resolved', l: 'Fechado + Solucionado' },
   { v: 'new', l: 'Novo' },
   { v: 'processing', l: 'Em atendimento' },
   { v: 'pending', l: 'Pendente' },
@@ -37,7 +39,7 @@ export default function RelatoriosPage() {
   const [fStatus, setFStatus] = useState('')
   const [fTech, setFTech] = useState('')
   const [fGroup, setFGroup] = useState('')
-  const [fUrgency, setFUrgency] = useState('')
+  const [fPriority, setFPriority] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true); setError(null); setMissingColumns(false)
@@ -64,19 +66,27 @@ export default function RelatoriosPage() {
   const filtered = allTickets.filter(t => {
     if (fInstance && (t.instance || '').toUpperCase() !== fInstance.toUpperCase()) return false
     if (fEntity  && processEntity(t.entity) !== fEntity) return false
-    if (fStatus  && t.status_key !== fStatus) return false
-    if (fTech     && (t.technician || '') !== fTech) return false
-    if (fGroup    && lastGroupLabel(t.group_name) !== fGroup) return false
-    if (fUrgency  && String(t.urgency || '') !== fUrgency) return false
+    if (fStatus) {
+      if (fStatus === 'resolved') {
+        if (t.status_key !== 'solved' && t.status_key !== 'closed') return false
+      } else if (fStatus === 'unresolved') {
+        if (!['new', 'pending', 'processing', 'approval', 'pending-approval'].includes(t.status_key)) return false
+      } else {
+        if (t.status_key !== fStatus) return false
+      }
+    }
+    if (fTech    && (t.technician || '').trim() !== fTech) return false
+    if (fGroup   && lastGroupLabel(t.group_name) !== fGroup) return false
+    if (fPriority && String(t.priority_id || '') !== fPriority) return false
     return true
   })
 
   const hasSolution = allTickets.some(t => 'date_solved' in t || 'solution' in t)
 
-  const URGENCY_LABEL = { '1':'Muito Baixa','2':'Baixa','3':'Média','4':'Alta','5':'Muito Alta','6':'Crítica' }
+  const PRIORITY_LABEL = { '1':'Muito Baixa','2':'Baixa','3':'Média','4':'Alta','5':'Muito Alta','6':'Crítica' }
 
   function exportCSV() {
-    const baseH = ['ID','Instância','Entidade','Categoria','Status','Urgência','Canal','Grupo Responsável','Técnico','SLA Atendimento','SLA Solução','Abertura','Últ. Atualização']
+    const baseH = ['ID','Instância','Entidade','Categoria','Status','Prioridade','Canal','Grupo Responsável','Técnico','SLA Atendimento','SLA Solução','Abertura','Últ. Atualização']
     const headers = hasSolution ? [...baseH, 'Data Solução', 'Solução'] : baseH
     const rows = filtered.map(t => {
       const base = [
@@ -85,11 +95,11 @@ export default function RelatoriosPage() {
         processEntity(t.entity),
         t.category || '',
         getStatusConfig(t.status_id, t.status_key).label,
-        URGENCY_LABEL[String(t.urgency)] || '—',
+        PRIORITY_LABEL[String(t.priority_id)] || '—',
         t.requester || '—',
         t.request_type || '—',
         lastGroupLabel(t.group_name) || '—',
-        t.technician || '—',
+        (t.technician && t.technician.trim()) || '—',
         t.is_overdue_first ? 'Fora do prazo' : 'No prazo',
         t.is_overdue_resolve ? 'Fora do prazo' : 'No prazo',
         fmt(t.date_created),
@@ -159,8 +169,8 @@ export default function RelatoriosPage() {
         {groups.map(g => <option key={g} value={g}>{g}</option>)}
       </select>
     )},
-    { label: 'Urgência', el: (
-      <select value={fUrgency} onChange={e => setFUrgency(e.target.value)} style={sel}>
+    { label: 'Prioridade', el: (
+      <select value={fPriority} onChange={e => setFPriority(e.target.value)} style={sel}>
         <option value="">Todas</option>
         <option value="6">Crítica</option>
         <option value="5">Muito Alta</option>
@@ -172,7 +182,7 @@ export default function RelatoriosPage() {
     )},
   ]
 
-  const baseHeaders = ['ID','Instância','Entidade','Categoria','Status','Urg.','Grupo','Técnico','SLA Atend.','SLA Solução','Abertura','Últ. Atualização']
+  const baseHeaders = ['ID','Instância','Entidade','Categoria','Status','Prior.','Grupo','Técnico','SLA Atend.','SLA Solução','Abertura','Últ. Atualização']
   const tableHeaders = hasSolution ? [...baseHeaders, 'Data Solução', 'Solução'] : baseHeaders
 
   return (
@@ -210,7 +220,7 @@ CREATE INDEX IF NOT EXISTS idx_tickets_cache_date_solved ON tickets_cache(date_s
           Buscar
         </button>
         {allTickets.length > 0 && (
-          <button onClick={() => { setFInstance(''); setFEntity(''); setFStatus(''); setFTech(''); setFGroup(''); setFUrgency('') }}
+          <button onClick={() => { setFInstance(''); setFEntity(''); setFStatus(''); setFTech(''); setFGroup(''); setFPriority('') }}
             style={{ ...sel, cursor: 'pointer', alignSelf: 'flex-end' }}>
             Limpar filtros
           </button>
@@ -256,10 +266,10 @@ CREATE INDEX IF NOT EXISTS idx_tickets_cache_date_solved ON tickets_cache(date_s
                   <td className="col-entity" style={thTd}>{t.category || '—'}</td>
                   <td style={thTd}><StatusBadge statusId={t.status_id} statusKey={t.status_key} statusName={t.status_name} /></td>
                   <td style={thTd}>
-                    {t.urgency ? <span style={{ fontWeight: 600, fontSize: '0.75rem', color: ['','#64748b','#3b82f6','#d97706','#ea580c','#dc2626','#7f1d1d'][t.urgency] }}>{URGENCY_LABEL[String(t.urgency)] || '—'}</span> : '—'}
+                    {t.priority_id ? <span style={{ fontWeight: 600, fontSize: '0.75rem', color: ['','#64748b','#3b82f6','#d97706','#ea580c','#dc2626','#7f1d1d'][t.priority_id] }}>{PRIORITY_LABEL[String(t.priority_id)] || '—'}</span> : '—'}
                   </td>
                   <td className="col-group" style={{ ...thTd, color: 'var(--text-secondary)' }}>{lastGroupLabel(t.group_name)}</td>
-                  <td className="col-technician" style={{ ...thTd, color: 'var(--text-secondary)' }}>{t.technician || '—'}</td>
+                  <td className="col-technician" style={{ ...thTd, color: 'var(--text-secondary)' }}>{(t.technician && t.technician.trim()) || <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em>}</td>
                   <td style={thTd}><SLABadge isLate={t.is_overdue_first} /></td>
                   <td style={thTd}><SLABadge isLate={t.is_overdue_resolve} /></td>
                   <td style={{ ...thTd, color: 'var(--text-secondary)' }}>{fmt(t.date_created)}</td>
