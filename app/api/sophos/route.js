@@ -109,7 +109,14 @@ export async function GET(request) {
         break
 
       case 'tenants':
-        url = 'https://api.central.sophos.com/partner/v1/tenants'
+        if (tenant.idType === 'partner') {
+          headers['X-Partner-ID'] = tenant.id
+        } else if (tenant.idType === 'organization') {
+          headers['X-Organization-ID'] = tenant.id
+        }
+        url = tenant.idType === 'partner' 
+          ? 'https://api.central.sophos.com/partner/v1/tenants'
+          : 'https://api.central.sophos.com/organization/v1/tenants'
         break
 
       case 'endpoints':
@@ -139,7 +146,16 @@ export async function GET(request) {
 
     const apiRes = await fetch(url, { headers })
 
-    const json = await apiRes.json()
+    const text = await apiRes.text()
+    console.log(`Sophos ${endpoint}: ${apiRes.status}`, text.substring(0, 300), 'URL:', url, 'Headers:', JSON.stringify(headers))
+
+    let json
+    try {
+      json = JSON.parse(text)
+    } catch {
+      json = { raw: text }
+    }
+
     return NextResponse.json(json, { status: apiRes.status })
   } catch (error) {
     console.error('Sophos error:', error.message)
