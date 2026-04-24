@@ -9,8 +9,10 @@ async function getSophosToken() {
   const clientId = process.env.SOPHOS_CLIENT_ID
   const clientSecret = process.env.SOPHOS_CLIENT_SECRET
 
+  console.log('Sophos auth: clientId set?', !!clientId)
+
   if (!clientId || !clientSecret) {
-    throw new Error('Credenciais Sophos não configuradas')
+    throw new Error('Credenciais Sophos não configuradas. Defina SOPHOS_CLIENT_ID e SOPHOS_CLIENT_SECRET no ambiente.')
   }
 
   const response = await fetch(SOPHOS_AUTH_URL, {
