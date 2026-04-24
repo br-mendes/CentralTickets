@@ -38,26 +38,6 @@ async function getSophosToken() {
   }
   return data.access_token
 }
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: new URLSearchParams({
-      grant_type: 'client_credentials',
-      client_id: clientId,
-      client_secret: clientSecret,
-      scope: 'token',
-    }),
-  })
-
-  if (!response.ok) {
-    const error = await response.text()
-    throw new Error(`Falha na autenticação Sophos: ${error}`)
-  }
-
-  const data = await response.json()
-  return data.access_token
-}
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url)
@@ -67,16 +47,18 @@ export async function GET(request) {
   try {
     const token = await getSophosToken()
 
-    let url, headers = {
+    let url
+    let headers = {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
+      'X-Application-ID': 'CentralTickets',
     }
 
     if (tenantId) {
       headers['X-Tenant-ID'] = tenantId
     }
 
-switch (endpoint) {
+    switch (endpoint) {
       case 'whoami':
         url = `${SOPHOS_API_GLOBAL}/whoami/v1`
         break
@@ -129,12 +111,6 @@ switch (endpoint) {
         return NextResponse.json({ error: `Endpoint desconhecido: ${endpoint}` }, { status: 400 })
     }
 
-    let headers = {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      'X-Application-ID': 'CentralTickets',
-    }
-
     const response = await fetch(url, { headers })
 
     if (!response.ok) {
@@ -159,11 +135,13 @@ export async function POST(request) {
 
   try {
     const token = await getSophosToken()
-    const body = await request.json()
+    const body = await request.json().catch(() => ({}))
 
-    let url, headers = {
+    let url
+    let headers = {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
+      'X-Application-ID': 'CentralTickets',
     }
 
     if (body.tenantId) {
@@ -183,19 +161,11 @@ export async function POST(request) {
         url = `${SOPHOS_API_REGION}/endpoint/v1/endpoints/${body.endpointId}/scans`
         break
 
-      case 'add-tag':
-        url = `${SOPHOS_API_REGION}/endpoint/v1/endpoints/${body.endpointId}/tags`
-        break
-
-      case 'remove-tag':
-        url = `${SOPHOS_API_REGION}/endpoint/v1/endpoints/${body.endpointId}/tags/${body.tag}`
-        break
-
       default:
         return NextResponse.json({ error: `Ação desconhecida: ${action}` }, { status: 400 })
     }
 
-    const method = action === 'add-tag' ? 'POST' : action === 'remove-tag' ? 'DELETE' : action === 'unisolate-endpoint' ? 'DELETE' : 'POST'
+    const method = action === 'unisolate-endpoint' ? 'DELETE' : 'POST'
 
     const response = await fetch(url, {
       method,
