@@ -96,7 +96,7 @@ export async function GET(request) {
 
     let tenantIdToUse = tenantId
     if (!tenantIdToUse && organizationId) {
-      tenantIdToUse = await getTenantId(token, organizationId)
+      tenantIdToUse = await getTenantId(token, organizationId, idType)
     }
 
     const headers = {
