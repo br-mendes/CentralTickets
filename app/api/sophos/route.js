@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 
 const SOPHOS_AUTH_URL = 'https://id.sophos.com/api/v2/oauth2/token'
 const SOPHOS_API_GLOBAL = 'https://api.central.sophos.com'
-const SOPHOS_REGION = 'br01'
+const SOPHOS_REGION = 'br-01'
 const SOPHOS_API_REGION = `https://api-${SOPHOS_REGION}.central.sophos.com`
 
 async function getSophosToken() {

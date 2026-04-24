@@ -45,7 +45,7 @@ export default function RelCofenPage() {
   const [sophosLoading, setSophosLoading] = useState(false)
   const [sophosData, setSophosData] = useState(null)
   const [sophosError, setSophosError] = useState(null)
-  const [sophosRegion] = useState('br01')
+  const [sophosRegion] = useState('br-01')
 
   // Monthly report state
   const [monthlyReport, setMonthlyReport] = useState(null)
@@ -506,7 +506,7 @@ CREATE INDEX IF NOT EXISTS idx_tickets_cache_date_solved ON tickets_cache(date_s
           <br />
           <strong>APis Ação:</strong> isolate-endpoint, unisolate-endpoint, scan-endpoint, add-tag, remove-tag
           <br />
-          <strong>Base URLs:</strong> Global: api.central.sophos.com | Regional: api-br01.central.sophos.com
+          <strong>Base URLs:</strong> Global: api.central.sophos.com | Regional: api-br-01.central.sophos.com
           <br />
           <strong>Autenticação:</strong> OAuth2 client_credentials → Bearer Token | X-Tenant-ID header
           <br />
