@@ -74,10 +74,6 @@ export async function GET(request) {
         url = `${SOPHOS_API_REGION}/endpoint/v1/endpoints`
         break
 
-      case 'endpoints':
-        url = `${SOPHOS_API_REGION}/endpoint/v1/endpoints`
-        break
-
       case 'endpoint-groups':
         url = `${SOPHOS_API_REGION}/endpoint/v1/endpoint-groups`
         break

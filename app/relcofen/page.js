@@ -75,13 +75,15 @@ export default function RelCofenPage() {
       const endpointsRes = await fetch('/api/sophos?endpoint=endpoints').then(r => r.json()).catch(() => ({}))
       const endpointsData = Array.isArray(endpointsRes?.items) ? endpointsRes.items : Array.isArray(endpointsRes) ? endpointsRes : []
       const isolatedCount = Array.isArray(endpointsData) ? endpointsData.filter(e => e.isolationStatus === 'isolated').length : 0
-      const threatsRes = await fetch('/api/sophos?endpoint=threats').then(r => r.json()).catch(() => ({}))
+const threatsRes = await fetch('/api/sophos?endpoint=threats').then(r => r.json()).catch(() => ({}))
       const threatsData = Array.isArray(threatsRes?.items) ? threatsRes.items : Array.isArray(threatsRes) ? threatsRes : []
       const threatsCount = threatsData.length
 
-      const alertsRes = await fetch('/api/sophos?endpoint=alerts').then(r => r.json()).catch(() => ({}))
-      const casesRes = await fetch('/api/sophos?endpoint=cases').then(r => r.json()).catch(() => ({}))
-      const usersRes = await fetch('/api/sophos?endpoint=users').then(r => r.json()).catch(() => ({}))
+      const [alertsRes, casesRes, usersRes] = await Promise.all([
+        fetch('/api/sophos?endpoint=alerts').then(r => r.json()).catch(() => ({})),
+        fetch('/api/sophos?endpoint=cases').then(r => r.json()).catch(() => ({})),
+        fetch('/api/sophos?endpoint=users').then(r => r.json()).catch(() => ({})),
+      ])
       const alertsData = Array.isArray(alertsRes?.items) ? alertsRes.items : Array.isArray(alertsRes) ? alertsRes : []
       const casesData = Array.isArray(casesRes?.items) ? casesRes.items : Array.isArray(casesRes) ? casesRes : []
       const usersData = Array.isArray(usersRes?.items) ? usersRes.items : Array.isArray(usersRes) ? usersRes : []
