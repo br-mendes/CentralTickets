@@ -79,22 +79,20 @@ export default function RelCofenPage() {
       const threatsData = Array.isArray(threatsRes?.items) ? threatsRes.items : Array.isArray(threatsRes) ? threatsRes : []
       const threatsCount = threatsData.length
 
-      const [alertsRes, casesRes, usersRes] = await Promise.all([
-        fetch('/api/sophos?endpoint=alerts').then(r => r.json()).catch(() => ({})),
-        fetch('/api/sophos?endpoint=cases').then(r => r.json()).catch(() => ({})),
-        fetch('/api/sophos?endpoint=users').then(r => r.json()).catch(() => ({})),
-      ])
+      const alertsData = Array.isArray(alertsRes?.items) ? alertsRes.items : Array.isArray(alertsRes) ? alertsRes : []
+      const casesData = Array.isArray(casesRes?.items) ? casesRes.items : Array.isArray(casesRes) ? casesRes : []
+      const usersData = Array.isArray(usersRes?.items) ? usersRes.items : Array.isArray(usersRes) ? usersRes : []
 
-setSophosData({
+      setSophosData({
         whoami: results.whoami,
         tenants: Array.isArray(results.tenants) ? results.tenants : [],
         endpoints: Array.isArray(endpointsData) ? endpointsData : [],
         endpointGroups: [],
-        alerts: Array.isArray(alertsData) ? alertsData : [],
-        cases: Array.isArray(casesData) ? casesData : [],
+        alerts: alertsData,
+        cases: casesData,
         siemEvents: [],
         siemAlerts: [],
-        users: Array.isArray(usersData) ? usersData : [],
+        users: usersData,
         userGroups: [],
         threats: threatsData,
         isolatedCount,
