@@ -61,10 +61,11 @@ async function getSophosWhoami(token) {
 
 async function getTenantId(token, organizationId, idType = 'organization') {
   const path = idType === 'partner' ? 'partner/v1/tenants' : 'organization/v1/tenants'
+  const headerKey = idType === 'partner' ? 'X-Partner-ID' : 'X-Organization-ID'
   const response = await fetch(`${SOPHOS_API_GLOBAL}/${path}`, {
     headers: {
       'Authorization': `Bearer ${token}`,
-      idType === 'partner' ? `X-Partner-ID: ${organizationId}` : `X-Organization-ID: ${organizationId}`,
+      [headerKey]: organizationId,
       'Content-Type': 'application/json',
     },
   })
