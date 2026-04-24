@@ -35,15 +35,20 @@ async function getToken() {
   try {
     data = JSON.parse(text)
   } catch {
+    tokenCache = null
+    tokenExpiresAt = 0
     throw new Error(`Auth falhou: ${res.status} - ${text.substring(0, 200)}`)
   }
 
   if (!data.access_token) {
+    tokenCache = null
+    tokenExpiresAt = 0
     throw new Error(`Token não obtido: ${text.substring(0, 200)}`)
   }
 
   tokenCache = data.access_token
   tokenExpiresAt = Date.now() + (data.expires_in - 60) * 1000
+  console.log('Token obtido, expira em:', data.expires_in, 'segundos')
   return tokenCache
 }
 
@@ -108,7 +113,6 @@ export async function GET(request) {
     switch (endpoint) {
       case 'whoami':
         url = 'https://api.central.sophos.com/whoami/v1'
-        headers['X-Partner-ID'] = tenant.id
         break
 
       case 'tenants':
