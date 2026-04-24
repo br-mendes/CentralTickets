@@ -9,13 +9,35 @@ async function getSophosToken() {
   const clientId = process.env.SOPHOS_CLIENT_ID
   const clientSecret = process.env.SOPHOS_CLIENT_SECRET
 
-  console.log('Sophos auth: clientId set?', !!clientId)
-
   if (!clientId || !clientSecret) {
     throw new Error('Credenciais Sophos não configuradas. Defina SOPHOS_CLIENT_ID e SOPHOS_CLIENT_SECRET no ambiente.')
   }
 
   const response = await fetch(SOPHOS_AUTH_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      grant_type: 'client_credentials',
+      client_id: clientId,
+      client_secret: clientSecret,
+      scope: 'token',
+    }),
+  })
+
+  if (!response.ok) {
+    const status = response.status
+    const error = await response.text().catch(() => 'Unknown error')
+    throw new Error(`Falha na autenticação Sophos: HTTP ${status} - ${error}`)
+  }
+
+  const data = await response.json()
+  if (!data.access_token) {
+    throw new Error('Token de acesso não retornado pelo Sophos')
+  }
+  return data.access_token
+}
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -54,7 +76,7 @@ export async function GET(request) {
       headers['X-Tenant-ID'] = tenantId
     }
 
-    switch (endpoint) {
+switch (endpoint) {
       case 'whoami':
         url = `${SOPHOS_API_GLOBAL}/whoami/v1`
         break
@@ -95,16 +117,8 @@ export async function GET(request) {
         url = `${SOPHOS_API_REGION}/common/v1/user-groups`
         break
 
-      case 'dashboards':
-        url = `${SOPHOS_API_REGION}/common/v1/dashboard`
-        break
-
       case 'threats':
         url = `${SOPHOS_API_REGION}/endpoint/v1/threats`
-        break
-
-      case 'scans':
-        url = `${SOPHOS_API_REGION}/endpoint/v1/scans`
         break
 
       case 'isolated-endpoints':
@@ -113,6 +127,12 @@ export async function GET(request) {
 
       default:
         return NextResponse.json({ error: `Endpoint desconhecido: ${endpoint}` }, { status: 400 })
+    }
+
+    let headers = {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'X-Application-ID': 'CentralTickets',
     }
 
     const response = await fetch(url, { headers })

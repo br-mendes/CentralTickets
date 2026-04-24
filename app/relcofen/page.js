@@ -54,49 +54,51 @@ export default function RelCofenPage() {
     setSophosLoading(true)
     setSophosError(null)
     try {
-      const endpoints = [
-        'whoami',
-        'tenants',
-        'endpoints',
-        'endpoint-groups',
-        'alerts',
-        'cases',
-        'siem-events',
-        'siem-alerts',
-        'users',
-        'user-groups',
-        'threats',
-        'isolated-endpoints'
-      ]
+      const endpoints = ['whoami', 'tenants']
       const results = {}
 
       for (const ep of endpoints) {
         try {
           const res = await fetch(`/api/sophos?endpoint=${ep}`)
           const data = await res.json()
-          results[ep] = data
+          if (data.error) {
+            results[ep] = { error: data.error }
+          } else {
+            results[ep] = data
+          }
         } catch (e) {
           results[ep] = { error: e.message }
         }
       }
 
-      const endpointsData = results.endpoints?.items || results.endpoints || []
-      const isolatedCount = endpointsData.filter(e => e.isolationStatus === 'isolated').length
-      const threatsData = results.threats?.items || results.threats || []
+      const tenantsData = Array.isArray(results.tenants?.items) ? results.tenants.items : Array.isArray(results.tenants) ? results.tenants : []
+      const endpointsRes = await fetch('/api/sophos?endpoint=endpoints').then(r => r.json()).catch(() => ({}))
+      const endpointsData = Array.isArray(endpointsRes?.items) ? endpointsRes.items : Array.isArray(endpointsRes) ? endpointsRes : []
+      const isolatedCount = Array.isArray(endpointsData) ? endpointsData.filter(e => e.isolationStatus === 'isolated').length : 0
+      const threatsRes = await fetch('/api/sophos?endpoint=threats').then(r => r.json()).catch(() => ({}))
+      const threatsData = Array.isArray(threatsRes?.items) ? threatsRes.items : Array.isArray(threatsRes) ? threatsRes : []
+      const threatsCount = threatsData.length
+
+      const [alertsRes, casesRes, usersRes] = await Promise.all([
+        fetch('/api/sophos?endpoint=alerts').then(r => r.json()).catch(() => ({})),
+        fetch('/api/sophos?endpoint=cases').then(r => r.json()).catch(() => ({})),
+        fetch('/api/sophos?endpoint=users').then(r => r.json()).catch(() => ({})),
+      ])
 
       setSophosData({
         whoami: results.whoami,
-        tenants: results.tenants?.items || results.tenants || [],
+        tenants: tenantsData,
         endpoints: endpointsData,
-        endpointGroups: results['endpoint-groups']?.items || results['endpoint-groups'] || [],
-        alerts: results.alerts?.items || results.alerts || [],
-        cases: results.cases?.items || results.cases || [],
-        siemEvents: results['siem-events']?.items || results['siem-events'] || [],
-        siemAlerts: results['siem-alerts']?.items || results['siem-alerts'] || [],
-        users: results.users?.items || results.users || [],
-        userGroups: results['user-groups']?.items || results['user-groups'] || [],
+        endpointGroups: [],
+        alerts: Array.isArray(alertsRes?.items) ? alertsRes.items : Array.isArray(alertsRes) ? alertsRes : [],
+        cases: Array.isArray(casesRes?.items) ? casesRes.items : Array.isArray(casesRes) ? casesRes : [],
+        siemEvents: [],
+        siemAlerts: [],
+        users: Array.isArray(usersRes?.items) ? usersRes.items : Array.isArray(usersRes) ? usersRes : [],
+        userGroups: [],
         threats: threatsData,
         isolatedCount,
+        threatsCount,
         lastSync: new Date().toISOString()
       })
     } catch (e) {
@@ -482,7 +484,7 @@ CREATE INDEX IF NOT EXISTS idx_tickets_cache_date_solved ON tickets_cache(date_s
             </div>
             <div className="stat-card">
               <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Ameaças</div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: sophosData.threats?.length > 0 ? '#dc2626' : '#16a34a' }}>{sophosData.threats?.length || 0}</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: (sophosData.threatsCount || 0) > 0 ? '#dc2626' : '#16a34a' }}>{sophosData.threatsCount || 0}</div>
             </div>
             <div className="stat-card">
               <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Eventos SIEM</div>
