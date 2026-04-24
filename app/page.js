@@ -224,6 +224,36 @@ export default function DashboardPage() {
          {avgResolutionSec > 0 && <StatCard label="Tempo Médio Resolução" value={formatSeconds(avgResolutionSec)} color="#6b7280" sub={`${resolvedWithTime.length} tickets`} />}
        </div>
 
+       {/* Instance breakdown */}
+       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+         {[{ label: 'Peta', list: peta, color: '#2563eb' }, { label: 'GMX', list: gmx, color: '#ea580c' }].map(({ label, list, color }) => {
+           const byS = list.reduce((a, t) => { const k = getStatusConfig(t.status_id, t.status_key).key; a[k] = (a[k] || 0) + 1; return a }, {})
+           return (
+             <Card key={label} style={{ borderLeft: `4px solid ${color}` }}>
+               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                 <span style={{ fontWeight: 700, fontSize: '1rem', color }}>{label}</span>
+                 <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{list.length} tickets</span>
+               </div>
+               <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                 {[
+                   { k: 'new', l: 'Novos', c: '#3b82f6' },
+                   { k: 'processing', l: 'Em Atendimento', c: '#22c55e' },
+                   { k: 'pending', l: 'Pendentes', c: '#f97316' },
+                   { k: 'approval', l: 'Aprovação', c: '#7c3aed' },
+                   { k: 'solved', l: 'Solucionados', c: '#6b7280' },
+                   { k: 'closed', l: 'Fechados', c: '#374151' },
+                 ].map(({ k, l, c }) => (
+                   <div key={k} style={{ textAlign: 'center', minWidth: '70px' }}>
+                     <div style={{ fontSize: '1.4rem', fontWeight: 700, color: c }}>{byS[k] || 0}</div>
+                     <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>{l}</div>
+                   </div>
+                 ))}
+               </div>
+             </Card>
+           )
+         })}
+       </div>
+
        {/* Charts row — Status + Trend */}
        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '16px' }}>
          <Card>
@@ -277,35 +307,7 @@ export default function DashboardPage() {
              </table>
            </div>
          </Card>
-       )}
-
-       {/* Instance breakdown */}
-       {[{ label: 'Peta', list: peta, color: '#2563eb' }, { label: 'GMX', list: gmx, color: '#ea580c' }].map(({ label, list, color }) => {
-         const byS = list.reduce((a, t) => { const k = getStatusConfig(t.status_id, t.status_key).key; a[k] = (a[k] || 0) + 1; return a }, {})
-         return (
-           <Card key={label} style={{ borderLeft: `4px solid ${color}` }}>
-             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-               <span style={{ fontWeight: 700, fontSize: '1rem', color }}>{label}</span>
-               <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{list.length} tickets</span>
-             </div>
-             <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-               {[
-                 { k: 'new', l: 'Novos', c: '#3b82f6' },
-                 { k: 'processing', l: 'Em Atendimento', c: '#22c55e' },
-                 { k: 'pending', l: 'Pendentes', c: '#f97316' },
-                 { k: 'approval', l: 'Aprovação', c: '#7c3aed' },
-                 { k: 'solved', l: 'Solucionados', c: '#6b7280' },
-                 { k: 'closed', l: 'Fechados', c: '#374151' },
-               ].map(({ k, l, c }) => (
-                 <div key={k} style={{ textAlign: 'center', minWidth: '70px' }}>
-                   <div style={{ fontSize: '1.4rem', fontWeight: 700, color: c }}>{byS[k] || 0}</div>
-                   <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>{l}</div>
-                 </div>
-               ))}
-             </div>
-           </Card>
-         )
-       })}
+        )}
 
        {/* Canal de Requisição */}
       {reqTypeRows.length > 1 && (

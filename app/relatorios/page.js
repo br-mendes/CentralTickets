@@ -83,10 +83,11 @@ export default function RelatoriosPage() {
 
   const hasSolution = allTickets.some(t => 'date_solved' in t || 'solution' in t)
 
-  const URGENCY_LABEL = { '1':'Muito Baixa','2':'Baixa','3':'Média','4':'Alta','5':'Muito Alta','6':'Crítica' }
+  const PRIORITY_LABELS = { 1: 'Muito Baixa', 2: 'Baixa', 3: 'Média', 4: 'Alta', 5: 'Urgente', 6: 'Crítica' }
+  const PRIORITY_COLORS = ['#64748b', '#3b82f6', '#d97706', '#ea580c', '#dc2626', '#7f1d1d']
 
   function exportCSV() {
-    const baseH = ['ID','Instância','Entidade','Categoria','Status','Urgência','Canal','Grupo Responsável','Técnico','SLA Atendimento','SLA Solução','Abertura','Últ. Atualização']
+    const baseH = ['ID','Instância','Entidade','Categoria','Status','Prioridade','Canal','Grupo Responsável','Técnico','SLA Atendimento','SLA Solução','Abertura','Últ. Atualização']
     const headers = hasSolution ? [...baseH, 'Data Solução', 'Solução'] : baseH
     const rows = filtered.map(t => {
       const base = [
@@ -95,7 +96,7 @@ export default function RelatoriosPage() {
         processEntity(t.entity),
         t.category || '',
         getStatusConfig(t.status_id, t.status_key).label,
-        URGENCY_LABEL[String(t.urgency)] || '—',
+        PRIORITY_LABELS[t.priority_id] || '—',
         t.requester || '—',
         t.request_type || '—',
         lastGroupLabel(t.group_name) || '—',
@@ -182,7 +183,7 @@ export default function RelatoriosPage() {
     )},
   ]
 
-  const baseHeaders = ['ID','Instância','Entidade','Categoria','Status','Urg.','Grupo','Técnico','SLA Atend.','SLA Solução','Abertura','Últ. Atualização']
+  const baseHeaders = ['ID','Instância','Entidade','Categoria','Status','Prioridade','Grupo','Técnico','SLA Atend.','SLA Solução','Abertura','Últ. Atualização']
   const tableHeaders = hasSolution ? [...baseHeaders, 'Data Solução', 'Solução'] : baseHeaders
 
   return (
