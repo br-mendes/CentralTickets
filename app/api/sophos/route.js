@@ -49,32 +49,34 @@ async function getToken() {
 
 async function getTenantId() {
   if (tenantIdCache) {
-    return tenantIdCache
+    return { id: tenantIdCache, apiHost: SOPHOS_API_REGION }
   }
 
   const token = await getToken()
   const whoRes = await fetch('https://api.central.sophos.com/whoami/v1', {
     headers: { Authorization: `Bearer ${token}` },
   })
-  const whoText = await whoRes.text()
-  let whoData
-  try {
-    whoData = JSON.parse(whoText)
-  } catch {
-    throw new Error(`Whoami falhou: ${whoRes.status} - ${whoText.substring(0, 200)}`)
-  }
+  const whoData = await whoRes.json()
 
-  if (whoData.idType === 'tenant') {
-    tenantIdCache = whoData.id
+  let id = null
+  let idType = whoData.idType
+  let apiHost = whoData.apiHost?.global || SOPHOS_API_REGION
+
+  if (idType === 'tenant') {
+    id = whoData.id
   } else if (whoData.tenants && whoData.tenants.length > 0) {
-    tenantIdCache = whoData.tenants[0].id
+    id = whoData.tenants[0].id
+    apiHost = whoData.tenants[0].apiHost || SOPHOS_API_REGION
   } else if (whoData.id) {
-    tenantIdCache = whoData.id
-  } else {
-    throw new Error(`Tenant não encontrado: ${whoText.substring(0, 200)}`)
+    id = whoData.id
   }
 
-  return tenantIdCache
+  if (!id) {
+    throw new Error(`Tenant não encontrado`)
+  }
+
+  tenantIdCache = id
+  return { id, apiHost, idType }
 }
 
 export async function GET(request) {
@@ -83,9 +85,24 @@ export async function GET(request) {
 
   try {
     const token = await getToken()
-    const tid = await getTenantId()
+    const tenant = await getTenantId()
+
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    }
+
+    if (tenant.idType === 'partner') {
+      headers['X-Partner-ID'] = tenant.id
+    } else if (tenant.idType === 'organization') {
+      headers['X-Organization-ID'] = tenant.id
+    } else {
+      headers['X-Tenant-ID'] = tenant.id
+    }
 
     let url
+    let apiHost = tenant.apiHost
+
     switch (endpoint) {
       case 'whoami':
         url = 'https://api.central.sophos.com/whoami/v1'
@@ -99,29 +116,28 @@ export async function GET(request) {
       case 'endpoint-groups':
       case 'threats':
       case 'isolated-endpoints':
-        url = `${SOPHOS_API_REGION}/endpoint/v1/${endpoint === 'isolated-endpoints' ? 'endpoints?isolationStatus=isolated' : endpoint}`
+        headers['X-Tenant-ID'] = tenant.id
+        url = `${apiHost}/endpoint/v1/${endpoint === 'isolated-endpoints' ? 'endpoints?isolationStatus=isolated' : endpoint}`
         break
 
       case 'alerts':
       case 'users':
       case 'user-groups':
-        url = `${SOPHOS_API_REGION}/common/v1/${endpoint}`
+        headers['X-Tenant-ID'] = tenant.id
+        url = `${apiHost}/common/v1/${endpoint}`
         break
 
       case 'cases':
-        url = `${SOPHOS_API_REGION}/cases/v1/cases`
+        headers['X-Tenant-ID'] = tenant.id
+        url = `${apiHost}/cases/v1/cases`
         break
 
       default:
-        url = `${SOPHOS_API_REGION}/endpoint/v1/${endpoint}`
+        headers['X-Tenant-ID'] = tenant.id
+        url = `${apiHost}/endpoint/v1/${endpoint}`
     }
 
-    const apiRes = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'X-Tenant-ID': tid,
-      },
-    })
+    const apiRes = await fetch(url, { headers })
 
     const json = await apiRes.json()
     return NextResponse.json(json, { status: apiRes.status })
@@ -137,19 +153,21 @@ export async function POST(request) {
 
   try {
     const token = await getToken()
-    const tid = await getTenantId()
+    const tenant = await getTenantId()
     const body = await request.json().catch(() => ({}))
 
     let url
+    let apiHost = tenant.apiHost
+
     switch (action) {
       case 'isolate-endpoint':
-        url = `${SOPHOS_API_REGION}/endpoint/v1/endpoints/${body.endpointId}/isolation`
+        url = `${apiHost}/endpoint/v1/endpoints/${body.endpointId}/isolation`
         break
       case 'unisolate-endpoint':
-        url = `${SOPHOS_API_REGION}/endpoint/v1/endpoints/${body.endpointId}/isolation`
+        url = `${apiHost}/endpoint/v1/endpoints/${body.endpointId}/isolation`
         break
       case 'scan-endpoint':
-        url = `${SOPHOS_API_REGION}/endpoint/v1/endpoints/${body.endpointId}/scans`
+        url = `${apiHost}/endpoint/v1/endpoints/${body.endpointId}/scans`
         break
       default:
         return NextResponse.json({ error: `Ação desconhecida: ${action}` }, { status: 400 })
@@ -161,7 +179,7 @@ export async function POST(request) {
       method,
       headers: {
         Authorization: `Bearer ${token}`,
-        'X-Tenant-ID': tid,
+        'X-Tenant-ID': tenant.id,
         'Content-Type': 'application/json',
       },
       body: method !== 'DELETE' ? JSON.stringify(body) : undefined,
