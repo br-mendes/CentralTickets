@@ -28,7 +28,24 @@ const sel = {
 const SEV_COLORS = { critical: '#7f1d1d', high: '#dc2626', medium: '#d97706', low: '#3b82f6' }
 const SEV_LABELS = { critical: 'Crítica', high: 'Alta', medium: 'Média', low: 'Baixa' }
 const SIEM_EVENT_HEADERS = ['ID', 'Tipo', 'Severidade', 'Origem', 'Criado em', 'Detalhes']
-const SIEM_ALERT_HEADERS = ['ID', 'Título', 'Severidade', 'Status', 'Endpoint', 'Ameaça', 'Criado em', 'Atualizado em']
+const SIEM_ALERT_HEADERS = ['ID', 'Tipo', 'Severidade', 'Nome do Evento', 'Endpoint ID', 'Categoria', 'Quando']
+
+// Formata Unix timestamp (seconds ou ms) ou ISO string
+function fmtWhen(val) {
+  if (!val) return '—'
+  if (typeof val === 'number') {
+    const ms = val < 1e10 ? val * 1000 : val
+    return new Date(ms).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
+  }
+  return fmt(val)
+}
+
+// Extrai as 2 últimas partes do tipo: Event::Endpoint::Threat::Detected → Threat::Detected
+function shortType(type) {
+  if (!type) return '—'
+  const parts = type.split('::')
+  return parts.length > 2 ? parts.slice(-2).join('::') : type
+}
 
 function SevBadge({ severity }) {
   const map = {
@@ -74,7 +91,7 @@ export default function RelCofenPage() {
   const [sophosRegion] = useState('br-01')
 
   // SIEM state
-  const [siemType, setSiemType] = useState('events')
+  const [siemType, setSiemType] = useState('alerts')
   const [siemFrom, setSiemFrom] = useState(() => { const d = new Date(); d.setDate(d.getDate() - 7); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` })
   const [siemTo, setSiemTo] = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` })
   const [siemLimit, setSiemLimit] = useState(100)
@@ -156,10 +173,9 @@ const threatsRes = await fetch('/api/sophos?endpoint=threats').then(r => r.json(
     setSiemFetching(true)
     if (!appendCursor) setSiemError(null)
     try {
-      const params = new URLSearchParams({ endpoint: siemType === 'events' ? 'siem-events' : 'siem-alerts', limit: String(siemLimit) })
+      const params = new URLSearchParams({ endpoint: 'siem-alerts', limit: String(siemLimit) })
       if (siemFrom) params.set('from', new Date(siemFrom + 'T00:00:00').toISOString())
       if (siemTo) params.set('to', new Date(siemTo + 'T23:59:59').toISOString())
-      if (siemSeverity) params.set('filter', `severity:${siemSeverity}`)
       if (appendCursor) params.set('cursor', appendCursor)
       const res = await fetch(`/api/sophos?${params.toString()}`)
       const data = await res.json()
@@ -169,29 +185,32 @@ const threatsRes = await fetch('/api/sophos?endpoint=threats').then(r => r.json(
       setSiemNextCursor(data.next_cursor || null)
     } catch (e) { setSiemError(e.message) }
     finally { setSiemFetching(false) }
-  }, [siemType, siemFrom, siemTo, siemLimit, siemSeverity])
+  }, [siemFrom, siemTo, siemLimit])
 
   const exportSiemCSV = useCallback(() => {
     if (!siemItems.length) return
-    const headers = siemType === 'events'
-      ? ['ID', 'Tipo', 'Severidade', 'Origem', 'Criado em', 'Endpoint', 'Descrição']
-      : ['ID', 'Título', 'Severidade', 'Status', 'Endpoint', 'Ameaça', 'Criado em', 'Atualizado em']
-    const rows = siemItems.map(item => siemType === 'events' ? [
-      item.id || '', item.type || item.category || '', item.severity || '',
-      item.source || item.origin || '', item.created_at || item.when || '',
-      item.details?.endpoint?.hostname || item.endpoint_id || '', item.description || '',
-    ] : [
-      item.id || '', item.title || item.description || '', item.severity || '',
-      item.status || '', item.details?.endpoint?.hostname || '',
-      item.details?.threat?.name || '', item.created_at || '', item.updated_at || '',
+    const headers = ['ID', 'Tipo Completo', 'Tipo Curto', 'Severidade', 'Nome do Evento', 'Endpoint ID', 'Categoria', 'Grupo', 'Quando', 'created_at', 'customer_id', 'source']
+    const rows = siemItems.map(item => [
+      item.id || '',
+      item.type || '',
+      shortType(item.type),
+      item.severity || '',
+      item.name || item.description || '',
+      item.endpoint_id || item.managedAgent?.id || '',
+      item.category || '',
+      item.group || '',
+      item.created_at || (item.when ? fmtWhen(item.when) : ''),
+      item.created_at || '',
+      item.customer_id || item.tenant?.id || '',
+      item.source || '',
     ])
     const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = url; a.download = `siem_${siemType}_${siemFrom}_${siemTo}.csv`; a.click()
+    a.href = url; a.download = `siem_alerts_${siemFrom}_${siemTo}.csv`; a.click()
     URL.revokeObjectURL(url)
-  }, [siemItems, siemType, siemFrom, siemTo])
+  }, [siemItems, siemFrom, siemTo])
 
   const load = useCallback(async () => {
     setLoading(true); setError(null); setMissingColumns(false)
@@ -212,10 +231,21 @@ const threatsRes = await fetch('/api/sophos?endpoint=threats').then(r => r.json(
     finally { setLoading(false) }
   }, [dateType, year, month])
 
+  // Client-side severity filter
+  const displayedSiemItems = siemSeverity
+    ? siemItems.filter(item => (item.severity || '').toLowerCase() === siemSeverity)
+    : siemItems
+
   const siemBySeverity = { critical: 0, high: 0, medium: 0, low: 0 }
-  siemItems.forEach(item => { const s = (item.severity || '').toLowerCase(); if (s in siemBySeverity) siemBySeverity[s]++ })
-  const siemByStatus = { open: 0, acknowledged: 0, resolved: 0 }
-  siemItems.forEach(item => { const s = (item.status || '').toLowerCase(); if (s in siemByStatus) siemByStatus[s]++ })
+  displayedSiemItems.forEach(item => { const s = (item.severity || '').toLowerCase(); if (s in siemBySeverity) siemBySeverity[s]++ })
+
+  // Top categorias por tipo (últimas 2 partes de Event::X::Y::Z)
+  const siemByCategory = {}
+  displayedSiemItems.forEach(item => {
+    const cat = item.category || shortType(item.type) || 'Outro'
+    siemByCategory[cat] = (siemByCategory[cat] || 0) + 1
+  })
+  const topCategories = Object.entries(siemByCategory).sort((a, b) => b[1] - a[1]).slice(0, 4)
 
   const entities    = [...new Set(allTickets.map(t => processEntity(t.entity)).filter(v => v !== '—'))].sort()
   const technicians = [...new Set(allTickets.map(t => t.technician).filter(Boolean))].sort()
@@ -609,25 +639,15 @@ CREATE INDEX IF NOT EXISTS idx_tickets_cache_date_solved ON tickets_cache(date_s
       {/* SIEM Integration API */}
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '16px' }}>
         <div style={{ marginBottom: '12px' }}>
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 600 }}>SIEM Integration API</h2>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 600 }}>SIEM Integration API — Alertas</h2>
           <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-            Eventos e alertas de segurança via{' '}
-            <code style={{ background: 'var(--background)', padding: '1px 5px', borderRadius: '3px', fontSize: '0.78rem' }}>
-              /siem/v1/{siemType}
-            </code>
+            <code style={{ background: 'var(--background)', padding: '1px 5px', borderRadius: '3px', fontSize: '0.78rem' }}>GET /siem/v1/alerts</code>
             {' '}| Base URI: api-br01.central.sophos.com | OAuth2 Bearer + X-Tenant-ID
           </p>
         </div>
 
         {/* Controls */}
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: '16px', padding: '12px', background: 'var(--background)', borderRadius: 'var(--radius-md)' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-            <label style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Tipo</label>
-            <select value={siemType} onChange={e => { setSiemType(e.target.value); setSiemItems([]); setSiemNextCursor(null) }} style={sel}>
-              <option value="events">Eventos (/events)</option>
-              <option value="alerts">Alertas (/alerts)</option>
-            </select>
-          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
             <label style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>De</label>
             <input type="date" value={siemFrom} onChange={e => setSiemFrom(e.target.value)} style={{ ...sel, fontFamily: 'inherit' }} />
@@ -675,24 +695,28 @@ CREATE INDEX IF NOT EXISTS idx_tickets_cache_date_solved ON tickets_cache(date_s
 
         {siemItems.length > 0 && (
           <>
-            {/* Stats por severidade e status */}
+            {/* Stats por severidade e categoria */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '10px', marginBottom: '16px' }}>
               <div className="stat-card">
                 <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Total</div>
                 <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{siemItems.length}</div>
               </div>
+              {siemSeverity && siemItems.length !== displayedSiemItems.length && (
+                <div className="stat-card">
+                  <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Filtrados</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 700, color: SEV_COLORS[siemSeverity] || 'var(--primary)' }}>{displayedSiemItems.length}</div>
+                </div>
+              )}
               {Object.entries(siemBySeverity).filter(([, c]) => c > 0).map(([sev, count]) => (
                 <div key={sev} className="stat-card">
                   <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>{SEV_LABELS[sev] || sev}</div>
                   <div style={{ fontSize: '1.5rem', fontWeight: 700, color: SEV_COLORS[sev] }}>{count}</div>
                 </div>
               ))}
-              {siemType === 'alerts' && Object.entries(siemByStatus).filter(([, c]) => c > 0).map(([st, count]) => (
-                <div key={st} className="stat-card">
-                  <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
-                    {st === 'open' ? 'Abertos' : st === 'acknowledged' ? 'Reconhecidos' : 'Resolvidos'}
-                  </div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 700, color: st === 'open' ? '#dc2626' : st === 'acknowledged' ? '#d97706' : '#16a34a' }}>{count}</div>
+              {topCategories.map(([cat, count]) => (
+                <div key={cat} className="stat-card">
+                  <div style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={cat}>{cat}</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{count}</div>
                 </div>
               ))}
             </div>
@@ -702,36 +726,22 @@ CREATE INDEX IF NOT EXISTS idx_tickets_cache_date_solved ON tickets_cache(date_s
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
                 <thead>
                   <tr style={{ background: 'var(--background)', borderBottom: '2px solid var(--border)' }}>
-                    {(siemType === 'events' ? SIEM_EVENT_HEADERS : SIEM_ALERT_HEADERS).map(h => (
+                    {SIEM_ALERT_HEADERS.map(h => (
                       <th key={h} style={thS}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {siemItems.map((item, i) => (
-                    siemType === 'events' ? (
-                      <tr key={item.id || i} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'var(--surface)' : 'var(--background)' }}>
-                        <td style={{ ...thTd, fontFamily: 'monospace', fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{String(item.id || '—').substring(0, 16)}</td>
-                        <td style={thTd}>{item.type || item.category || '—'}</td>
-                        <td style={thTd}><SevBadge severity={item.severity} /></td>
-                        <td style={{ ...thTd, color: 'var(--text-secondary)' }}>{item.source || item.origin || '—'}</td>
-                        <td style={{ ...thTd, color: 'var(--text-secondary)' }}>{fmt(item.created_at || item.when)}</td>
-                        <td style={{ ...thTd, color: 'var(--text-secondary)', maxWidth: '280px', whiteSpace: 'normal', lineHeight: 1.4 }}>
-                          {item.details?.endpoint?.hostname || item.endpoint_id || item.description?.substring(0, 120) || '—'}
-                        </td>
-                      </tr>
-                    ) : (
-                      <tr key={item.id || i} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'var(--surface)' : 'var(--background)' }}>
-                        <td style={{ ...thTd, fontFamily: 'monospace', fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{String(item.id || '—').substring(0, 16)}</td>
-                        <td style={{ ...thTd, maxWidth: '220px', whiteSpace: 'normal', lineHeight: 1.4 }}>{item.title || item.description || '—'}</td>
-                        <td style={thTd}><SevBadge severity={item.severity} /></td>
-                        <td style={thTd}><StatusSiemBadge status={item.status} /></td>
-                        <td style={{ ...thTd, color: 'var(--text-secondary)' }}>{item.details?.endpoint?.hostname || '—'}</td>
-                        <td style={{ ...thTd, color: 'var(--text-secondary)' }}>{item.details?.threat?.name || '—'}</td>
-                        <td style={{ ...thTd, color: 'var(--text-secondary)' }}>{fmt(item.created_at)}</td>
-                        <td style={{ ...thTd, color: 'var(--text-secondary)' }}>{fmt(item.updated_at)}</td>
-                      </tr>
-                    )
+                  {displayedSiemItems.map((item, i) => (
+                    <tr key={item.id || i} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'var(--surface)' : 'var(--background)' }}>
+                      <td style={{ ...thTd, fontFamily: 'monospace', fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{String(item.id || '—').substring(0, 16)}</td>
+                      <td style={{ ...thTd, maxWidth: '160px', whiteSpace: 'normal', lineHeight: 1.4 }} title={item.type || ''}>{shortType(item.type)}</td>
+                      <td style={thTd}><SevBadge severity={item.severity} /></td>
+                      <td style={{ ...thTd, maxWidth: '220px', whiteSpace: 'normal', lineHeight: 1.4 }}>{item.name || item.description || '—'}</td>
+                      <td style={{ ...thTd, fontFamily: 'monospace', fontSize: '0.72rem', color: 'var(--text-secondary)' }}>{String(item.endpoint_id || item.managedAgent?.id || '—').substring(0, 20)}</td>
+                      <td style={{ ...thTd, color: 'var(--text-secondary)' }}>{item.category || '—'}</td>
+                      <td style={{ ...thTd, color: 'var(--text-secondary)' }}>{fmtWhen(item.when) !== '—' ? fmtWhen(item.when) : fmt(item.created_at)}</td>
+                    </tr>
                   ))}
                 </tbody>
               </table>
@@ -740,7 +750,7 @@ CREATE INDEX IF NOT EXISTS idx_tickets_cache_date_solved ON tickets_cache(date_s
             {/* Paginação e exportação */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
               <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                {siemItems.length} {siemType === 'events' ? 'eventos' : 'alertas'} carregados
+                {displayedSiemItems.length}{siemSeverity && displayedSiemItems.length !== siemItems.length ? ` de ${siemItems.length}` : ''} alertas
                 {siemNextCursor && ' • Há mais páginas disponíveis (cursor-based)'}
               </span>
               <div style={{ display: 'flex', gap: '8px' }}>
@@ -762,13 +772,14 @@ CREATE INDEX IF NOT EXISTS idx_tickets_cache_date_solved ON tickets_cache(date_s
 
         {!siemFetching && siemItems.length === 0 && !siemError && (
           <div style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-            Selecione o período e clique em <strong>Buscar</strong> para carregar {siemType === 'events' ? 'eventos' : 'alertas'} do SIEM.
+            Selecione o período e clique em <strong>Buscar</strong> para carregar alertas do SIEM (<code>/siem/v1/alerts</code>).
           </div>
         )}
 
         <div style={{ marginTop: '12px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-          <strong>Parâmetros:</strong> from (ISO 8601), to (ISO 8601), limit (máx. 1000), cursor (paginação cursor-based), filter (ex: severity:high)
-          &nbsp;| <strong>Rate limit:</strong> 10/s · 100/min · 200.000/dia | <strong>Backoff:</strong> automático em 429/5xx
+          <strong>Parâmetros API:</strong> from_date (Unix UTC, janela máx. 24h), limit (1–1000), cursor (paginação), exclude_types (tipos a excluir)
+          &nbsp;| Campos: id · when · type (Event::X::Y) · severity · name · endpoint_id · category · group · created_at · source
+          &nbsp;| <strong>Rate limit:</strong> 10/s · 100/min · 200.000/dia | Filtro de severidade: aplicado localmente
         </div>
       </div>
 
