@@ -354,7 +354,7 @@ export default function RelCofenPage() {
       technician: t.technician,
     }))
 
-    // 2.3.17.7: KPIs Gerenciais
+// 2.3.17.7: KPIs Gerenciais
     report.kpis = {
       totalTickets: filtered.length,
       resolvedTickets: resolved,
@@ -363,7 +363,7 @@ export default function RelCofenPage() {
       avgResolutionTime: 'N/A',
       slaBreaches: report.slaMetrics.emergencial.breaches + report.slaMetrics.grave.breaches + report.slaMetrics.info.breaches,
       slaCompliance: filtered.length > 0
-        ? Math.round(((filtered.length - report.kpis.slaBreaches) / filtered.length) * 10000) / 100
+        ? Math.round(((filtered.length - (report.slaMetrics.emergencial.breaches + report.slaMetrics.grave.breaches + report.slaMetrics.info.breaches)) / filtered.length) * 10000) / 100
         : 100,
     }
 
@@ -390,95 +390,23 @@ export default function RelCofenPage() {
 const exportReport = useCallback(() => {
     if (!monthlyReport) return
 
-    const reportText = `
-════════════════════════════════════════════════════════════
-           RELATÓRIO MENSAL - COFEN
-           Mês: ${MONTHS[month]}/${year}
-════════════════════════════════════════════════════════════
+    const formatDate = (dateStr) => {
+      if (!dateStr) return '-'
+      return new Date(dateStr).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    }
 
-2.3.17.1 - QUANTIDADE DE SOLICITAÇÕES POR TIPO
-------------------------------------------------
-Incidentes: ${monthlyReport.ticketsByType.incident}
-Requisições: ${monthlyReport.ticketsByType.request}
-Problemas:  ${monthlyReport.ticketsByType.problem}
-Total:     ${monthlyReport.kpis.totalTickets}
+    const formatDateTime = (dateStr) => {
+      if (!dateStr) return '-'
+      return new Date(dateStr).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    }
 
-2.3.17.2 - DISPONIBILIDADE DA CENTRAL DE ATENDIMENTO
-------------------------------------------------
-Percentual de Resolução: ${monthlyReport.availability}%
+    const mdContent = `# RELATÓRIO MENSAL - COFEN\n\n**Período:** ${MONTHS[month]}/${year}\n**Gerado em:** ${formatDateTime(monthlyReport.generatedAt)}\n\n---\n\n## 2.3.17.1 - Quantidade de Solicitações por Tipo de Chamado\n\n| Tipo | Quantidade | % |\n|------|-----------|---|\n| Incidentes | ${monthlyReport.ticketsByType.incident} | ${Math.round((monthlyReport.ticketsByType.incident / monthlyReport.kpis.totalTickets) * 100) || 0}% |\n| Requisições | ${monthlyReport.ticketsByType.request} | ${Math.round((monthlyReport.ticketsByType.request / monthlyReport.kpis.totalTickets) * 100) || 0}% |\n| Problemas | ${monthlyReport.ticketsByType.problem} | ${Math.round((monthlyReport.ticketsByType.problem / monthlyReport.kpis.totalTickets) * 100) || 0}% |\n| **Total** | **${monthlyReport.kpis.totalTickets}** | **100%** |\n\n---\n\n## 2.3.17.2 - Disponibilidade da Central de Atendimento\n\n| Indicador | Valor |\n|----------|-------|\n| Percentual de Resolução | ${monthlyReport.availability}% |\n| Tickets Resolvidos | ${monthlyReport.kpis.resolvedTickets} |\n| Tickets Abertos | ${monthlyReport.kpis.openTickets} |\n\n---\n\n## 1.4 - Prazos de Atendimento (SLA)\n\n| Severidade | Total | Início ≤15min | Resolução no Prazo | Violações | Prazo Início | Prazo Resolução |\n|-----------|------|--------------|-------------------|-----------|--------------|----------------|\n| Emergencial | ${monthlyReport.slaMetrics.emergencial.total} | ${monthlyReport.slaMetrics.emergencial.withinStart} | ${monthlyReport.slaMetrics.emergencial.withinResolve} | ${monthlyReport.slaMetrics.emergencial.breaches} | 15 min | 4 horas |\n| Grave | ${monthlyReport.slaMetrics.grave.total} | ${monthlyReport.slaMetrics.grave.withinStart} | ${monthlyReport.slaMetrics.grave.withinResolve} | ${monthlyReport.slaMetrics.grave.breaches} | 15 min | 6 horas |\n| Info | ${monthlyReport.slaMetrics.info.total} | ${monthlyReport.slaMetrics.info.withinStart} | ${monthlyReport.slaMetrics.info.withinResolve} | ${monthlyReport.slaMetrics.info.breaches} | 15 min | 24 horas |\n\n> **Conformidade SLA:** ${monthlyReport.kpis.slaCompliance}%\n\n---\n\n## 2.3.17.3 - Atividades de Suporte e Manutenção\n\n**Total de Atividades:** ${monthlyReport.activities.length}\n\n\n| ID | Título | Status | Prioridade | Técnico | Data de Abertura |\n|---|--------|--------|-----------|---------|-----------------|\n${monthlyReport.activities.slice(0, 30).map(a => `| #${a.id} | ${a.title?.substring(0, 40) || '-'} | ${a.status} | P${a.priority || 3} | ${a.technician || '-'} | ${formatDate(a.dateCreated)} |`).join('\n')}\n\n---\n\n## 2.3.17.4 - Inventário Lógico dos Ativos\n\n| Entidade | Total de Tickets |\n|---------|------------------|\n${Object.entries(monthlyReport.inventory).map(([entity, data]) => `| ${entity} | ${data.total} |`).join('\n')}\n\n---\n\n## 2.3.17.5 - Controle de Troca de Equipamentos\n\n*Relatório de trocas disponível mediante solicitação específica.*\n\n---\n\n## 2.3.17.6 - Chamados Abertos e Ações Corretivas\n\n**Total de Chamados Abertos:** ${monthlyReport.openTickets.length}\n\n| ID | Título | Status | Prioridade | Criado em |\n|---|--------|--------|-----------|---------|\n${monthlyReport.openTickets.slice(0, 20).map(t => `| #${t.id} | ${t.title?.substring(0, 40) || '-'} | ${t.status} | P${t.priority || 3} | ${formatDate(t.created)} |`).join('\n')}\n\n---\n\n## 2.3.17.7 - Indicadores Gerenciais\n\n### 2.3.17.7.a - Utilização de CPU e Memória\n\n*Dados disponíveis via Sophos Central APIs*\n\n### 2.3.17.7.b - Utilização de Recursos Diversos\n\n*Dados disponíveis via Sophos Central APIs*\n\n### 2.3.17.7.c - Disponibilidade de Cada Item\n\n| Indicador | Valor |\n|----------|-------|\n| Disponibilidade Média | ${monthlyReport.availability}% |\n| Tickets Totais | ${monthlyReport.kpis.totalTickets} |\n| Tickets Resolvidos | ${monthlyReport.kpis.resolvedTickets} |\n\n### 2.3.17.7.d - Atualizações de Software Realizadas\n\n*Dados disponíveis via Sophos Central APIs*\n\n\n### 2.3.17.7.e - Total de Chamados por Item\n\n| Tipo | Quantidade |\n|------|----------|\n| Total de Chamados | ${monthlyReport.kpis.totalTickets} |\n| Chamados Abertos | ${monthlyReport.kpis.openTickets} |\n| Chamados Pendentes | ${monthlyReport.kpis.pendingTickets} |\n\n### 2.3.17.7.f - Classificação por Prioridade\n\n| Prioridade | Quantidade |\n|-----------|-----------|\n| P6 - Crítica | ${monthlyReport.slaMetrics.emergencial.total} |\n| P5 - Urgente | ${monthlyReport.slaMetrics.emergencial.total} |\n| P4 - Alta | ${monthlyReport.slaMetrics.grave.total} |\n| P3 - Média | ${monthlyReport.slaMetrics.info.total} |\n| P2 - Baixa | - |\n| P1 - Muito Baixa | - |\n\n### 2.3.17.7.g - Tempo de Atendimento por Chamado\n\n| Indicador | Valor |\n|----------|-------|\n| Tempo Médio de Resolução | ${monthlyReport.kpis.avgResolutionTime} |\n| Violações SLA | ${monthlyReport.kpis.slaBreaches} |\n| Conformidade SLA | ${monthlyReport.kpis.slaCompliance}% |\n\n### 2.3.17.7.h - Comprovação de Contratos e Garantias\n\n*Documentação disponível mediante solicitação específica.*\n\n\n---\n\n## Resumo Executivo\n\n- **Total de Atendimentos:** ${monthlyReport.kpis.totalTickets}\n- **Incidentes:** ${monthlyReport.ticketsByType.incident} (${Math.round((monthlyReport.ticketsByType.incident / monthlyReport.kpis.totalTickets) * 100)}%)\n- **Requisições:** ${monthlyReport.ticketsByType.request} (${Math.round((monthlyReport.ticketsByType.request / monthlyReport.kpis.totalTickets) * 100)}%)\n- **Taxa de Resolução:** ${monthlyReport.availability}%\n- **Conformidade SLA:** ${monthlyReport.kpis.slaCompliance}%\n\n---\n\n*Relatório gerado automaticamente pelo Sistema de Tickets GLPI - COFEN*\n*Data de geração: ${formatDateTime(monthlyReport.generatedAt)}*\n`
 
-1.4 - PRAZOS DE ATENDIMENTO (SLA)
-------------------------------------------------
-| Severidade | Total | Início <=15min | Resolução no Prazo | Violações |
-|------------|------|----------------|-------------------|----------|
-| Emergencial| ${monthlyReport.slaMetrics.emergencial.total} | ${monthlyReport.slaMetrics.emergencial.withinStart} | ${monthlyReport.slaMetrics.emergencial.withinResolve} | ${monthlyReport.slaMetrics.emergencial.breaches} |
-| Grave      | ${monthlyReport.slaMetrics.grave.total} | ${monthlyReport.slaMetrics.grave.withinStart} | ${monthlyReport.slaMetrics.grave.withinResolve} | ${monthlyReport.slaMetrics.grave.breaches} |
-| Info       | ${monthlyReport.slaMetrics.info.total} | ${monthlyReport.slaMetrics.info.withinStart} | ${monthlyReport.slaMetrics.info.withinResolve} | ${monthlyReport.slaMetrics.info.breaches} |
-
-Prazos:
-- Emergencial: Início 15min | Resolução 4h
-- Grave: Início 15min | Resolução 6h
-- Info: Início 15min | Resolução 24h
-
-2.3.17.3 - ATIVIDADES DE SUPORTE E MANUTENÇÃO
-------------------------------------------------
-Total de Atividades: ${monthlyReport.activities.length}
-`
-
-    monthlyReport.activities.slice(0, 20).forEach(a => {
-      reportText += `
-#${a.id} - ${a.status} (P${a.priority})
-  Título: ${a.title?.substring(0, 50) || '-'}
-  Técnico: ${a.technician || '-'}
-  Data: ${a.dateCreated ? new Date(a.dateCreated).toLocaleDateString('pt-BR') : '-'}
-`
-    })
-
-    reportText += `
-
-2.3.17.4 - INVENTÁRIO LÓGICO DOS ATIVOS
-------------------------------------------------
-`
-
-    Object.entries(monthlyReport.inventory).forEach(([entity, data]) => {
-      reportText += `${entity}: ${data.total} tickets\n`
-    })
-
-    reportText += `
-
-2.3.17.6 - CHAMADOS ABERTOS E AÇÕES CORRETIVAS
-------------------------------------------------
-Total Abertos: ${monthlyReport.openTickets.length}
-`
-
-    monthlyReport.openTickets.slice(0, 10).forEach(t => {
-      reportText += `
-#${t.id} - ${t.status} (P${t.priority})
-  ${t.title?.substring(0, 40) || '-'}
-`
-    })
-
-    reportText += `
-
-2.3.17.7 - INDICADORES GERENCIAIS
-------------------------------------------------
-Total de Tickets: ${monthlyReport.kpis.totalTickets}
-Resolvidos:     ${monthlyReport.kpis.resolvedTickets}
-Abertos:       ${monthlyReport.kpis.openTickets}
-Pendentes:     ${monthlyReport.kpis.pendingTickets}
-Violações SLA: ${monthlyReport.kpis.slaBreaches}
-Conformidade SLA: ${monthlyReport.kpis.slaCompliance}%
-
-════════════════════════════════════════════════════════════
-Gerado em: ${new Date(monthlyReport.generatedAt).toLocaleString('pt-BR')}
-════════════════════════════════════════════════════════════
-`
-
-    const blob = new Blob([reportText], { type: 'text/plain;charset=utf-8' })
+    const blob = new Blob(['\uFEFF' + mdContent], { type: 'text/markdown;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `relatorio_mensal_${year}_${String(month).padStart(2, '0')}.txt`
+    a.download = `relatorio_mensal_${year}_${String(month).padStart(2, '0')}.md`
     a.click()
     URL.revokeObjectURL(url)
   }, [monthlyReport, month, year])
@@ -603,7 +531,7 @@ CREATE INDEX IF NOT EXISTS idx_tickets_cache_date_solved ON tickets_cache(date_s
             </button>
             {monthlyReport && (
               <button onClick={exportReport} className="btn-export">
-                Exportar TXT
+                Exportar MD
               </button>
             )}
           </div>
