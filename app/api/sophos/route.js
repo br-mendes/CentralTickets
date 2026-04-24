@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 
 const SOPHOS_AUTH_URL = 'https://id.sophos.com/api/v2/oauth2/token'
 const SOPHOS_API_GLOBAL = 'https://api.central.sophos.com'
-const SOPHOS_REGION = 'br-01'
+const SOPHOS_REGION = 'br01'
 const SOPHOS_API_REGION = `https://api-${SOPHOS_REGION}.central.sophos.com`
 
 async function getSophosToken() {
@@ -28,11 +28,12 @@ async function getSophosToken() {
 
   if (!response.ok) {
     const status = response.status
-    const error = await response.text().catch(() => 'Unknown error')
+    const errorText = await response.text().catch(() => 'Unknown error')
+    console.error('Auth error:', status, errorText)
     if (status === 401) {
       throw new Error('Credenciais Sophos inválidas ou sem acesso. Verifique o Service Principal no painel Sophos.')
     }
-    throw new Error(`Falha na autenticação Sophos: HTTP ${status}`)
+    throw new Error(`Falha na autenticação Sophos: HTTP ${status} - ${errorText}`)
   }
 
   const data = await response.json()
@@ -42,6 +43,44 @@ async function getSophosToken() {
   return data.access_token
 }
 
+async function getSophosWhoami(token) {
+  const response = await fetch(`${SOPHOS_API_GLOBAL}/whoami/v1`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Erro whoami: ${response.status} - ${errorText}`)
+  }
+
+  return response.json()
+}
+
+async function getTenantId(token, organizationId) {
+  const response = await fetch(`${SOPHOS_API_GLOBAL}/partner/v1/tenants`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'X-Partner-ID': organizationId,
+      'Content-Type': 'application/json',
+    },
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    console.error('Tenants error:', errorText)
+    return null
+  }
+
+  const data = await response.json()
+  if (data.items && data.items.length > 0) {
+    return data.items[0].id
+  }
+  return null
+}
+
 export async function GET(request) {
   const { searchParams } = new URL(request.url)
   const endpoint = searchParams.get('endpoint') || 'whoami'
@@ -49,65 +88,71 @@ export async function GET(request) {
 
   try {
     const token = await getSophosToken()
+    const whoami = await getSophosWhoami(token)
+    const partnerId = whoami?.id || whoami?.apiHosts?.global
 
-    let url
-    let headers = {
+    let tenantIdToUse = tenantId
+    if (!tenantIdToUse && partnerId) {
+      tenantIdToUse = await getTenantId(token, partnerId)
+    }
+
+    const headers = {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
-      'X-Application-ID': 'CentralTickets',
+      'X-Partner-ID': partnerId,
     }
 
-    if (tenantId) {
-      headers['X-Tenant-ID'] = tenantId
+    if (tenantIdToUse) {
+      headers['X-Tenant-ID'] = tenantIdToUse
     }
 
+    let url
     switch (endpoint) {
       case 'whoami':
-        url = `${SOPHOS_API_GLOBAL}/whoami/v1`
-        break
+        return NextResponse.json(whoami)
 
       case 'tenants':
         url = `${SOPHOS_API_GLOBAL}/partner/v1/tenants`
         break
 
       case 'endpoints':
-        url = `${SOPHOS_API_REGION}/endpoint/v1/endpoints`
+        url = `${SOPHOS_API_GLOBAL}/endpoint/v1/endpoints`
         break
 
       case 'endpoint-groups':
-        url = `${SOPHOS_API_REGION}/endpoint/v1/endpoint-groups`
+        url = `${SOPHOS_API_GLOBAL}/endpoint/v1/endpoint-groups`
         break
 
       case 'alerts':
-        url = `${SOPHOS_API_REGION}/common/v1/alerts`
+        url = `${SOPHOS_API_GLOBAL}/common/v1/alerts`
         break
 
       case 'cases':
-        url = `${SOPHOS_API_REGION}/cases/v1/cases`
+        url = `${SOPHOS_API_GLOBAL}/cases/v1/cases`
         break
 
       case 'siem-events':
-        url = `${SOPHOS_API_REGION}/siem/v1/events`
+        url = `${SOPHOS_API_GLOBAL}/siem/v1/events`
         break
 
       case 'siem-alerts':
-        url = `${SOPHOS_API_REGION}/siem/v1/alerts`
+        url = `${SOPHOS_API_GLOBAL}/siem/v1/alerts`
         break
 
       case 'users':
-        url = `${SOPHOS_API_REGION}/common/v1/users`
+        url = `${SOPHOS_API_GLOBAL}/common/v1/users`
         break
 
       case 'user-groups':
-        url = `${SOPHOS_API_REGION}/common/v1/user-groups`
+        url = `${SOPHOS_API_GLOBAL}/common/v1/user-groups`
         break
 
       case 'threats':
-        url = `${SOPHOS_API_REGION}/endpoint/v1/threats`
+        url = `${SOPHOS_API_GLOBAL}/endpoint/v1/threats`
         break
 
       case 'isolated-endpoints':
-        url = `${SOPHOS_API_REGION}/endpoint/v1/endpoints?isolationStatus=isolated`
+        url = `${SOPHOS_API_GLOBAL}/endpoint/v1/endpoints?isolationStatus=isolated`
         break
 
       default:
@@ -118,6 +163,7 @@ export async function GET(request) {
 
     if (!response.ok) {
       const errorText = await response.text()
+      console.error(`API error ${endpoint}:`, response.status, errorText)
       return NextResponse.json({
         error: `Erro na API Sophos: ${response.status}`,
         details: errorText,
@@ -128,6 +174,7 @@ export async function GET(request) {
     return NextResponse.json(data)
 
   } catch (error) {
+    console.error('Sophos API error:', error.message)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
@@ -138,30 +185,34 @@ export async function POST(request) {
 
   try {
     const token = await getSophosToken()
+    const whoami = await getSophosWhoami(token)
+    const partnerId = whoami?.id || whoami?.apiHosts?.global
+
     const body = await request.json().catch(() => ({}))
+    const tenantId = body.tenantId
+
+    const headers = {
+      'Authorization': `Bearer ${token}`,
+      'X-Partner-ID': partnerId,
+      'Content-Type': 'application/json',
+    }
+
+    if (tenantId) {
+      headers['X-Tenant-ID'] = tenantId
+    }
 
     let url
-    let headers = {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      'X-Application-ID': 'CentralTickets',
-    }
-
-    if (body.tenantId) {
-      headers['X-Tenant-ID'] = body.tenantId
-    }
-
     switch (action) {
       case 'isolate-endpoint':
-        url = `${SOPHOS_API_REGION}/endpoint/v1/endpoints/${body.endpointId}/isolation`
+        url = `${SOPHOS_API_GLOBAL}/endpoint/v1/endpoints/${body.endpointId}/isolation`
         break
 
       case 'unisolate-endpoint':
-        url = `${SOPHOS_API_REGION}/endpoint/v1/endpoints/${body.endpointId}/isolation`
+        url = `${SOPHOS_API_GLOBAL}/endpoint/v1/endpoints/${body.endpointId}/isolation`
         break
 
       case 'scan-endpoint':
-        url = `${SOPHOS_API_REGION}/endpoint/v1/endpoints/${body.endpointId}/scans`
+        url = `${SOPHOS_API_GLOBAL}/endpoint/v1/endpoints/${body.endpointId}/scans`
         break
 
       default:
@@ -188,6 +239,7 @@ export async function POST(request) {
     return NextResponse.json(data)
 
   } catch (error) {
+    console.error('Sophos POST error:', error.message)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
