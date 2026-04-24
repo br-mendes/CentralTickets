@@ -96,12 +96,14 @@ export async function GET(request) {
     const idType = whoami?.idType || 'organization'
 
     let tenantInfo = null
-    let tenantApiHost = null
+    let tenantApiHost = SOPHOS_API_GLOBAL
     if (!tenantId && organizationId) {
-      tenantInfo = await getTenantId(token, organizationId, idType)
-      tenantApiHost = tenantInfo?.apiHost || SOPHOS_API_GLOBAL
-    } else {
-      tenantApiHost = SOPHOS_API_GLOBAL
+      try {
+        tenantInfo = await getTenantId(token, organizationId, idType)
+        tenantApiHost = tenantInfo?.apiHost || SOPHOS_API_GLOBAL
+      } catch (e) {
+        console.error('Erro ao obter tenant:', e.message)
+      }
     }
 
     const headers = {
@@ -175,6 +177,9 @@ export async function GET(request) {
     }
 
     const response = await fetch(url, { headers })
+
+    const errorText = await response.text()
+    console.error(`API ${endpoint}: ${response.status}`, errorText, 'URL:', url, 'Headers:', JSON.stringify(headers))
 
     if (!response.ok) {
       const errorText = await response.text()
