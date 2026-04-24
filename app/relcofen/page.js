@@ -49,8 +49,6 @@ export default function RelCofenPage() {
 
   // Monthly report state
   const [monthlyReport, setMonthlyReport] = useState(null)
-
-  const loadSophosData = useCallback(async () => {
     setSophosLoading(true)
     setSophosError(null)
     try {
@@ -381,13 +379,11 @@ export default function RelCofenPage() {
     return report
   }, [filtered, year, month, allTickets])
 
-  const [monthlyReport, setMonthlyReport] = useState(null)
-
   const generateReport = useCallback(() => {
     setMonthlyReport(generateMonthlyReport())
   }, [generateMonthlyReport])
 
-const exportReport = useCallback(() => {
+  const exportReport = useCallback(() => {
     if (!monthlyReport) return
 
     const formatDate = (dateStr) => {
