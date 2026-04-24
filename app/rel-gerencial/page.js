@@ -35,6 +35,10 @@ export default function RelGerencialPage() {
   }
 
   function isAutoTicket(ticket) {
+    const req = (ticket.requester || '').toLowerCase()
+    // Check requestor first (primary)
+    if (req.includes('user_sophos') || req.includes('api-zabbix')) return true
+    // fallback checks
     const tech = (ticket.technician || '').toLowerCase()
     const sol = (ticket.solution || ticket.solution_content || '').toLowerCase()
     const title = (ticket.title || '').toLowerCase()
@@ -341,6 +345,7 @@ export default function RelGerencialPage() {
                 <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>SLA Atend.</th>
                 <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>SLA Soluç.</th>
                 <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>Últ. Atualiz.</th>
+                <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>Solução</th>
                 <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>Automático</th>
               </tr>
             </thead>
@@ -380,6 +385,9 @@ export default function RelGerencialPage() {
                       <span className={t.is_overdue_resolve ? 'sla-error' : 'sla-ok'}>{t.is_overdue_resolve ? 'Fora do prazo' : 'No prazo'}</span>
                     </td>
                     <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{t.date_mod ? new Date(t.date_mod).toLocaleString('pt-BR') : '—'}</td>
+                    <td style={{ padding: '8px 12px', maxWidth: '300px', whiteSpace: 'normal', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                      {(t.solution || t.solution_content || '—').toString().substring(0, 100)}
+                    </td>
                     <td style={{ padding: '8px 12px' }}>
                       <span className={isAutoTicket(t) ? 'auto-sim' : ''}>{isAutoTicket(t) ? 'Sim' : 'Não'}</span>
                     </td>
