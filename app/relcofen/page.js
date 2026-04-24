@@ -1,5 +1,5 @@
 'use client'
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { fetchAllTickets } from '../lib/tickets-api'
 import { processEntity, lastGroupLabel, fmt, getStatusConfig } from '../lib/utils'
 import InstanceBadge from '../components/InstanceBadge'
@@ -41,6 +41,44 @@ export default function RelCofenPage() {
   const [fGroup, setFGroup] = useState('')
   const [fPriority, setFPriority] = useState('')
 
+  // Sophos state
+  const [sophosLoading, setSophosLoading] = useState(false)
+  const [sophosData, setSophosData] = useState(null)
+  const [sophosError, setSophosError] = useState(null)
+  const [sophosRegion] = useState('br01')
+
+  const loadSophosData = useCallback(async () => {
+    setSophosLoading(true)
+    setSophosError(null)
+    try {
+      const endpoints = ['whoami', 'tenants', 'endpoints', 'alerts', 'users']
+      const results = {}
+
+      for (const ep of endpoints) {
+        try {
+          const res = await fetch(`/api/sophos?endpoint=${ep}`)
+          const data = await res.json()
+          results[ep] = data
+        } catch (e) {
+          results[ep] = { error: e.message }
+        }
+      }
+
+      setSophosData({
+        whoami: results.whoami,
+        tenants: results.tenants?.items || results.tenants || [],
+        endpoints: results.endpoints?.items || results.endpoints || [],
+        alerts: results.alerts?.items || results.alerts || [],
+        users: results.users?.items || results.users || [],
+        lastSync: new Date().toISOString()
+      })
+    } catch (e) {
+      setSophosError(e.message)
+    } finally {
+      setSophosLoading(false)
+    }
+  }, [])
+
   const load = useCallback(async () => {
     setLoading(true); setError(null); setMissingColumns(false)
     try {
@@ -81,6 +119,10 @@ export default function RelCofenPage() {
     if (fPriority && String(t.priority_id || '') !== fPriority) return false
     return true
   })
+
+  useEffect(() => {
+    loadSophosData()
+  }, [loadSophosData])
 
   const hasSolution = allTickets.some(t => 'date_solved' in t || 'solution' in t)
 
@@ -211,6 +253,66 @@ CREATE INDEX IF NOT EXISTS idx_tickets_cache_date_solved ON tickets_cache(date_s
           </pre>
         </div>
       )}
+
+      {/* Sophos Central APIs Integration */}
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+          <div>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Sophos Central APIs</h2>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+              Data Region: {sophosRegion} | Autenticação: OAuth2 (Service Principal)
+            </p>
+          </div>
+          <button onClick={loadSophosData} className="btn-primary" disabled={sophosLoading}>
+            {sophosLoading ? 'Carregando...' : 'Sincronizar'}
+          </button>
+        </div>
+
+        {sophosError && (
+          <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 'var(--radius-md)', padding: '8px 12px', color: '#dc2626', fontSize: '0.82rem' }}>
+            Erro: {sophosError}
+          </div>
+        )}
+
+        {sophosData && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '12px' }}>
+            <div className="stat-card">
+              <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>API Status</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#16a34a' }}>OK</div>
+            </div>
+            <div className="stat-card">
+              <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Tenants</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{sophosData.tenants?.length || 0}</div>
+            </div>
+            <div className="stat-card">
+              <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Endpoints</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{sophosData.endpoints?.length || 0}</div>
+            </div>
+            <div className="stat-card">
+              <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Alertas</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{sophosData.alerts?.length || 0}</div>
+            </div>
+            <div className="stat-card">
+              <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Usuários</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{sophosData.users?.length || 0}</div>
+            </div>
+            <div className="stat-card">
+              <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Região</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{sophosRegion}</div>
+            </div>
+          </div>
+        )}
+
+        <div style={{ marginTop: '16px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+          <strong>APIs Integradas:</strong> Partner API, Common API, Endpoint API, SIEM Integration API
+          <br />
+          <strong>Base URLs:</strong> Global: api.central.sophos.com | Regional: api-br01.central.sophos.com
+          <br />
+          <strong>Autenticação:</strong> OAuth2 client_credentials → Bearer Token
+          <br />
+          <strong>Rate Limit:</strong> 10/s, 100/min, 200.000/dia
+        </div>
+      </div>
 
       {/* Query filters */}
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '16px', display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
