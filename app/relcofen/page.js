@@ -47,6 +47,9 @@ export default function RelCofenPage() {
   const [sophosError, setSophosError] = useState(null)
   const [sophosRegion] = useState('br01')
 
+  // Monthly report state
+  const [monthlyReport, setMonthlyReport] = useState(null)
+
   const loadSophosData = useCallback(async () => {
     setSophosLoading(true)
     setSophosError(null)
@@ -253,6 +256,161 @@ export default function RelCofenPage() {
   const baseHeaders = ['ID','Instância','Entidade','Categoria','Status','Prioridade','Grupo','Técnico','SLA Atend.','SLA Solução','Abertura','Últ. Atualização']
   const tableHeaders = hasSolution ? [...baseHeaders, 'Data Solução', 'Solução'] : baseHeaders
 
+  // Relatórios Mensais (2.3.17)
+  const generateMonthlyReport = useCallback(() => {
+    const report = {
+      generatedAt: new Date().toISOString(),
+      period: { year, month, monthName: MONTHS[month] },
+    }
+
+    // 2.3.17.1: Quantidade de Solicitações por Tipo de Chamado
+    const byType = { incident: 0, request: 0, problem: 0 }
+    filtered.forEach(t => {
+      if (t.type_id === 1) byType.incident++
+      else if (t.type_id === 2) byType.request++
+      else byType.problem++
+    })
+    report.ticketsByType = byType
+
+    // 2.3.17.2: Disponibilidade (baseado em tickets resolvidos)
+    const resolved = filtered.filter(t => t.status_key === 'solved' || t.status_key === 'closed').length
+    report.availability = filtered.length > 0 ? Math.round((resolved / filtered.length) * 10000) / 100 : 0
+
+    // 2.3.17.3: Atividades de Suporte e Manutenção
+    const activities = filtered.map(t => ({
+      id: t.ticket_id,
+      title: t.title,
+      status: getStatusConfig(t.status_id, t.status_key).label,
+      category: t.category || t.root_category,
+      dateCreated: t.date_created,
+      dateMod: t.date_mod,
+      technician: t.technician,
+    }))
+    report.activities = activities
+
+    // 2.3.17.6: Chamados Abertos e Ações Corretivas
+    const openTickets = filtered.filter(t => t.status_key !== 'closed' && t.status_key !== 'solved')
+    report.openTickets = openTickets.map(t => ({
+      id: t.ticket_id,
+      title: t.title,
+      status: getStatusConfig(t.status_id, t.status_key).label,
+      priority: t.priority_id,
+      created: t.date_created,
+      technician: t.technician,
+    }))
+
+    // 2.3.17.7: KPIs Gerenciais
+    report.kpis = {
+      totalTickets: filtered.length,
+      resolvedTickets: resolved,
+      openTickets: openTickets.length,
+      pendingTickets: filtered.filter(t => t.status_key === 'pending').length,
+      avgResolutionTime: 'N/A',
+      slaBreaches: filtered.filter(t => t.is_overdue_resolve || t.is_sla_late).length,
+    }
+
+    // 2.3.17.4: Inventário (dos tickets - entidade/categoria)
+    const inventory = {}
+    filtered.forEach(t => {
+      const entity = processEntity(t.entity)
+      if (!inventory[entity]) inventory[entity] = { total: 0, categories: {} }
+      inventory[entity].total++
+      const cat = t.category || t.root_category || 'Não categorizado'
+      inventory[entity].categories[cat] = (inventory[entity].categories[cat] || 0) + 1
+    })
+    report.inventory = inventory
+
+    return report
+  }, [filtered, year, month, allTickets])
+
+  const [monthlyReport, setMonthlyReport] = useState(null)
+
+  const generateReport = useCallback(() => {
+    setMonthlyReport(generateMonthlyReport())
+  }, [generateMonthlyReport])
+
+  const exportReport = useCallback(() => {
+    if (!monthlyReport) return
+
+    const reportText = `
+════════════════════════════════════════════════════════════
+           RELATÓRIO MENSAL - COFEN
+           Mês: ${MONTHS[month]}/${year}
+════════════════════════════════════════════════════════════
+
+2.3.17.1 - QUANTIDADE DE SOLICITAÇÕES POR TIPO
+------------------------------------------------
+Incidentes: ${monthlyReport.ticketsByType.incident}
+Requisições: ${monthlyReport.ticketsByType.request}
+Problemas:  ${monthlyReport.ticketsByType.problem}
+Total:     ${monthlyReport.ticketsByType.incident + monthlyReport.ticketsByType.request + monthlyReport.ticketsByType.problem}
+
+2.3.17.2 - DISPONIBILIDADE DA CENTRAL DE ATENDIMENTO
+------------------------------------------------
+Percentual de Resolução: ${monthlyReport.availability}%
+
+2.3.17.3 - ATIVIDADES DE SUPORTE E MANUTENÇÃO
+------------------------------------------------
+Total de Atividades: ${monthlyReport.activities.length}
+`
+
+    monthlyReport.activities.slice(0, 20).forEach(a => {
+      reportText += `
+#${a.id} - ${a.status}
+  Título: ${a.title?.substring(0, 50) || '-'}
+  Técnico: ${a.technician || '-'}
+  Data: ${a.dateCreated ? new Date(a.dateCreated).toLocaleDateString('pt-BR') : '-'}
+`
+    })
+
+    reportText += `
+
+2.3.17.4 - INVENTÁRIO LÓGICO DOS ATIVOS
+------------------------------------------------
+`
+
+    Object.entries(monthlyReport.inventory).forEach(([entity, data]) => {
+      reportText += `${entity}: ${data.total} tickets\n`
+    })
+
+    reportText += `
+
+2.3.17.6 - CHAMADOS ABERTOS E AÇÕES CORRETIVAS
+------------------------------------------------
+Total Abertos: ${monthlyReport.openTickets.length}
+`
+
+    monthlyReport.openTickets.slice(0, 10).forEach(t => {
+      reportText += `
+#${t.id} - ${t.status} (P${t.priority})
+  ${t.title?.substring(0, 40) || '-'}
+`
+    })
+
+    reportText += `
+
+2.3.17.7 - INDICADORES GERENCIAIS
+------------------------------------------------
+Total de Tickets: ${monthlyReport.kpis.totalTickets}
+Resolvidos:     ${monthlyReport.kpis.resolvedTickets}
+Abertos:       ${monthlyReport.kpis.openTickets}
+Pendentes:     ${monthlyReport.kpis.pendingTickets}
+Violações SLA:  ${monthlyReport.kpis.slaBreaches}
+
+════════════════════════════════════════════════════════════
+Gerado em: ${new Date(monthlyReport.generatedAt).toLocaleString('pt-BR')}
+════════════════════════════════════════════════════════════
+`
+
+    const blob = new Blob([reportText], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `relatorio_mensal_${year}_${String(month).padStart(2, '0')}.txt`
+    a.click()
+    URL.revokeObjectURL(url)
+  }, [monthlyReport, month, year])
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       <div>
@@ -355,6 +513,71 @@ CREATE INDEX IF NOT EXISTS idx_tickets_cache_date_solved ON tickets_cache(date_s
           <strong>Autenticação:</strong> OAuth2 client_credentials → Bearer Token | X-Tenant-ID header
           <br />
           <strong>Rate Limit:</strong> 10/s, 100/min, 200.000/dia | Resiliência: exponential backoff
+        </div>
+      </div>
+
+      {/* Relatórios Mensais (2.3.17) */}
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+          <div>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Relatórios Mensais (2.3.17)</h2>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+              Relatórios exigidos pela contratante
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button onClick={generateReport} className="btn-primary">
+              Gerar Relatório
+            </button>
+            {monthlyReport && (
+              <button onClick={exportReport} className="btn-export">
+                Exportar TXT
+              </button>
+            )}
+          </div>
+        </div>
+
+        {monthlyReport && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px', marginTop: '12px' }}>
+            <div className="stat-card">
+              <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>2.3.17.1 - Total Tickets</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{monthlyReport.kpis.totalTickets}</div>
+            </div>
+            <div className="stat-card">
+              <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Incidentes</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#dc2626' }}>{monthlyReport.ticketsByType.incident}</div>
+            </div>
+            <div className="stat-card">
+              <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Requisições</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#3b82f6' }}>{monthlyReport.ticketsByType.request}</div>
+            </div>
+            <div className="stat-card">
+              <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>2.3.17.2 - Disponibilidade</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#16a34a' }}>{monthlyReport.availability}%</div>
+            </div>
+            <div className="stat-card">
+              <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>2.3.17.6 - Abertos</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#ea580c' }}>{monthlyReport.openTickets.length}</div>
+            </div>
+            <div className="stat-card">
+              <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>2.3.17.7 - Resolvidos</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#16a34a' }}>{monthlyReport.kpis.resolvedTickets}</div>
+            </div>
+            <div className="stat-card">
+              <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Violações SLA</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: monthlyReport.kpis.slaBreaches > 0 ? '#dc2626' : '#16a34a' }}>{monthlyReport.kpis.slaBreaches}</div>
+            </div>
+            <div className="stat-card">
+              <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Pendentes</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{monthlyReport.kpis.pendingTickets}</div>
+            </div>
+          </div>
+        )}
+
+        <div style={{ marginTop: '16px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+          <strong>Seções incluídas:</strong>
+          2.3.17.1 (Quantidade por Tipo), 2.3.17.2 (Disponibilidade), 2.3.17.3 (Atividades),
+          2.3.17.4 (Inventário), 2.3.17.6 (Chamados Abertos), 2.3.17.7 (KPIs Gerenciais)
         </div>
       </div>
 
