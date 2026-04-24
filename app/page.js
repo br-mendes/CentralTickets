@@ -211,102 +211,103 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Main stat cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '14px' }}>
-        <StatCard label="Total"           value={total}                      color="var(--text-primary)" />
-        <StatCard label="Incidentes"      value={incidents}                  color="#dc2626" href="/incidentes" />
-        <StatCard label="Requisições"     value={requests}                   color="#3b82f6" href="/tickets" />
-        <StatCard label="Em Atendimento"  value={byStatusKey.processing || 0} color="#16a34a" href="/tickets?status=processing" />
-        <StatCard label="Pendentes"       value={byStatusKey.pending || 0}   color="#ea580c" href="/tickets?status=pending" />
-        <StatCard label="Aprovação"       value={approvalTickets.length}     color="#7c3aed" href="/tickets?status=approval" />
-        <StatCard label="SLA Excedido"    value={slaLate}                   color="#dc2626" href="/tickets?sla=late" />
-        {avgResolutionSec > 0 && <StatCard label="Tempo Médio Resolução" value={formatSeconds(avgResolutionSec)} color="#6b7280" sub={`${resolvedWithTime.length} tickets`} />}
-      </div>
+       {/* Main stat cards */}
+       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '14px' }}>
+         <StatCard label="Total"           value={total}                      color="var(--text-primary)" />
+         <StatCard label="Incidentes"      value={incidents}                  color="#dc2626" href="/incidentes" />
+         <StatCard label="Requisições"     value={requests}                   color="#3b82f6" href="/tickets" />
+         <StatCard label="Em Atendimento"  value={byStatusKey.processing || 0} color="#16a34a" href="/tickets?status=processing" />
+         <StatCard label="Pendentes"       value={byStatusKey.pending || 0}   color="#ea580c" href="/tickets?status=pending" />
+         <StatCard label="Aprovação"       value={approvalTickets.length}     color="#7c3aed" href="/tickets?status=approval" />
+         <StatCard label="SLA Excedido (Não resolvido)" value={slaCritico.length} color="#dc2626" href="/tickets?sla=late" />
+         <StatCard label="SLA Excedido"    value={slaLate}                   color="#dc2626" href="/tickets?sla=late" />
+         {avgResolutionSec > 0 && <StatCard label="Tempo Médio Resolução" value={formatSeconds(avgResolutionSec)} color="#6b7280" sub={`${resolvedWithTime.length} tickets`} />}
+       </div>
 
-      {/* Charts row — Status + Trend */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '16px' }}>
-        <Card>
-          <SectionTitle>Tickets por Status</SectionTitle>
-          <DoughnutChart labels={chartStatusLabels} data={chartStatusData} colors={chartStatusColors} height={200} />
-        </Card>
-        <Card>
-          <SectionTitle>Últimos 30 Dias</SectionTitle>
-          <LineChart labels={trend.labels} datasets={lineDatasets} height={200} />
-        </Card>
-      </div>
+       {/* Charts row — Status + Trend */}
+       <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '16px' }}>
+         <Card>
+           <SectionTitle>Tickets por Status</SectionTitle>
+           <DoughnutChart labels={chartStatusLabels} data={chartStatusData} colors={chartStatusColors} height={200} />
+         </Card>
+         <Card>
+           <SectionTitle>Últimos 30 Dias</SectionTitle>
+           <LineChart labels={trend.labels} datasets={lineDatasets} height={200} />
+         </Card>
+       </div>
 
-      {/* Taxa de Resolução + Tempo em Pendência */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '14px' }}>
-        <StatCard label="Taxa de Resolução (7d)"   value={`${rate7.rate}%`}  color="#16a34a" sub={`${rate7.resolved} / ${rate7.total} tickets`} />
-        <StatCard label="Taxa de Resolução (30d)"  value={`${rate30.rate}%`} color="#16a34a" sub={`${rate30.resolved} / ${rate30.total} tickets`} />
-        <StatCard label="Tempo Médio em Pendência" value={formatWaitTime(avgPendingHours)} color="#ea580c" sub={`${pendingTickets.length} tickets pendentes`} />
-      </div>
+       {/* Taxa de Resolução + Tempo em Pendência */}
+       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '14px' }}>
+         <StatCard label="Taxa de Resolução (7d)"   value={`${rate7.rate}%`}  color="#16a34a" sub={`${rate7.resolved} / ${rate7.total} tickets`} />
+         <StatCard label="Taxa de Resolução (30d)"  value={`${rate30.rate}%`} color="#16a34a" sub={`${rate30.resolved} / ${rate30.total} tickets`} />
+         <StatCard label="Tempo Médio em Pendência" value={formatWaitTime(avgPendingHours)} color="#ea580c" sub={`${pendingTickets.length} tickets pendentes`} />
+       </div>
 
-      {/* Instance breakdown */}
-      {[{ label: 'Peta', list: peta, color: '#2563eb' }, { label: 'GMX', list: gmx, color: '#ea580c' }].map(({ label, list, color }) => {
-        const byS = list.reduce((a, t) => { const k = getStatusConfig(t.status_id, t.status_key).key; a[k] = (a[k] || 0) + 1; return a }, {})
-        return (
-          <Card key={label} style={{ borderLeft: `4px solid ${color}` }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-              <span style={{ fontWeight: 700, fontSize: '1rem', color }}>{label}</span>
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{list.length} tickets</span>
-            </div>
-            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-              {[
-                { k: 'new', l: 'Novos', c: '#3b82f6' },
-                { k: 'processing', l: 'Em Atendimento', c: '#22c55e' },
-                { k: 'pending', l: 'Pendentes', c: '#f97316' },
-                { k: 'approval', l: 'Aprovação', c: '#7c3aed' },
-                { k: 'solved', l: 'Solucionados', c: '#6b7280' },
-                { k: 'closed', l: 'Fechados', c: '#374151' },
-              ].map(({ k, l, c }) => (
-                <div key={k} style={{ textAlign: 'center', minWidth: '70px' }}>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 700, color: c }}>{byS[k] || 0}</div>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>{l}</div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        )
-      })}
+       {/* SLA Crítico Top 8 */}
+       {slaCritico.length > 0 && (
+         <Card>
+           <SectionTitle>SLA Crítico (Top 8)</SectionTitle>
+           <div style={{ overflowX: 'auto' }}>
+             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+               <thead>
+                 <tr>
+                   {['ID', 'Título', 'Entidade', 'Status', 'Técnico', 'Atraso'].map(h => (
+                     <th key={h} style={thStyle}>{h}</th>
+                   ))}
+                 </tr>
+               </thead>
+               <tbody>
+                 {slaCritico.map((t, i) => (
+                   <tr key={`${t.ticket_id}-${t.instance}`} style={{ background: i % 2 === 0 ? 'var(--surface)' : 'var(--background)' }}>
+                     <td style={{ ...thTd, fontWeight: 700, color: 'var(--primary)' }}>#{t.ticket_id}</td>
+                     <td style={{ ...thTd, maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.title || '—'}</td>
+                     <td style={{ ...thTd, maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{processEntity(t.entity)}</td>
+                     <td style={thTd}>
+                       <span className={`status-badge ${getStatusConfig(t.status_id, t.status_key).key}`}>
+                         {getStatusConfig(t.status_id, t.status_key).label}
+                       </span>
+                     </td>
+                     <td style={thTd}>{t.technician || <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em>}</td>
+                     <td style={{ ...thTd, color: '#dc2626', fontWeight: 700 }}>
+                       {t.daysOverdue > 0 ? `${t.daysOverdue}d atraso` : '< 1d'}
+                     </td>
+                   </tr>
+                 ))}
+               </tbody>
+             </table>
+           </div>
+         </Card>
+       )}
 
-      {/* SLA Crítico Top 8 */}
-      {slaCritico.length > 0 && (
-        <Card>
-          <SectionTitle>SLA Crítico (Top 8)</SectionTitle>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
-              <thead>
-                <tr>
-                  {['ID', 'Título', 'Entidade', 'Status', 'Técnico', 'Atraso'].map(h => (
-                    <th key={h} style={thStyle}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {slaCritico.map((t, i) => (
-                  <tr key={`${t.ticket_id}-${t.instance}`} style={{ background: i % 2 === 0 ? 'var(--surface)' : 'var(--background)' }}>
-                    <td style={{ ...thTd, fontWeight: 700, color: 'var(--primary)' }}>#{t.ticket_id}</td>
-                    <td style={{ ...thTd, maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.title || '—'}</td>
-                    <td style={{ ...thTd, maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{processEntity(t.entity)}</td>
-                    <td style={thTd}>
-                      <span className={`status-badge ${getStatusConfig(t.status_id, t.status_key).key}`}>
-                        {getStatusConfig(t.status_id, t.status_key).label}
-                      </span>
-                    </td>
-                    <td style={thTd}>{t.technician || <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em>}</td>
-                    <td style={{ ...thTd, color: '#dc2626', fontWeight: 700 }}>
-                      {t.daysOverdue > 0 ? `${t.daysOverdue}d atraso` : '< 1d'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      )}
+       {/* Instance breakdown */}
+       {[{ label: 'Peta', list: peta, color: '#2563eb' }, { label: 'GMX', list: gmx, color: '#ea580c' }].map(({ label, list, color }) => {
+         const byS = list.reduce((a, t) => { const k = getStatusConfig(t.status_id, t.status_key).key; a[k] = (a[k] || 0) + 1; return a }, {})
+         return (
+           <Card key={label} style={{ borderLeft: `4px solid ${color}` }}>
+             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+               <span style={{ fontWeight: 700, fontSize: '1rem', color }}>{label}</span>
+               <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{list.length} tickets</span>
+             </div>
+             <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+               {[
+                 { k: 'new', l: 'Novos', c: '#3b82f6' },
+                 { k: 'processing', l: 'Em Atendimento', c: '#22c55e' },
+                 { k: 'pending', l: 'Pendentes', c: '#f97316' },
+                 { k: 'approval', l: 'Aprovação', c: '#7c3aed' },
+                 { k: 'solved', l: 'Solucionados', c: '#6b7280' },
+                 { k: 'closed', l: 'Fechados', c: '#374151' },
+               ].map(({ k, l, c }) => (
+                 <div key={k} style={{ textAlign: 'center', minWidth: '70px' }}>
+                   <div style={{ fontSize: '1.4rem', fontWeight: 700, color: c }}>{byS[k] || 0}</div>
+                   <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>{l}</div>
+                 </div>
+               ))}
+             </div>
+           </Card>
+         )
+       })}
 
-      {/* Canal de Requisição */}
+       {/* Canal de Requisição */}
       {reqTypeRows.length > 1 && (
         <Card>
           <SectionTitle>Canal de Requisição</SectionTitle>

@@ -148,30 +148,10 @@ export default function Header() {
           })}
         </nav>
 
-        {/* Global filters (right-aligned) */}
-        <div style={{ display: 'flex', gap: '7px', alignItems: 'center', marginLeft: 'auto', flexWrap: 'wrap' }}>
+         {/* Global filters (right-aligned) */}
+         <div style={{ display: 'flex', gap: '7px', alignItems: 'center', marginLeft: 'auto', flexWrap: 'wrap' }}>
 
-          {/* Search */}
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
-              fill="none" stroke="var(--text-muted)" strokeWidth="2.5"
-              style={{ position: 'absolute', left: '7px', pointerEvents: 'none' }}>
-              <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
-            </svg>
-            <input
-              type="text"
-              placeholder="Buscar ID do ticket..."
-              value={globalSearch}
-              onChange={e => setGlobalSearch(e.target.value)}
-              style={{
-                ...selStyle,
-                paddingLeft: '24px',
-                width: '190px',
-              }}
-            />
-          </div>
-
-          {/* Period */}
+           {/* Period */}
           <select value={period} onChange={e => setPeriod(e.target.value)} style={selStyle}>
             <option value="all">Todos os períodos</option>
             <option value="7">Últimos 7 dias</option>

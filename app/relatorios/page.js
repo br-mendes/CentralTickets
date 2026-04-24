@@ -15,6 +15,8 @@ const STATUS_OPTS = [
   { v: 'solved', l: 'Solucionado' },
   { v: 'closed', l: 'Fechado' },
   { v: 'pending-approval', l: 'Aprovação' },
+  { v: 'closed+solved', l: 'Fechado + Solucionado' },
+  { v: 'notsolved', l: 'Não solucionado' },
 ]
 
 const sel = {
@@ -64,7 +66,15 @@ export default function RelatoriosPage() {
   const filtered = allTickets.filter(t => {
     if (fInstance && (t.instance || '').toUpperCase() !== fInstance.toUpperCase()) return false
     if (fEntity  && processEntity(t.entity) !== fEntity) return false
-    if (fStatus  && t.status_key !== fStatus) return false
+    if (fStatus) {
+      if (fStatus === 'closed+solved') {
+        if (t.status_key !== 'solved' && t.status_key !== 'closed') return false
+      } else if (fStatus === 'notsolved') {
+        if (t.status_key === 'solved' || t.status_key === 'closed') return false
+      } else {
+        if (t.status_key !== fStatus) return false
+      }
+    }
     if (fTech     && (t.technician || '') !== fTech) return false
     if (fGroup    && lastGroupLabel(t.group_name) !== fGroup) return false
     if (fPriority && String(t.priority_id || '') !== fPriority) return false
@@ -262,9 +272,9 @@ CREATE INDEX IF NOT EXISTS idx_tickets_cache_date_solved ON tickets_cache(date_s
                   <td className="col-entity" style={thTd}>{processEntity(t.entity)}</td>
                   <td className="col-entity" style={thTd}>{t.category || '—'}</td>
                   <td style={thTd}><StatusBadge statusId={t.status_id} statusKey={t.status_key} statusName={t.status_name} /></td>
-                  <td style={thTd}>
-                    {t.urgency ? <span style={{ fontWeight: 600, fontSize: '0.75rem', color: ['','#64748b','#3b82f6','#d97706','#ea580c','#dc2626','#7f1d1d'][t.urgency] }}>{URGENCY_LABEL[String(t.urgency)] || '—'}</span> : '—'}
-                  </td>
+                   <td style={thTd}>
+                     {t.priority_id ? <span style={{ fontWeight: 600, fontSize: '0.75rem', color: PRIORITY_COLORS[Number(t.priority_id) - 1] }}>{PRIORITY_LABELS[t.priority_id]}</span> : '—'}
+                   </td>
                   <td className="col-group" style={{ ...thTd, color: 'var(--text-secondary)' }}>{lastGroupLabel(t.group_name)}</td>
                   <td className="col-technician" style={{ ...thTd, color: 'var(--text-secondary)' }}>{t.technician || '—'}</td>
                   <td style={thTd}><SLABadge isLate={t.is_overdue_first} /></td>
