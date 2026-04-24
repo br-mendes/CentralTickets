@@ -167,7 +167,7 @@ export default function DashboardPage() {
 
   // Tipo de chamado
   const incidents = tickets.filter(t => t.type_id === 1).length
-  const requests  = tickets.filter(t => t.type_id === 2 || !t.type_id).length
+  const requests  = tickets.filter(t => t.type_id === 2).length
 
   // Prioridade — para BarChart vertical
   const prioEntries = Object.entries(prioMap).sort((a, b) => Number(a[0]) - Number(b[0]))
