@@ -276,12 +276,67 @@ export default function RelCofenPage() {
     const resolved = filtered.filter(t => t.status_key === 'solved' || t.status_key === 'closed').length
     report.availability = filtered.length > 0 ? Math.round((resolved / filtered.length) * 10000) / 100 : 0
 
+    // SLA - Prazos de Atendimento (Item 1.4)
+    const SLA_DEFINITIONS = {
+      emergencial: { label: 'Emergencial', startMax: 15, resolveMax: 240, priority: [6, 5] },
+      grave: { label: 'Grave', startMax: 15, resolveMax: 360, priority: [4] },
+      info: { label: 'Pedido de Informação', startMax: 15, resolveMax: 1440, priority: [3, 2, 1] },
+    }
+
+    const calculateSLAMetrics = (tickets) => {
+      const now = new Date()
+      const metrics = {
+        emergencial: { total: 0, withinStart: 0, withinResolve: 0, breaches: 0 },
+        grave: { total: 0, withinStart: 0, withinResolve: 0, breaches: 0 },
+        info: { total: 0, withinStart: 0, withinResolve: 0, breaches: 0 },
+      }
+
+      tickets.forEach(t => {
+        const created = new Date(t.date_created)
+        const hoursElapsed = (now - created) / 3600000
+        const priority = t.priority_id || 3
+
+        let severity = 'info'
+        if ([6, 5].includes(priority)) severity = 'emergencial'
+        else if (priority === 4) severity = 'grave'
+
+        const m = metrics[severity]
+        m.total++
+
+        // Verifica início (< 15 min = 0.25h)
+        if (hoursElapsed <= SLA_DEFINITIONS[severity].startMax / 60) {
+          m.withinStart++
+        }
+
+        // Verifica resolução (se já resolvido)
+        if (t.status_key === 'solved' || t.status_key === 'closed') {
+          const solvedDate = t.date_solved ? new Date(t.date_solved) : new Date(t.date_mod)
+          const resolveHours = (solvedDate - created) / 3600000
+          if (resolveHours <= SLA_DEFINITIONS[severity].resolveMax) {
+            m.withinResolve++
+          } else {
+            m.breaches++
+          }
+        } else {
+          // Se não resolvido, verifica se já extrapolou
+          if (hoursElapsed > SLA_DEFINITIONS[severity].resolveMax) {
+            m.breaches++
+          }
+        }
+      })
+
+      return metrics
+    }
+
+    report.slaMetrics = calculateSLAMetrics(filtered)
+
     // 2.3.17.3: Atividades de Suporte e Manutenção
     const activities = filtered.map(t => ({
       id: t.ticket_id,
       title: t.title,
       status: getStatusConfig(t.status_id, t.status_key).label,
       category: t.category || t.root_category,
+      priority: t.priority_id,
       dateCreated: t.date_created,
       dateMod: t.date_mod,
       technician: t.technician,
@@ -306,7 +361,10 @@ export default function RelCofenPage() {
       openTickets: openTickets.length,
       pendingTickets: filtered.filter(t => t.status_key === 'pending').length,
       avgResolutionTime: 'N/A',
-      slaBreaches: filtered.filter(t => t.is_overdue_resolve || t.is_sla_late).length,
+      slaBreaches: report.slaMetrics.emergencial.breaches + report.slaMetrics.grave.breaches + report.slaMetrics.info.breaches,
+      slaCompliance: filtered.length > 0
+        ? Math.round(((filtered.length - report.kpis.slaBreaches) / filtered.length) * 10000) / 100
+        : 100,
     }
 
     // 2.3.17.4: Inventário (dos tickets - entidade/categoria)
@@ -329,7 +387,7 @@ export default function RelCofenPage() {
     setMonthlyReport(generateMonthlyReport())
   }, [generateMonthlyReport])
 
-  const exportReport = useCallback(() => {
+const exportReport = useCallback(() => {
     if (!monthlyReport) return
 
     const reportText = `
@@ -343,11 +401,24 @@ export default function RelCofenPage() {
 Incidentes: ${monthlyReport.ticketsByType.incident}
 Requisições: ${monthlyReport.ticketsByType.request}
 Problemas:  ${monthlyReport.ticketsByType.problem}
-Total:     ${monthlyReport.ticketsByType.incident + monthlyReport.ticketsByType.request + monthlyReport.ticketsByType.problem}
+Total:     ${monthlyReport.kpis.totalTickets}
 
 2.3.17.2 - DISPONIBILIDADE DA CENTRAL DE ATENDIMENTO
 ------------------------------------------------
 Percentual de Resolução: ${monthlyReport.availability}%
+
+1.4 - PRAZOS DE ATENDIMENTO (SLA)
+------------------------------------------------
+| Severidade | Total | Início <=15min | Resolução no Prazo | Violações |
+|------------|------|----------------|-------------------|----------|
+| Emergencial| ${monthlyReport.slaMetrics.emergencial.total} | ${monthlyReport.slaMetrics.emergencial.withinStart} | ${monthlyReport.slaMetrics.emergencial.withinResolve} | ${monthlyReport.slaMetrics.emergencial.breaches} |
+| Grave      | ${monthlyReport.slaMetrics.grave.total} | ${monthlyReport.slaMetrics.grave.withinStart} | ${monthlyReport.slaMetrics.grave.withinResolve} | ${monthlyReport.slaMetrics.grave.breaches} |
+| Info       | ${monthlyReport.slaMetrics.info.total} | ${monthlyReport.slaMetrics.info.withinStart} | ${monthlyReport.slaMetrics.info.withinResolve} | ${monthlyReport.slaMetrics.info.breaches} |
+
+Prazos:
+- Emergencial: Início 15min | Resolução 4h
+- Grave: Início 15min | Resolução 6h
+- Info: Início 15min | Resolução 24h
 
 2.3.17.3 - ATIVIDADES DE SUPORTE E MANUTENÇÃO
 ------------------------------------------------
@@ -356,7 +427,7 @@ Total de Atividades: ${monthlyReport.activities.length}
 
     monthlyReport.activities.slice(0, 20).forEach(a => {
       reportText += `
-#${a.id} - ${a.status}
+#${a.id} - ${a.status} (P${a.priority})
   Título: ${a.title?.substring(0, 50) || '-'}
   Técnico: ${a.technician || '-'}
   Data: ${a.dateCreated ? new Date(a.dateCreated).toLocaleDateString('pt-BR') : '-'}
@@ -395,7 +466,8 @@ Total de Tickets: ${monthlyReport.kpis.totalTickets}
 Resolvidos:     ${monthlyReport.kpis.resolvedTickets}
 Abertos:       ${monthlyReport.kpis.openTickets}
 Pendentes:     ${monthlyReport.kpis.pendingTickets}
-Violações SLA:  ${monthlyReport.kpis.slaBreaches}
+Violações SLA: ${monthlyReport.kpis.slaBreaches}
+Conformidade SLA: ${monthlyReport.kpis.slaCompliance}%
 
 ════════════════════════════════════════════════════════════
 Gerado em: ${new Date(monthlyReport.generatedAt).toLocaleString('pt-BR')}
@@ -568,6 +640,22 @@ CREATE INDEX IF NOT EXISTS idx_tickets_cache_date_solved ON tickets_cache(date_s
               <div style={{ fontSize: '1.5rem', fontWeight: 700, color: monthlyReport.kpis.slaBreaches > 0 ? '#dc2626' : '#16a34a' }}>{monthlyReport.kpis.slaBreaches}</div>
             </div>
             <div className="stat-card">
+              <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Conformidade SLA</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: monthlyReport.kpis.slaCompliance >= 95 ? '#16a34a' : '#ea580c' }}>{monthlyReport.kpis.slaCompliance}%</div>
+            </div>
+            <div className="stat-card">
+              <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>SLA Emergencial (4h)</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: monthlyReport.slaMetrics.emergencial.breaches > 0 ? '#dc2626' : '#16a34a' }}>{monthlyReport.slaMetrics.emergencial.breaches}</div>
+            </div>
+            <div className="stat-card">
+              <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>SLA Grave (6h)</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: monthlyReport.slaMetrics.grave.breaches > 0 ? '#dc2626' : '#16a34a' }}>{monthlyReport.slaMetrics.grave.breaches}</div>
+            </div>
+            <div className="stat-card">
+              <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>SLA Info (24h)</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: monthlyReport.slaMetrics.info.breaches > 0 ? '#dc2626' : '#16a34a' }}>{monthlyReport.slaMetrics.info.breaches}</div>
+            </div>
+            <div className="stat-card">
               <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Pendentes</div>
               <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{monthlyReport.kpis.pendingTickets}</div>
             </div>
@@ -577,7 +665,9 @@ CREATE INDEX IF NOT EXISTS idx_tickets_cache_date_solved ON tickets_cache(date_s
         <div style={{ marginTop: '16px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
           <strong>Seções incluídas:</strong>
           2.3.17.1 (Quantidade por Tipo), 2.3.17.2 (Disponibilidade), 2.3.17.3 (Atividades),
-          2.3.17.4 (Inventário), 2.3.17.6 (Chamados Abertos), 2.3.17.7 (KPIs Gerenciais)
+          2.3.17.4 (Inventário), 2.3.17.6 (Chamados Abertos), 2.3.17.7 (KPIs Gerenciais), 1.4 (SLA)
+          <br />
+          <strong>SLA:</strong> Emergencial (P5-6: 15min/4h), Grave (P4: 15min/6h), Info (P1-3: 15min/24h)
         </div>
       </div>
 
