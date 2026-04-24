@@ -51,7 +51,20 @@ export default function RelCofenPage() {
     setSophosLoading(true)
     setSophosError(null)
     try {
-      const endpoints = ['whoami', 'tenants', 'endpoints', 'alerts', 'users']
+      const endpoints = [
+        'whoami',
+        'tenants',
+        'endpoints',
+        'endpoint-groups',
+        'alerts',
+        'cases',
+        'siem-events',
+        'siem-alerts',
+        'users',
+        'user-groups',
+        'threats',
+        'isolated-endpoints'
+      ]
       const results = {}
 
       for (const ep of endpoints) {
@@ -64,12 +77,23 @@ export default function RelCofenPage() {
         }
       }
 
+      const endpointsData = results.endpoints?.items || results.endpoints || []
+      const isolatedCount = endpointsData.filter(e => e.isolationStatus === 'isolated').length
+      const threatsData = results.threats?.items || results.threats || []
+
       setSophosData({
         whoami: results.whoami,
         tenants: results.tenants?.items || results.tenants || [],
-        endpoints: results.endpoints?.items || results.endpoints || [],
+        endpoints: endpointsData,
+        endpointGroups: results['endpoint-groups']?.items || results['endpoint-groups'] || [],
         alerts: results.alerts?.items || results.alerts || [],
+        cases: results.cases?.items || results.cases || [],
+        siemEvents: results['siem-events']?.items || results['siem-events'] || [],
+        siemAlerts: results['siem-alerts']?.items || results['siem-alerts'] || [],
         users: results.users?.items || results.users || [],
+        userGroups: results['user-groups']?.items || results['user-groups'] || [],
+        threats: threatsData,
+        isolatedCount,
         lastSync: new Date().toISOString()
       })
     } catch (e) {
@@ -289,28 +313,48 @@ CREATE INDEX IF NOT EXISTS idx_tickets_cache_date_solved ON tickets_cache(date_s
               <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{sophosData.endpoints?.length || 0}</div>
             </div>
             <div className="stat-card">
+              <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Isolados</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: sophosData.isolatedCount > 0 ? '#dc2626' : '#16a34a' }}>{sophosData.isolatedCount || 0}</div>
+            </div>
+            <div className="stat-card">
               <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Alertas</div>
               <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{sophosData.alerts?.length || 0}</div>
+            </div>
+            <div className="stat-card">
+              <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Casos MDR</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{sophosData.cases?.length || 0}</div>
+            </div>
+            <div className="stat-card">
+              <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Ameaças</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: sophosData.threats?.length > 0 ? '#dc2626' : '#16a34a' }}>{sophosData.threats?.length || 0}</div>
+            </div>
+            <div className="stat-card">
+              <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Eventos SIEM</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{sophosData.siemEvents?.length || 0}</div>
+            </div>
+            <div className="stat-card">
+              <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Grupos Endpoints</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{sophosData.endpointGroups?.length || 0}</div>
             </div>
             <div className="stat-card">
               <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Usuários</div>
               <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{sophosData.users?.length || 0}</div>
             </div>
-            <div className="stat-card">
-              <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Região</div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{sophosRegion}</div>
-            </div>
           </div>
         )}
 
         <div style={{ marginTop: '16px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-          <strong>APIs Integradas:</strong> Partner API, Common API, Endpoint API, SIEM Integration API
+          <strong>APIs Integradas:</strong> Partner API, Common API, Endpoint API, SIEM Integration API, Cases API
+          <br />
+          <strong>APIs Leitura:</strong> whoami, tenants, endpoints, endpoint-groups, alerts, cases, siem-events, siem-alerts, users, user-groups, threats, isolated-endpoints
+          <br />
+          <strong>APis Ação:</strong> isolate-endpoint, unisolate-endpoint, scan-endpoint, add-tag, remove-tag
           <br />
           <strong>Base URLs:</strong> Global: api.central.sophos.com | Regional: api-br01.central.sophos.com
           <br />
-          <strong>Autenticação:</strong> OAuth2 client_credentials → Bearer Token
+          <strong>Autenticação:</strong> OAuth2 client_credentials → Bearer Token | X-Tenant-ID header
           <br />
-          <strong>Rate Limit:</strong> 10/s, 100/min, 200.000/dia
+          <strong>Rate Limit:</strong> 10/s, 100/min, 200.000/dia | Resiliência: exponential backoff
         </div>
       </div>
 
