@@ -25,6 +25,49 @@ const sel = {
   color: 'var(--text-primary)', fontSize: '0.82rem',
 }
 
+const SEV_COLORS = { critical: '#7f1d1d', high: '#dc2626', medium: '#d97706', low: '#3b82f6' }
+const SEV_LABELS = { critical: 'Crítica', high: 'Alta', medium: 'Média', low: 'Baixa' }
+const SIEM_EVENT_HEADERS = ['ID', 'Tipo', 'Severidade', 'Origem', 'Criado em', 'Detalhes']
+const SIEM_ALERT_HEADERS = ['ID', 'Tipo', 'Severidade', 'Nome do Evento', 'Endpoint ID', 'Categoria', 'Quando']
+
+// Formata Unix timestamp (seconds ou ms) ou ISO string
+function fmtWhen(val) {
+  if (!val) return '—'
+  if (typeof val === 'number') {
+    const ms = val < 1e10 ? val * 1000 : val
+    return new Date(ms).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
+  }
+  return fmt(val)
+}
+
+// Extrai as 2 últimas partes do tipo: Event::Endpoint::Threat::Detected → Threat::Detected
+function shortType(type) {
+  if (!type) return '—'
+  const parts = type.split('::')
+  return parts.length > 2 ? parts.slice(-2).join('::') : type
+}
+
+function SevBadge({ severity }) {
+  const map = {
+    critical: { bg: '#fef2f2', color: '#7f1d1d', label: 'Crítica' },
+    high: { bg: '#fef2f2', color: '#dc2626', label: 'Alta' },
+    medium: { bg: '#fffbeb', color: '#d97706', label: 'Média' },
+    low: { bg: '#eff6ff', color: '#3b82f6', label: 'Baixa' },
+  }
+  const c = map[(severity || '').toLowerCase()] || { bg: 'var(--background)', color: 'var(--text-secondary)', label: severity || '—' }
+  return <span style={{ padding: '2px 6px', borderRadius: '4px', background: c.bg, color: c.color, fontWeight: 700, fontSize: '0.72rem' }}>{c.label}</span>
+}
+
+function StatusSiemBadge({ status }) {
+  const map = {
+    open: { bg: '#fef2f2', color: '#dc2626', label: 'Aberto' },
+    acknowledged: { bg: '#fffbeb', color: '#d97706', label: 'Reconhecido' },
+    resolved: { bg: '#f0fdf4', color: '#16a34a', label: 'Resolvido' },
+  }
+  const c = map[(status || '').toLowerCase()] || { bg: 'var(--background)', color: 'var(--text-secondary)', label: status || '—' }
+  return <span style={{ padding: '2px 6px', borderRadius: '4px', background: c.bg, color: c.color, fontWeight: 700, fontSize: '0.72rem' }}>{c.label}</span>
+}
+
 export default function RelCofenPage() {
   const now = new Date()
   const [allTickets, setAllTickets] = useState([])
@@ -46,6 +89,17 @@ export default function RelCofenPage() {
   const [sophosData, setSophosData] = useState(null)
   const [sophosError, setSophosError] = useState(null)
   const [sophosRegion] = useState('br-01')
+
+  // SIEM state
+  const [siemType, setSiemType] = useState('alerts')
+  const [siemFrom, setSiemFrom] = useState(() => { const d = new Date(); d.setDate(d.getDate() - 7); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` })
+  const [siemTo, setSiemTo] = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` })
+  const [siemLimit, setSiemLimit] = useState(100)
+  const [siemSeverity, setSiemSeverity] = useState('')
+  const [siemItems, setSiemItems] = useState([])
+  const [siemNextCursor, setSiemNextCursor] = useState(null)
+  const [siemFetching, setSiemFetching] = useState(false)
+  const [siemError, setSiemError] = useState(null)
 
   // Monthly report state
   const [monthlyReport, setMonthlyReport] = useState(null)
@@ -115,6 +169,49 @@ const threatsRes = await fetch('/api/sophos?endpoint=threats').then(r => r.json(
     }
   }, [])
 
+  const loadSiemData = useCallback(async (appendCursor = null) => {
+    setSiemFetching(true)
+    if (!appendCursor) setSiemError(null)
+    try {
+      const params = new URLSearchParams({ endpoint: 'siem-alerts', limit: String(siemLimit) })
+      if (siemFrom) params.set('from', new Date(siemFrom + 'T00:00:00').toISOString())
+      if (siemTo) params.set('to', new Date(siemTo + 'T23:59:59').toISOString())
+      if (appendCursor) params.set('cursor', appendCursor)
+      const res = await fetch(`/api/sophos?${params.toString()}`)
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      const items = Array.isArray(data.items) ? data.items : Array.isArray(data) ? data : []
+      setSiemItems(prev => appendCursor ? [...prev, ...items] : items)
+      setSiemNextCursor(data.next_cursor || null)
+    } catch (e) { setSiemError(e.message) }
+    finally { setSiemFetching(false) }
+  }, [siemFrom, siemTo, siemLimit])
+
+  const exportSiemCSV = useCallback(() => {
+    if (!siemItems.length) return
+    const headers = ['ID', 'Tipo Completo', 'Tipo Curto', 'Severidade', 'Nome do Evento', 'Endpoint ID', 'Categoria', 'Grupo', 'Quando', 'created_at', 'customer_id', 'source']
+    const rows = siemItems.map(item => [
+      item.id || '',
+      item.type || '',
+      shortType(item.type),
+      item.severity || '',
+      item.name || item.description || '',
+      item.endpoint_id || item.managedAgent?.id || '',
+      item.category || '',
+      item.group || '',
+      item.created_at || (item.when ? fmtWhen(item.when) : ''),
+      item.created_at || '',
+      item.customer_id || item.tenant?.id || '',
+      item.source || '',
+    ])
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = `siem_alerts_${siemFrom}_${siemTo}.csv`; a.click()
+    URL.revokeObjectURL(url)
+  }, [siemItems, siemFrom, siemTo])
+
   const load = useCallback(async () => {
     setLoading(true); setError(null); setMissingColumns(false)
     try {
@@ -133,6 +230,22 @@ const threatsRes = await fetch('/api/sophos?endpoint=threats').then(r => r.json(
     } catch (e) { setError(e.message) }
     finally { setLoading(false) }
   }, [dateType, year, month])
+
+  // Client-side severity filter
+  const displayedSiemItems = siemSeverity
+    ? siemItems.filter(item => (item.severity || '').toLowerCase() === siemSeverity)
+    : siemItems
+
+  const siemBySeverity = { critical: 0, high: 0, medium: 0, low: 0 }
+  displayedSiemItems.forEach(item => { const s = (item.severity || '').toLowerCase(); if (s in siemBySeverity) siemBySeverity[s]++ })
+
+  // Top categorias por tipo (últimas 2 partes de Event::X::Y::Z)
+  const siemByCategory = {}
+  displayedSiemItems.forEach(item => {
+    const cat = item.category || shortType(item.type) || 'Outro'
+    siemByCategory[cat] = (siemByCategory[cat] || 0) + 1
+  })
+  const topCategories = Object.entries(siemByCategory).sort((a, b) => b[1] - a[1]).slice(0, 4)
 
   const entities    = [...new Set(allTickets.map(t => processEntity(t.entity)).filter(v => v !== '—'))].sort()
   const technicians = [...new Set(allTickets.map(t => t.technician).filter(Boolean))].sort()
@@ -494,8 +607,8 @@ CREATE INDEX IF NOT EXISTS idx_tickets_cache_date_solved ON tickets_cache(date_s
               <div style={{ fontSize: '1.5rem', fontWeight: 700, color: (sophosData.threatsCount || 0) > 0 ? '#dc2626' : '#16a34a' }}>{sophosData.threatsCount || 0}</div>
             </div>
             <div className="stat-card">
-              <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Eventos SIEM</div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{sophosData.siemEvents?.length || 0}</div>
+              <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>SIEM Dados</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{siemItems.length || 0}</div>
             </div>
             <div className="stat-card">
               <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Grupos Endpoints</div>
@@ -520,6 +633,153 @@ CREATE INDEX IF NOT EXISTS idx_tickets_cache_date_solved ON tickets_cache(date_s
           <strong>Autenticação:</strong> OAuth2 client_credentials → Bearer Token | X-Tenant-ID header
           <br />
           <strong>Rate Limit:</strong> 10/s, 100/min, 200.000/dia | Resiliência: exponential backoff
+        </div>
+      </div>
+
+      {/* SIEM Integration API */}
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '16px' }}>
+        <div style={{ marginBottom: '12px' }}>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 600 }}>SIEM Integration API — Alertas</h2>
+          <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+            <code style={{ background: 'var(--background)', padding: '1px 5px', borderRadius: '3px', fontSize: '0.78rem' }}>GET /siem/v1/alerts</code>
+            {' '}| Base URI: api-br01.central.sophos.com | OAuth2 Bearer + X-Tenant-ID
+          </p>
+        </div>
+
+        {/* Controls */}
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: '16px', padding: '12px', background: 'var(--background)', borderRadius: 'var(--radius-md)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+            <label style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>De</label>
+            <input type="date" value={siemFrom} onChange={e => setSiemFrom(e.target.value)} style={{ ...sel, fontFamily: 'inherit' }} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+            <label style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Até</label>
+            <input type="date" value={siemTo} onChange={e => setSiemTo(e.target.value)} style={{ ...sel, fontFamily: 'inherit' }} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+            <label style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Limite</label>
+            <select value={siemLimit} onChange={e => setSiemLimit(Number(e.target.value))} style={sel}>
+              <option value="50">50</option>
+              <option value="100">100</option>
+              <option value="200">200</option>
+              <option value="500">500</option>
+              <option value="1000">1000 (máx)</option>
+            </select>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+            <label style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Severidade</label>
+            <select value={siemSeverity} onChange={e => setSiemSeverity(e.target.value)} style={sel}>
+              <option value="">Todas</option>
+              <option value="critical">Crítica</option>
+              <option value="high">Alta</option>
+              <option value="medium">Média</option>
+              <option value="low">Baixa</option>
+            </select>
+          </div>
+          <button onClick={() => loadSiemData(null)} disabled={siemFetching} className="btn-primary" style={{ alignSelf: 'flex-end' }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            {siemFetching && !siemNextCursor ? 'Carregando...' : 'Buscar'}
+          </button>
+          {siemItems.length > 0 && (
+            <button onClick={() => { setSiemItems([]); setSiemNextCursor(null); setSiemError(null) }} style={{ ...sel, cursor: 'pointer', alignSelf: 'flex-end' }}>
+              Limpar
+            </button>
+          )}
+        </div>
+
+        {siemError && (
+          <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 'var(--radius-md)', padding: '8px 12px', color: '#dc2626', fontSize: '0.82rem', marginBottom: '12px' }}>
+            Erro: {siemError}
+          </div>
+        )}
+
+        {siemItems.length > 0 && (
+          <>
+            {/* Stats por severidade e categoria */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '10px', marginBottom: '16px' }}>
+              <div className="stat-card">
+                <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Total</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{siemItems.length}</div>
+              </div>
+              {siemSeverity && siemItems.length !== displayedSiemItems.length && (
+                <div className="stat-card">
+                  <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Filtrados</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 700, color: SEV_COLORS[siemSeverity] || 'var(--primary)' }}>{displayedSiemItems.length}</div>
+                </div>
+              )}
+              {Object.entries(siemBySeverity).filter(([, c]) => c > 0).map(([sev, count]) => (
+                <div key={sev} className="stat-card">
+                  <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>{SEV_LABELS[sev] || sev}</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 700, color: SEV_COLORS[sev] }}>{count}</div>
+                </div>
+              ))}
+              {topCategories.map(([cat, count]) => (
+                <div key={cat} className="stat-card">
+                  <div style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={cat}>{cat}</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{count}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Tabela */}
+            <div style={{ overflowX: 'auto', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', marginBottom: '12px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                <thead>
+                  <tr style={{ background: 'var(--background)', borderBottom: '2px solid var(--border)' }}>
+                    {SIEM_ALERT_HEADERS.map(h => (
+                      <th key={h} style={thS}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayedSiemItems.map((item, i) => (
+                    <tr key={item.id || i} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'var(--surface)' : 'var(--background)' }}>
+                      <td style={{ ...thTd, fontFamily: 'monospace', fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{String(item.id || '—').substring(0, 16)}</td>
+                      <td style={{ ...thTd, maxWidth: '160px', whiteSpace: 'normal', lineHeight: 1.4 }} title={item.type || ''}>{shortType(item.type)}</td>
+                      <td style={thTd}><SevBadge severity={item.severity} /></td>
+                      <td style={{ ...thTd, maxWidth: '220px', whiteSpace: 'normal', lineHeight: 1.4 }}>{item.name || item.description || '—'}</td>
+                      <td style={{ ...thTd, fontFamily: 'monospace', fontSize: '0.72rem', color: 'var(--text-secondary)' }}>{String(item.endpoint_id || item.managedAgent?.id || '—').substring(0, 20)}</td>
+                      <td style={{ ...thTd, color: 'var(--text-secondary)' }}>{item.category || '—'}</td>
+                      <td style={{ ...thTd, color: 'var(--text-secondary)' }}>{fmtWhen(item.when) !== '—' ? fmtWhen(item.when) : fmt(item.created_at)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Paginação e exportação */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+              <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                {displayedSiemItems.length}{siemSeverity && displayedSiemItems.length !== siemItems.length ? ` de ${siemItems.length}` : ''} alertas
+                {siemNextCursor && ' • Há mais páginas disponíveis (cursor-based)'}
+              </span>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {siemNextCursor && (
+                  <button onClick={() => loadSiemData(siemNextCursor)} disabled={siemFetching} className="btn-primary">
+                    {siemFetching ? 'Carregando...' : 'Carregar mais'}
+                  </button>
+                )}
+                <button onClick={exportSiemCSV} className="btn-export">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                  Exportar CSV
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {!siemFetching && siemItems.length === 0 && !siemError && (
+          <div style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+            Selecione o período e clique em <strong>Buscar</strong> para carregar alertas do SIEM (<code>/siem/v1/alerts</code>).
+          </div>
+        )}
+
+        <div style={{ marginTop: '12px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+          <strong>Parâmetros API:</strong> from_date (Unix UTC, janela máx. 24h), limit (1–1000), cursor (paginação), exclude_types (tipos a excluir)
+          &nbsp;| Campos: id · when · type (Event::X::Y) · severity · name · endpoint_id · category · group · created_at · source
+          &nbsp;| <strong>Rate limit:</strong> 10/s · 100/min · 200.000/dia | Filtro de severidade: aplicado localmente
         </div>
       </div>
 

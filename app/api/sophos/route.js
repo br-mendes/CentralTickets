@@ -147,10 +147,32 @@ export async function GET(request) {
         break
 
       case 'siem-events':
-      case 'siem-alerts':
+      case 'siem-alerts': {
         headers['X-Tenant-ID'] = tenant.id
-        url = `${apiHost}/siem/v1/${endpoint === 'siem-events' ? 'events' : 'alerts'}`
+        const siemPath = endpoint === 'siem-events' ? 'events' : 'alerts'
+        const siemQP = new URLSearchParams()
+
+        // Convert ISO date params to from_date (Unix timestamp); clamp to 24h window max
+        const fromParam = searchParams.get('from')
+        const toParam = searchParams.get('to')
+        const toMs = toParam ? new Date(toParam).getTime() : Date.now()
+        const rawFromMs = fromParam ? new Date(fromParam).getTime() : toMs - 24 * 3600 * 1000
+        siemQP.set('from_date', String(Math.floor(Math.max(rawFromMs, toMs - 24 * 3600 * 1000) / 1000)))
+
+        // Clamp limit to 1-1000 as required by Sophos SIEM v1
+        const rawLimit = parseInt(searchParams.get('limit') || '100', 10)
+        siemQP.set('limit', String(Math.min(Math.max(isNaN(rawLimit) ? 100 : rawLimit, 1), 1000)))
+
+        const cursor = searchParams.get('cursor')
+        if (cursor) siemQP.set('cursor', cursor)
+
+        // exclude_types: pass through if provided (separate from generic filter)
+        const excludeTypes = searchParams.get('exclude_types')
+        if (excludeTypes) siemQP.set('exclude_types', excludeTypes)
+
+        url = `${apiHost}/siem/v1/${siemPath}${siemQP.toString() ? '?' + siemQP.toString() : ''}`
         break
+      }
 
       default:
         headers['X-Tenant-ID'] = tenant.id
