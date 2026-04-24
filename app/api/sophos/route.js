@@ -146,6 +146,12 @@ export async function GET(request) {
         url = `${apiHost}/cases/v1/cases`
         break
 
+      case 'siem-events':
+      case 'siem-alerts':
+        headers['X-Tenant-ID'] = tenant.id
+        url = `${apiHost}/siem/v1/${endpoint === 'siem-events' ? 'events' : 'alerts'}`
+        break
+
       default:
         headers['X-Tenant-ID'] = tenant.id
         url = `${apiHost}/endpoint/v1/${endpoint}`
