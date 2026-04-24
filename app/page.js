@@ -98,6 +98,8 @@ export default function DashboardPage() {
 
   // Aprovação
   const approvalTickets = tickets.filter(t => t.status_id === 7 || t.status_key === 'pending-approval')
+  const approvalPeta = approvalTickets.filter(t => (t.instance || '').toUpperCase() === 'PETA')
+  const approvalGmx = approvalTickets.filter(t => (t.instance || '').toUpperCase() === 'GMX')
 
   // Tempo Médio em Pendência
   const pendingTickets = tickets.filter(t => t.status_key === 'pending' || t.status_id === 4)
@@ -234,25 +236,43 @@ export default function DashboardPage() {
                  <span style={{ fontWeight: 700, fontSize: '1rem', color }}>{label}</span>
                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{list.length} tickets</span>
                </div>
-               <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                 {[
-                   { k: 'new', l: 'Novos', c: '#3b82f6' },
-                   { k: 'processing', l: 'Em Atendimento', c: '#22c55e' },
-                   { k: 'pending', l: 'Pendentes', c: '#f97316' },
-                   { k: 'approval', l: 'Aprovação', c: '#7c3aed' },
-                   { k: 'solved', l: 'Solucionados', c: '#6b7280' },
-                   { k: 'closed', l: 'Fechados', c: '#374151' },
-                 ].map(({ k, l, c }) => (
-                   <div key={k} style={{ textAlign: 'center', minWidth: '70px' }}>
-                     <div style={{ fontSize: '1.4rem', fontWeight: 700, color: c }}>{byS[k] || 0}</div>
-                     <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>{l}</div>
-                   </div>
-                 ))}
-               </div>
-             </Card>
-           )
-         })}
-       </div>
+<div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                  {[
+                    { k: 'new', l: 'Novos', c: '#3b82f6' },
+                    { k: 'processing', l: 'Em Atendimento', c: '#22c55e' },
+                    { k: 'pending', l: 'Pendentes', c: '#f97316' },
+                    { k: 'approval', l: 'Aprovação', c: '#7c3aed' },
+                    { k: 'solved', l: 'Solucionados', c: '#6b7280' },
+                    { k: 'closed', l: 'Fechados', c: '#374151' },
+                  ].map(({ k, l, c }) => (
+                    <div key={k} style={{ textAlign: 'center', minWidth: '70px' }}>
+                      <div style={{ fontSize: '1.4rem', fontWeight: 700, color: c }}>{byS[k] || 0}</div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>{l}</div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )
+          })}
+          {approvalTickets.length > 0 && (
+            <Card style={{ borderLeft: '4px solid #7c3aed' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                <span style={{ fontWeight: 700, fontSize: '1rem', color: '#7c3aed' }}>Aprovação</span>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{approvalTickets.length} tickets</span>
+              </div>
+              <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+                <div style={{ textAlign: 'center', minWidth: '70px' }}>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#2563eb' }}>{approvalPeta.length}</div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>PETA</div>
+                </div>
+                <div style={{ textAlign: 'center', minWidth: '70px' }}>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#ea580c' }}>{approvalGmx.length}</div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>GMX</div>
+                </div>
+              </div>
+            </Card>
+          )}
+        </div>
 
        {/* Charts row — Status + Trend */}
        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '16px' }}>
@@ -266,28 +286,32 @@ export default function DashboardPage() {
          </Card>
        </div>
 
-{/* Taxa de Resolução + Tempo em Pendência + Canal de Requisição */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '14px' }}>
-          <StatCard label="Taxa de Resolução (7d)"   value={`${rate7.rate}%`}  color="#16a34a" sub={`${rate7.resolved} / ${rate7.total} tickets`} />
-          <StatCard label="Taxa de Resolução (30d)"  value={`${rate30.rate}%`} color="#16a34a" sub={`${rate30.resolved} / ${rate30.total} tickets`} />
-          <StatCard label="Tempo Médio em Pendência" value={formatWaitTime(avgPendingHours)} color="#ea580c" sub={`${pendingTickets.length} tickets pendentes`} />
-        </div>
-        {reqTypeRows.length > 1 && (
+{/* Taxa de Resolução + Tempo em Pendência + Canal de Requisição em colunas */}
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
           <Card>
-            <SectionTitle>Canal de Requisição</SectionTitle>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '7px 24px' }}>
-              {reqTypeRows.map(([name, count]) => (
-                <div key={name} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{ width: '130px', fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0, color: 'var(--text-secondary)' }}>{name}</div>
-                  <div style={{ flex: 1, height: '8px', background: 'var(--border)', borderRadius: '9999px', overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${(count / maxReqType) * 100}%`, background: 'var(--primary)', borderRadius: '9999px' }} />
-                  </div>
-                  <span style={{ fontSize: '0.8rem', fontWeight: 600, width: '28px', textAlign: 'right' }}>{count}</span>
-                </div>
-              ))}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
+              <StatCard label="Taxa de Resolução (7d)"   value={`${rate7.rate}%`}  color="#16a34a" sub={`${rate7.resolved} / ${rate7.total} tickets`} />
+              <StatCard label="Taxa de Resolução (30d)"  value={`${rate30.rate}%`} color="#16a34a" sub={`${rate30.resolved} / ${rate30.total} tickets`} />
+              <StatCard label="Tempo Médio em Pendência" value={formatWaitTime(avgPendingHours)} color="#ea580c" sub={`${pendingTickets.length} tickets pendentes`} />
             </div>
           </Card>
-        )}
+          {reqTypeRows.length > 1 && (
+            <Card>
+              <SectionTitle>Canal de Requisição</SectionTitle>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                {reqTypeRows.map(([name, count]) => (
+                  <div key={name} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ width: '130px', fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0, color: 'var(--text-secondary)' }}>{name}</div>
+                    <div style={{ flex: 1, height: '8px', background: 'var(--border)', borderRadius: '9999px', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${(count / maxReqType) * 100}%`, background: 'var(--primary)', borderRadius: '9999px' }} />
+                    </div>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 600, width: '28px', textAlign: 'right' }}>{count}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+        </div>
 
        {/* SLA Crítico Top 8 */}
        {slaCritico.length > 0 && (
