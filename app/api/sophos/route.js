@@ -72,13 +72,14 @@ async function getTenantId(token, organizationId, idType = 'organization') {
 
   if (!response.ok) {
     const errorText = await response.text()
-    console.error('Tenants error:', errorText)
+    console.error('Tenants error:', response.status, errorText)
     return null
   }
 
   const data = await response.json()
   if (data.items && data.items.length > 0) {
-    return data.items[0].id
+    const tenant = data.items[0]
+    return { id: tenant.id, apiHost: tenant.apiHost }
   }
   return null
 }
@@ -94,9 +95,13 @@ export async function GET(request) {
     const organizationId = whoami?.id
     const idType = whoami?.idType || 'organization'
 
-    let tenantIdToUse = tenantId
-    if (!tenantIdToUse && organizationId) {
-      tenantIdToUse = await getTenantId(token, organizationId, idType)
+    let tenantInfo = null
+    let tenantApiHost = null
+    if (!tenantId && organizationId) {
+      tenantInfo = await getTenantId(token, organizationId, idType)
+      tenantApiHost = tenantInfo?.apiHost || SOPHOS_API_GLOBAL
+    } else {
+      tenantApiHost = SOPHOS_API_GLOBAL
     }
 
     const headers = {
@@ -110,8 +115,8 @@ export async function GET(request) {
       headers['X-Organization-ID'] = organizationId
     }
 
-    if (tenantIdToUse) {
-      headers['X-Tenant-ID'] = tenantIdToUse
+    if (tenantInfo?.id) {
+      headers['X-Tenant-ID'] = tenantInfo.id
     }
 
     let url
@@ -126,43 +131,43 @@ export async function GET(request) {
         break
 
       case 'endpoints':
-        url = `${SOPHOS_API_GLOBAL}/endpoint/v1/endpoints`
+        url = `${tenantApiHost}/endpoint/v1/endpoints`
         break
 
       case 'endpoint-groups':
-        url = `${SOPHOS_API_GLOBAL}/endpoint/v1/endpoint-groups`
+        url = `${tenantApiHost}/endpoint/v1/endpoint-groups`
         break
 
       case 'alerts':
-        url = `${SOPHOS_API_GLOBAL}/common/v1/alerts`
+        url = `${tenantApiHost}/common/v1/alerts`
         break
 
       case 'cases':
-        url = `${SOPHOS_API_GLOBAL}/cases/v1/cases`
+        url = `${tenantApiHost}/cases/v1/cases`
         break
 
       case 'siem-events':
-        url = `${SOPHOS_API_GLOBAL}/siem/v1/events`
+        url = `${tenantApiHost}/siem/v1/events`
         break
 
       case 'siem-alerts':
-        url = `${SOPHOS_API_GLOBAL}/siem/v1/alerts`
+        url = `${tenantApiHost}/siem/v1/alerts`
         break
 
       case 'users':
-        url = `${SOPHOS_API_GLOBAL}/common/v1/users`
+        url = `${tenantApiHost}/common/v1/users`
         break
 
       case 'user-groups':
-        url = `${SOPHOS_API_GLOBAL}/common/v1/user-groups`
+        url = `${tenantApiHost}/common/v1/user-groups`
         break
 
       case 'threats':
-        url = `${SOPHOS_API_GLOBAL}/endpoint/v1/threats`
+        url = `${tenantApiHost}/endpoint/v1/threats`
         break
 
       case 'isolated-endpoints':
-        url = `${SOPHOS_API_GLOBAL}/endpoint/v1/endpoints?isolationStatus=isolated`
+        url = `${tenantApiHost}/endpoint/v1/endpoints?isolationStatus=isolated`
         break
 
       default:
@@ -202,6 +207,13 @@ export async function POST(request) {
     const body = await request.json().catch(() => ({}))
     const tenantId = body.tenantId
 
+    let tenantInfo = null
+    let tenantApiHost = SOPHOS_API_GLOBAL
+    if (!tenantId && organizationId) {
+      tenantInfo = await getTenantId(token, organizationId, idType)
+      tenantApiHost = tenantInfo?.apiHost || SOPHOS_API_GLOBAL
+    }
+
     const headers = {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
@@ -213,22 +225,24 @@ export async function POST(request) {
       headers['X-Organization-ID'] = organizationId
     }
 
-    if (tenantId) {
+    if (tenantInfo?.id) {
+      headers['X-Tenant-ID'] = tenantInfo.id
+    } else if (tenantId) {
       headers['X-Tenant-ID'] = tenantId
     }
 
     let url
     switch (action) {
       case 'isolate-endpoint':
-        url = `${SOPHOS_API_GLOBAL}/endpoint/v1/endpoints/${body.endpointId}/isolation`
+        url = `${tenantApiHost}/endpoint/v1/endpoints/${body.endpointId}/isolation`
         break
 
       case 'unisolate-endpoint':
-        url = `${SOPHOS_API_GLOBAL}/endpoint/v1/endpoints/${body.endpointId}/isolation`
+        url = `${tenantApiHost}/endpoint/v1/endpoints/${body.endpointId}/isolation`
         break
 
       case 'scan-endpoint':
-        url = `${SOPHOS_API_GLOBAL}/endpoint/v1/endpoints/${body.endpointId}/scans`
+        url = `${tenantApiHost}/endpoint/v1/endpoints/${body.endpointId}/scans`
         break
 
       default:
