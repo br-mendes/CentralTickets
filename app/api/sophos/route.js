@@ -147,10 +147,17 @@ export async function GET(request) {
         break
 
       case 'siem-events':
-      case 'siem-alerts':
+      case 'siem-alerts': {
         headers['X-Tenant-ID'] = tenant.id
-        url = `${apiHost}/siem/v1/${endpoint === 'siem-events' ? 'events' : 'alerts'}`
+        const siemPath = endpoint === 'siem-events' ? 'events' : 'alerts'
+        const siemQP = new URLSearchParams()
+        for (const key of ['from', 'to', 'limit', 'cursor', 'fields', 'filter']) {
+          const v = searchParams.get(key)
+          if (v) siemQP.set(key, v)
+        }
+        url = `${apiHost}/siem/v1/${siemPath}${siemQP.toString() ? '?' + siemQP.toString() : ''}`
         break
+      }
 
       default:
         headers['X-Tenant-ID'] = tenant.id
