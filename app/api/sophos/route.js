@@ -49,7 +49,7 @@ async function getToken() {
 
 async function getTenantId() {
   if (tenantIdCache) {
-    return { id: tenantIdCache, apiHost: SOPHOS_API_REGION }
+    return { id: tenantIdCache, apiHost: SOPHOS_API_REGION, idType: 'partner' }
   }
 
   const token = await getToken()
@@ -58,9 +58,11 @@ async function getTenantId() {
   })
   const whoData = await whoRes.json()
 
+  console.log('WHOAMI:', JSON.stringify(whoData).substring(0, 500))
+
   let id = null
-  let idType = whoData.idType
-  let apiHost = whoData.apiHost?.global || SOPHOS_API_REGION
+  let idType = whoData.idType || 'partner'
+  let apiHost = whoData.apiHost?.global || whoData.apiHost || SOPHOS_API_REGION
 
   if (idType === 'tenant') {
     id = whoData.id
@@ -106,6 +108,7 @@ export async function GET(request) {
     switch (endpoint) {
       case 'whoami':
         url = 'https://api.central.sophos.com/whoami/v1'
+        headers['X-Partner-ID'] = tenant.id
         break
 
       case 'tenants':
