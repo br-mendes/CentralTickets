@@ -49,6 +49,8 @@ export default function RelCofenPage() {
 
   // Monthly report state
   const [monthlyReport, setMonthlyReport] = useState(null)
+
+  const loadSophosData = useCallback(async () => {
     setSophosLoading(true)
     setSophosError(null)
     try {
