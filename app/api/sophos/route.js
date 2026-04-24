@@ -30,9 +30,16 @@ async function getToken() {
     }),
   })
 
-  const data = await res.json()
+  const text = await res.text()
+  let data
+  try {
+    data = JSON.parse(text)
+  } catch {
+    throw new Error(`Auth falhou: ${res.status} - ${text.substring(0, 200)}`)
+  }
+
   if (!data.access_token) {
-    throw new Error('Token não obtido')
+    throw new Error(`Token não obtido: ${text.substring(0, 200)}`)
   }
 
   tokenCache = data.access_token
@@ -49,14 +56,22 @@ async function getTenantId() {
   const whoRes = await fetch('https://api.central.sophos.com/whoami/v1', {
     headers: { Authorization: `Bearer ${token}` },
   })
-  const whoData = await whoRes.json()
+  const whoText = await whoRes.text()
+  let whoData
+  try {
+    whoData = JSON.parse(whoText)
+  } catch {
+    throw new Error(`Whoami falhou: ${whoRes.status} - ${whoText.substring(0, 200)}`)
+  }
 
   if (whoData.idType === 'tenant') {
     tenantIdCache = whoData.id
   } else if (whoData.tenants && whoData.tenants.length > 0) {
     tenantIdCache = whoData.tenants[0].id
+  } else if (whoData.id) {
+    tenantIdCache = whoData.id
   } else {
-    throw new Error('Tenant não encontrado')
+    throw new Error(`Tenant não encontrado: ${whoText.substring(0, 200)}`)
   }
 
   return tenantIdCache
