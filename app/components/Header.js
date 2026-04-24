@@ -44,6 +44,15 @@ const NAV = [
     ),
   },
   {
+    href: '/rel-gerencial',
+    label: 'Rel. Gerencial',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 3h18v18H3z" /><path d="M9 3v18M15 3v18M3 9h18M3 15h18" />
+      </svg>
+    ),
+  },
+  {
     href: '/kanban',
     label: 'Kanban',
     icon: (
