@@ -266,12 +266,28 @@ export default function DashboardPage() {
          </Card>
        </div>
 
-       {/* Taxa de Resolução + Tempo em Pendência */}
-       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '14px' }}>
-         <StatCard label="Taxa de Resolução (7d)"   value={`${rate7.rate}%`}  color="#16a34a" sub={`${rate7.resolved} / ${rate7.total} tickets`} />
-         <StatCard label="Taxa de Resolução (30d)"  value={`${rate30.rate}%`} color="#16a34a" sub={`${rate30.resolved} / ${rate30.total} tickets`} />
-         <StatCard label="Tempo Médio em Pendência" value={formatWaitTime(avgPendingHours)} color="#ea580c" sub={`${pendingTickets.length} tickets pendentes`} />
-       </div>
+{/* Taxa de Resolução + Tempo em Pendência + Canal de Requisição */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '14px' }}>
+          <StatCard label="Taxa de Resolução (7d)"   value={`${rate7.rate}%`}  color="#16a34a" sub={`${rate7.resolved} / ${rate7.total} tickets`} />
+          <StatCard label="Taxa de Resolução (30d)"  value={`${rate30.rate}%`} color="#16a34a" sub={`${rate30.resolved} / ${rate30.total} tickets`} />
+          <StatCard label="Tempo Médio em Pendência" value={formatWaitTime(avgPendingHours)} color="#ea580c" sub={`${pendingTickets.length} tickets pendentes`} />
+        </div>
+        {reqTypeRows.length > 1 && (
+          <Card>
+            <SectionTitle>Canal de Requisição</SectionTitle>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '7px 24px' }}>
+              {reqTypeRows.map(([name, count]) => (
+                <div key={name} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ width: '130px', fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0, color: 'var(--text-secondary)' }}>{name}</div>
+                  <div style={{ flex: 1, height: '8px', background: 'var(--border)', borderRadius: '9999px', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${(count / maxReqType) * 100}%`, background: 'var(--primary)', borderRadius: '9999px' }} />
+                  </div>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600, width: '28px', textAlign: 'right' }}>{count}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
 
        {/* SLA Crítico Top 8 */}
        {slaCritico.length > 0 && (
@@ -307,27 +323,9 @@ export default function DashboardPage() {
              </table>
            </div>
          </Card>
-        )}
+)}
 
-       {/* Canal de Requisição */}
-      {reqTypeRows.length > 1 && (
-        <Card>
-          <SectionTitle>Canal de Requisição</SectionTitle>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '7px 24px' }}>
-            {reqTypeRows.map(([name, count]) => (
-              <div key={name} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '130px', fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0, color: 'var(--text-secondary)' }}>{name}</div>
-                <div style={{ flex: 1, height: '8px', background: 'var(--border)', borderRadius: '9999px', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${(count / maxReqType) * 100}%`, background: 'var(--primary)', borderRadius: '9999px' }} />
-                </div>
-                <span style={{ fontSize: '0.8rem', fontWeight: 600, width: '28px', textAlign: 'right' }}>{count}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      {/* Tickets em Aprovação */}
+       {/* Tickets em Aprovação */}
       {approvalTickets.length > 0 && (
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
