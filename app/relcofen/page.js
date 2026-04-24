@@ -75,8 +75,8 @@ export default function RelCofenPage() {
 
   // SIEM state
   const [siemType, setSiemType] = useState('events')
-  const [siemFrom, setSiemFrom] = useState(() => { const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().split('T')[0] })
-  const [siemTo, setSiemTo] = useState(new Date().toISOString().split('T')[0])
+  const [siemFrom, setSiemFrom] = useState(() => { const d = new Date(); d.setDate(d.getDate() - 7); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` })
+  const [siemTo, setSiemTo] = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` })
   const [siemLimit, setSiemLimit] = useState(100)
   const [siemSeverity, setSiemSeverity] = useState('')
   const [siemItems, setSiemItems] = useState([])
@@ -157,8 +157,8 @@ const threatsRes = await fetch('/api/sophos?endpoint=threats').then(r => r.json(
     if (!appendCursor) setSiemError(null)
     try {
       const params = new URLSearchParams({ endpoint: siemType === 'events' ? 'siem-events' : 'siem-alerts', limit: String(siemLimit) })
-      if (siemFrom) params.set('from', new Date(siemFrom + 'T00:00:00Z').toISOString())
-      if (siemTo) params.set('to', new Date(siemTo + 'T23:59:59Z').toISOString())
+      if (siemFrom) params.set('from', new Date(siemFrom + 'T00:00:00').toISOString())
+      if (siemTo) params.set('to', new Date(siemTo + 'T23:59:59').toISOString())
       if (siemSeverity) params.set('filter', `severity:${siemSeverity}`)
       if (appendCursor) params.set('cursor', appendCursor)
       const res = await fetch(`/api/sophos?${params.toString()}`)
@@ -186,7 +186,7 @@ const threatsRes = await fetch('/api/sophos?endpoint=threats').then(r => r.json(
       item.details?.threat?.name || '', item.created_at || '', item.updated_at || '',
     ])
     const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
-    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url; a.download = `siem_${siemType}_${siemFrom}_${siemTo}.csv`; a.click()
@@ -711,7 +711,7 @@ CREATE INDEX IF NOT EXISTS idx_tickets_cache_date_solved ON tickets_cache(date_s
                   {siemItems.map((item, i) => (
                     siemType === 'events' ? (
                       <tr key={item.id || i} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'var(--surface)' : 'var(--background)' }}>
-                        <td style={{ ...thTd, fontFamily: 'monospace', fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{(item.id || '—').substring(0, 16)}</td>
+                        <td style={{ ...thTd, fontFamily: 'monospace', fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{String(item.id || '—').substring(0, 16)}</td>
                         <td style={thTd}>{item.type || item.category || '—'}</td>
                         <td style={thTd}><SevBadge severity={item.severity} /></td>
                         <td style={{ ...thTd, color: 'var(--text-secondary)' }}>{item.source || item.origin || '—'}</td>
@@ -722,7 +722,7 @@ CREATE INDEX IF NOT EXISTS idx_tickets_cache_date_solved ON tickets_cache(date_s
                       </tr>
                     ) : (
                       <tr key={item.id || i} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'var(--surface)' : 'var(--background)' }}>
-                        <td style={{ ...thTd, fontFamily: 'monospace', fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{(item.id || '—').substring(0, 16)}</td>
+                        <td style={{ ...thTd, fontFamily: 'monospace', fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{String(item.id || '—').substring(0, 16)}</td>
                         <td style={{ ...thTd, maxWidth: '220px', whiteSpace: 'normal', lineHeight: 1.4 }}>{item.title || item.description || '—'}</td>
                         <td style={thTd}><SevBadge severity={item.severity} /></td>
                         <td style={thTd}><StatusSiemBadge status={item.status} /></td>
