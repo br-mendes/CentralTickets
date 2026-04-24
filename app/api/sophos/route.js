@@ -59,11 +59,12 @@ async function getSophosWhoami(token) {
   return response.json()
 }
 
-async function getTenantId(token, organizationId) {
-  const response = await fetch(`${SOPHOS_API_GLOBAL}/partner/v1/tenants`, {
+async function getTenantId(token, organizationId, idType = 'organization') {
+  const path = idType === 'partner' ? 'partner/v1/tenants' : 'organization/v1/tenants'
+  const response = await fetch(`${SOPHOS_API_GLOBAL}/${path}`, {
     headers: {
       'Authorization': `Bearer ${token}`,
-      'X-Partner-ID': organizationId,
+      idType === 'partner' ? `X-Partner-ID: ${organizationId}` : `X-Organization-ID: ${organizationId}`,
       'Content-Type': 'application/json',
     },
   })
@@ -89,17 +90,23 @@ export async function GET(request) {
   try {
     const token = await getSophosToken()
     const whoami = await getSophosWhoami(token)
-    const partnerId = whoami?.id || whoami?.apiHosts?.global
+    const organizationId = whoami?.id
+    const idType = whoami?.idType || 'organization'
 
     let tenantIdToUse = tenantId
-    if (!tenantIdToUse && partnerId) {
-      tenantIdToUse = await getTenantId(token, partnerId)
+    if (!tenantIdToUse && organizationId) {
+      tenantIdToUse = await getTenantId(token, organizationId)
     }
 
     const headers = {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
-      'X-Partner-ID': partnerId,
+    }
+
+    if (idType === 'partner') {
+      headers['X-Partner-ID'] = organizationId
+    } else {
+      headers['X-Organization-ID'] = organizationId
     }
 
     if (tenantIdToUse) {
@@ -112,7 +119,9 @@ export async function GET(request) {
         return NextResponse.json(whoami)
 
       case 'tenants':
-        url = `${SOPHOS_API_GLOBAL}/partner/v1/tenants`
+        url = whoami?.idType === 'partner' 
+          ? `${SOPHOS_API_GLOBAL}/partner/v1/tenants` 
+          : `${SOPHOS_API_GLOBAL}/organization/v1/tenants`
         break
 
       case 'endpoints':
@@ -186,15 +195,21 @@ export async function POST(request) {
   try {
     const token = await getSophosToken()
     const whoami = await getSophosWhoami(token)
-    const partnerId = whoami?.id || whoami?.apiHosts?.global
+    const organizationId = whoami?.id
+    const idType = whoami?.idType || 'organization'
 
     const body = await request.json().catch(() => ({}))
     const tenantId = body.tenantId
 
     const headers = {
       'Authorization': `Bearer ${token}`,
-      'X-Partner-ID': partnerId,
       'Content-Type': 'application/json',
+    }
+
+    if (idType === 'partner') {
+      headers['X-Partner-ID'] = organizationId
+    } else {
+      headers['X-Organization-ID'] = organizationId
     }
 
     if (tenantId) {
