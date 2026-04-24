@@ -10,7 +10,7 @@ async function getSophosToken() {
   const clientSecret = process.env.SOPHOS_CLIENT_SECRET
 
   if (!clientId || !clientSecret) {
-    throw new Error('Credenciais Sophos não configuradas. Defina SOPHOS_CLIENT_ID e SOPHOS_CLIENT_SECRET no ambiente.')
+    throw new Error('Credenciais Sophos não configuradas')
   }
 
   const response = await fetch(SOPHOS_AUTH_URL, {
@@ -29,12 +29,15 @@ async function getSophosToken() {
   if (!response.ok) {
     const status = response.status
     const error = await response.text().catch(() => 'Unknown error')
-    throw new Error(`Falha na autenticação Sophos: HTTP ${status} - ${error}`)
+    if (status === 401) {
+      throw new Error('Credenciais Sophos inválidas ou sem acesso. Verifique o Service Principal no painel Sophos.')
+    }
+    throw new Error(`Falha na autenticação Sophos: HTTP ${status}`)
   }
 
   const data = await response.json()
   if (!data.access_token) {
-    throw new Error('Token de acesso não retornado pelo Sophos')
+    throw new Error('Token de acesso não retornado')
   }
   return data.access_token
 }

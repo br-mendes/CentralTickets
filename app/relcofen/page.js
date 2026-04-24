@@ -85,22 +85,26 @@ export default function RelCofenPage() {
         fetch('/api/sophos?endpoint=users').then(r => r.json()).catch(() => ({})),
       ])
 
-      setSophosData({
+setSophosData({
         whoami: results.whoami,
-        tenants: tenantsData,
-        endpoints: endpointsData,
+        tenants: Array.isArray(results.tenants) ? results.tenants : [],
+        endpoints: Array.isArray(endpointsData) ? endpointsData : [],
         endpointGroups: [],
-        alerts: Array.isArray(alertsRes?.items) ? alertsRes.items : Array.isArray(alertsRes) ? alertsRes : [],
-        cases: Array.isArray(casesRes?.items) ? casesRes.items : Array.isArray(casesRes) ? casesRes : [],
+        alerts: Array.isArray(alertsData) ? alertsData : [],
+        cases: Array.isArray(casesData) ? casesData : [],
         siemEvents: [],
         siemAlerts: [],
-        users: Array.isArray(usersRes?.items) ? usersRes.items : Array.isArray(usersRes) ? usersRes : [],
+        users: Array.isArray(usersData) ? usersData : [],
         userGroups: [],
         threats: threatsData,
         isolatedCount,
         threatsCount,
         lastSync: new Date().toISOString()
       })
+
+      if (results.whoami?.error === 'Credenciais Sophos inválidas ou sem acesso') {
+        setSophosError('Configure as credenciais do Service Principal no painel Sophos com acesso à Partner API')
+      }
     } catch (e) {
       setSophosError(e.message)
     } finally {
