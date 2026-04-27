@@ -56,6 +56,7 @@ function resolutionRate(tickets, days) {
 
 export default function DashboardPage() {
   const [tickets, setTickets] = useState([])
+  const [instanceCounts, setInstanceCounts] = useState([])
   const [loading, setLoading] = useState(true)
   const [lastSync, setLastSync] = useState(null)
   const [loadError, setLoadError] = useState(null)
@@ -74,7 +75,7 @@ export default function DashboardPage() {
       // 2. Tickets created in last 30 days — for trend open line + resolution rates
       // 3. Tickets closed/solved in last 30 days but possibly created earlier — fixes trend close undercount
       // 4. Last sync timestamp (.maybeSingle avoids 406 on empty table)
-      const [activeRes, recentRes, recentlyClosedRes, syncRes] = await Promise.all([
+      const [activeRes, recentRes, recentlyClosedRes, syncRes, countRes] = await Promise.all([
         sb.from('tickets_cache')
           .select(TICKET_COLS)
           .in('instance', ['PETA', 'GMX'])
@@ -103,6 +104,12 @@ export default function DashboardPage() {
           .order('last_sync', { ascending: false })
           .limit(1)
           .maybeSingle(),
+        // Lightweight query — only 3 columns, all tickets — for accurate instance totals
+        sb.from('tickets_cache')
+          .select('instance,status_id,status_key')
+          .in('instance', ['PETA', 'GMX'])
+          .eq('is_deleted', false)
+          .range(0, 49999),
       ])
 
       // Merge all sources, deduplicating by instance+ticket_id
@@ -118,6 +125,7 @@ export default function DashboardPage() {
       }
 
       setTickets(merged)
+      setInstanceCounts(countRes.data || [])
       if (syncRes.data) setLastSync(syncRes.data.last_sync)
     } catch (e) {
       console.error('Dashboard load failed', e)
@@ -133,7 +141,7 @@ export default function DashboardPage() {
 
   // ── Stats (memoized — recompute only when tickets array changes) ──
   const {
-    total, byStatusKey, slaLate, peta, gmx, slaCritico,
+    total, byStatusKey, slaLate, peta, gmx, petaByStatus, gmxByStatus, slaCritico,
     rate7, rate30, approvalTickets, pendingTickets, avgPendingHours,
     catRows, maxCat, techRows, maxTech, entityRows,
     groupRows, maxGroup, resolvedWithTime, avgResolutionSec,
@@ -147,8 +155,18 @@ export default function DashboardPage() {
       acc[k] = (acc[k] || 0) + 1; return acc
     }, {})
     const slaLate = tickets.filter(t => t.is_sla_late || t.is_overdue_resolve).length
-    const peta = tickets.filter(t => (t.instance || '').toUpperCase() === 'PETA')
-    const gmx  = tickets.filter(t => (t.instance || '').toUpperCase() === 'GMX')
+
+    // Accurate per-instance counts from the lightweight full-table query
+    const petaAll = instanceCounts.filter(t => (t.instance || '').toUpperCase() === 'PETA')
+    const gmxAll  = instanceCounts.filter(t => (t.instance || '').toUpperCase() === 'GMX')
+    const petaByStatus = petaAll.reduce((a, t) => {
+      const k = getStatusConfig(t.status_id, t.status_key).key; a[k] = (a[k] || 0) + 1; return a
+    }, {})
+    const gmxByStatus = gmxAll.reduce((a, t) => {
+      const k = getStatusConfig(t.status_id, t.status_key).key; a[k] = (a[k] || 0) + 1; return a
+    }, {})
+    const peta = petaAll
+    const gmx  = gmxAll
 
     const slaCritico = tickets
       .filter(t => (t.is_sla_late || t.is_overdue_resolve) && t.status_key !== 'closed' && t.status_key !== 'solved')
@@ -236,7 +254,7 @@ export default function DashboardPage() {
     const chartStatusColors = ['#3b82f6', '#22c55e', '#f97316', '#7c3aed', '#6b7280', '#1f2937']
 
     return {
-      total, byStatusKey, slaLate, peta, gmx, slaCritico,
+      total, byStatusKey, slaLate, peta, gmx, petaByStatus, gmxByStatus, slaCritico,
       rate7, rate30, approvalTickets, pendingTickets, avgPendingHours,
       catRows, maxCat, techRows, maxTech, entityRows,
       groupRows, maxGroup, resolvedWithTime, avgResolutionSec,
@@ -244,7 +262,7 @@ export default function DashboardPage() {
       prioLabels, prioData, prioColors,
       trend, lineDatasets, chartStatusLabels, chartStatusData, chartStatusColors,
     }
-  }, [tickets])
+  }, [tickets, instanceCounts])
 
   const thTd = { padding: '8px 12px', fontSize: '0.82rem', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }
   const thStyle = { ...thTd, fontWeight: 600, color: 'var(--text-secondary)', textAlign: 'left', background: 'var(--background)' }
@@ -296,8 +314,10 @@ export default function DashboardPage() {
 
        {/* Instance breakdown */}
        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-         {[{ label: 'Peta', list: peta, color: '#2563eb' }, { label: 'GMX', list: gmx, color: '#ea580c' }].map(({ label, list, color }) => {
-           const byS = list.reduce((a, t) => { const k = getStatusConfig(t.status_id, t.status_key).key; a[k] = (a[k] || 0) + 1; return a }, {})
+         {[
+          { label: 'Peta', list: peta, byS: petaByStatus, color: '#2563eb' },
+          { label: 'GMX',  list: gmx,  byS: gmxByStatus,  color: '#ea580c' },
+       ].map(({ label, list, byS, color }) => {
            return (
              <Card key={label} style={{ borderLeft: `4px solid ${color}` }}>
                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
