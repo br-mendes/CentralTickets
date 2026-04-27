@@ -62,6 +62,7 @@ function TicketsContent() {
       hasData.current = true
       setLastUpdate(new Date())
       const techs = [...new Set(data.map(t => t.technician).filter(Boolean))].sort()
+      const requesters = [...new Set(data.map(t => t.requester_name || t.requester).filter(Boolean))].sort()
       setAvailableTechnicians(techs)
     } catch (e) { setError(e.message) }
     finally { setLoading(false) }

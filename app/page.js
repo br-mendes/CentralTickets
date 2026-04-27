@@ -117,7 +117,8 @@ export default function DashboardPage() {
   // Técnico (top 10 — ranked list)
   const techMap = {}
   for (const t of tickets) {
-    const tech = t.technician || '—'
+      const tech = t.technician || '—'
+      const requester = t.requester_name || t.requester || '—'
     if (!techMap[tech]) techMap[tech] = 0
     techMap[tech]++
   }
@@ -159,7 +160,7 @@ export default function DashboardPage() {
   // Canal de requisição (request_type)
   const reqTypeMap = {}
   for (const t of tickets) {
-    const rt = t.request_type || 'Não informado'
+    const rt = t.channel_name || t.request_type || 'Não informado'
     reqTypeMap[rt] = (reqTypeMap[rt] || 0) + 1
   }
   const reqTypeRows = Object.entries(reqTypeMap).sort((a, b) => b[1] - a[1]).slice(0, 8)
@@ -317,6 +318,7 @@ export default function DashboardPage() {
                          {getStatusConfig(t.status_id, t.status_key).label}
                        </span>
                      </td>
+                     <td style={thTd}>{t.requester_name || t.requester || <em style={{ color: 'var(--text-muted)' }}>Sem solicitante</em>}</td>
                      <td style={thTd}>{t.technician || <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em>}</td>
                      <td style={{ ...thTd, color: '#dc2626', fontWeight: 700 }}>
                        {t.daysOverdue > 0 ? `${t.daysOverdue}d atraso` : '< 1d'}
