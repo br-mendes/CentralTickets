@@ -37,6 +37,18 @@ function glpiStr(v: unknown): string {
   return String(v)
 }
 
+function glpiId(v: unknown): number {
+  if (!v) return 0
+  if (typeof v === 'number') return v
+  if (typeof v === 'string') { const n = parseInt(v); return isNaN(n) ? 0 : n }
+  if (typeof v === 'object') {
+    const o = v as Record<string, unknown>
+    if (typeof o.id === 'number') return o.id
+    if (typeof o.id === 'string') { const n = parseInt(o.id); return isNaN(n) ? 0 : n }
+  }
+  return 0
+}
+
 function norm(v: unknown): string {
   const s = glpiStr(v)
   if (!s) return ''
@@ -127,10 +139,11 @@ async function fetchPage(url: string, token: string) {
 
 interface TD {
   ticket_id: number; instance: string; title: string
-  entity: string; entity_full: string; category: string; root_category: string
+  entity: string; entity_full: string; entity_id: number
+  category: string; root_category: string
   status_id: number; status_key: string; status_name: string
-  group_name: string; technician: string; technician_id: number
-  requester: string; requester_id: number; request_type: string
+  group_name: string; group_id: number; technician: string; technician_id: number
+  requester: string; requester_id: number; request_type: string; request_type_id: number
   urgency: number; impact: number; priority_id: number; type_id: number
   global_validation: number
   date_created: string|null; date_mod: string|null; due_date: string|null
@@ -156,14 +169,17 @@ function processRows(rows: any[]): TD[] {
       title:               glpiStr(r[1]) || 'Sem t├¡tulo',
       entity:              norm(r[80] || ''),
       entity_full:         r[80] || '',
+      entity_id:           glpiId(r[80]),
       category:            cat,
       root_category:       rootCat(cat),
       status_id:           sid,
       status_key:          statusKey(sid, gv),
       status_name:         statusName(sid, gv),
       group_name:          norm(r[8] || ''),
+      group_id:            glpiId(r[8]),
       technician:          '', technician_id: 0,
-      requester:           glpiStr(r[10]), requester_id: 0, request_type: glpiStr(r[9]),
+      requester:           glpiStr(r[10]), requester_id: glpiId(r[10]),
+      request_type:        glpiStr(r[9]), request_type_id: glpiId(r[9]),
       urgency:             parseInt(r[4]) || 3,
       impact:              parseInt(r[5]) || 3,
       priority_id:         parseInt(r[3]) || 3,
@@ -239,11 +255,12 @@ async function upsert(tickets: TD[], withEnrichment: boolean): Promise<void> {
       tickets.slice(i, i + 100).map(t => {
         const base: Record<string, unknown> = {
           ticket_id: t.ticket_id, instance: t.instance,
-          title: t.title, entity: t.entity, entity_full: t.entity_full,
+          title: t.title, entity: t.entity, entity_full: t.entity_full, entity_id: t.entity_id,
           category: t.category, root_category: t.root_category,
           status_id: t.status_id, status_key: t.status_key, status_name: t.status_name,
-          group_name: t.group_name, requester: t.requester, requester_id: t.requester_id,
-          request_type: t.request_type,
+          group_name: t.group_name, group_id: t.group_id,
+          requester: t.requester, requester_id: t.requester_id,
+          request_type: t.request_type, request_type_id: t.request_type_id,
           urgency: t.urgency, impact: t.impact, priority_id: t.priority_id, type_id: t.type_id,
           global_validation: t.global_validation,
           date_created: t.date_created, date_mod: t.date_mod, due_date: t.due_date,
