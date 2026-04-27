@@ -1,13 +1,15 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { getSupabaseClient } from '@/lib/supabase/client'
-import { fetchAllTickets } from './lib/tickets-api'
 import { DoughnutChart, LineChart, BarChart } from './components/Charts'
 import {
   processEntity, lastGroupLabel, fmt, calcDaysOverdue,
   build30DayTrend, getStatusConfig, calcHoursAgo, formatWaitTime, formatSeconds,
 } from './lib/utils'
+
+// Only the columns the dashboard actually needs — avoids over-fetching
+const TICKET_COLS = 'ticket_id,instance,title,status_id,status_key,type_id,priority_id,entity,technician,group_name,request_type,date_created,date_mod,is_sla_late,is_overdue_resolve,due_date,resolution_duration,root_category'
 
 const PRIORITY_LABELS = { 1: 'Muito Baixa', 2: 'Baixa', 3: 'Média', 4: 'Alta', 5: 'Urgente', 6: 'Crítica' }
 const PRIORITY_COLORS = ['#94a3b8', '#3b82f6', '#f59e0b', '#f97316', '#dc2626', '#7f1d1d']
@@ -56,17 +58,71 @@ export default function DashboardPage() {
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
   const [lastSync, setLastSync] = useState(null)
+  const [loadError, setLoadError] = useState(null)
 
   const load = useCallback(async () => {
+    setLoadError(null)
     try {
-      const { data } = await fetchAllTickets({ instance: 'PETA,GMX' })
-      setTickets(data || [])
-
       const sb = getSupabaseClient()
       if (!sb) return
-      const { data: sync } = await sb.from('sync_control').select('last_sync').order('last_sync', { ascending: false }).limit(1).single()
-      if (sync) setLastSync(sync.last_sync)
-    } catch { /* no-op */ } finally { setLoading(false) }
+
+      // Cutoff for trend + resolution rate (last 30 days)
+      const cutoff = new Date(Date.now() - 30 * 86400000).toISOString()
+
+      // Four queries in parallel:
+      // 1. Active (non-closed/solved) tickets — bulk of dashboard stats
+      // 2. Tickets created in last 30 days — for trend open line + resolution rates
+      // 3. Tickets closed/solved in last 30 days but possibly created earlier — fixes trend close undercount
+      // 4. Last sync timestamp (.maybeSingle avoids 406 on empty table)
+      const [activeRes, recentRes, recentlyClosedRes, syncRes] = await Promise.all([
+        sb.from('tickets_cache')
+          .select(TICKET_COLS)
+          .in('instance', ['PETA', 'GMX'])
+          .eq('is_deleted', false)
+          .neq('status_key', 'closed')
+          .neq('status_key', 'solved')
+          .order('date_mod', { ascending: false })
+          .range(0, 4999),
+        sb.from('tickets_cache')
+          .select(TICKET_COLS)
+          .in('instance', ['PETA', 'GMX'])
+          .eq('is_deleted', false)
+          .gte('date_created', cutoff)
+          .order('date_created', { ascending: false })
+          .range(0, 1999),
+        sb.from('tickets_cache')
+          .select(TICKET_COLS)
+          .in('instance', ['PETA', 'GMX'])
+          .eq('is_deleted', false)
+          .in('status_key', ['closed', 'solved'])
+          .gte('date_mod', cutoff)
+          .order('date_mod', { ascending: false })
+          .range(0, 1999),
+        sb.from('sync_control')
+          .select('last_sync')
+          .order('last_sync', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ])
+
+      // Merge all sources, deduplicating by instance+ticket_id
+      const seen = new Set()
+      const merged = []
+      for (const t of [
+        ...(activeRes.data || []),
+        ...(recentRes.data || []),
+        ...(recentlyClosedRes.data || []),
+      ]) {
+        const key = `${t.instance}:${t.ticket_id}`
+        if (!seen.has(key)) { seen.add(key); merged.push(t) }
+      }
+
+      setTickets(merged)
+      if (syncRes.data) setLastSync(syncRes.data.last_sync)
+    } catch (e) {
+      console.error('Dashboard load failed', e)
+      setLoadError('Falha ao carregar tickets. Verifique a conexão e tente novamente.')
+    } finally { setLoading(false) }
   }, [])
 
   useEffect(() => {
@@ -75,115 +131,120 @@ export default function DashboardPage() {
     return () => clearInterval(iv)
   }, [load])
 
-  // ── Stats ────────────────────────────────────────────────────────
-  const total = tickets.length
-  const byStatusKey = tickets.reduce((acc, t) => {
-    const k = getStatusConfig(t.status_id, t.status_key).key
-    acc[k] = (acc[k] || 0) + 1; return acc
-  }, {})
-  const slaLate = tickets.filter(t => t.is_sla_late || t.is_overdue_resolve).length
-  const peta = tickets.filter(t => (t.instance || '').toUpperCase() === 'PETA')
-  const gmx  = tickets.filter(t => (t.instance || '').toUpperCase() === 'GMX')
+  // ── Stats (memoized — recompute only when tickets array changes) ──
+  const {
+    total, byStatusKey, slaLate, peta, gmx, slaCritico,
+    rate7, rate30, approvalTickets, pendingTickets, avgPendingHours,
+    catRows, maxCat, techRows, maxTech, entityRows,
+    groupRows, maxGroup, resolvedWithTime, avgResolutionSec,
+    reqTypeRows, maxReqType, incidents, requests,
+    prioLabels, prioData, prioColors,
+    trend, lineDatasets, chartStatusLabels, chartStatusData, chartStatusColors,
+  } = useMemo(() => {
+    const total = tickets.length
+    const byStatusKey = tickets.reduce((acc, t) => {
+      const k = getStatusConfig(t.status_id, t.status_key).key
+      acc[k] = (acc[k] || 0) + 1; return acc
+    }, {})
+    const slaLate = tickets.filter(t => t.is_sla_late || t.is_overdue_resolve).length
+    const peta = tickets.filter(t => (t.instance || '').toUpperCase() === 'PETA')
+    const gmx  = tickets.filter(t => (t.instance || '').toUpperCase() === 'GMX')
 
-  // SLA Crítico Top 8
-  const slaCritico = tickets
-    .filter(t => (t.is_sla_late || t.is_overdue_resolve) && t.status_key !== 'closed' && t.status_key !== 'solved')
-    .map(t => ({ ...t, daysOverdue: calcDaysOverdue(t.due_date) }))
-    .sort((a, b) => b.daysOverdue - a.daysOverdue)
-    .slice(0, 8)
+    const slaCritico = tickets
+      .filter(t => (t.is_sla_late || t.is_overdue_resolve) && t.status_key !== 'closed' && t.status_key !== 'solved')
+      .map(t => ({ ...t, daysOverdue: calcDaysOverdue(t.due_date) }))
+      .sort((a, b) => b.daysOverdue - a.daysOverdue)
+      .slice(0, 8)
 
-  // Taxa de Resolução
-  const rate7  = resolutionRate(tickets, 7)
-  const rate30 = resolutionRate(tickets, 30)
+    const rate7  = resolutionRate(tickets, 7)
+    const rate30 = resolutionRate(tickets, 30)
 
-  // Aprovação
-  const approvalTickets = tickets.filter(t => t.status_id === 7 || t.status_key === 'pending-approval')
+    const approvalTickets = tickets.filter(t => t.status_id === 7 || t.status_key === 'pending-approval')
 
-  // Tempo Médio em Pendência
-  const pendingTickets = tickets.filter(t => t.status_key === 'pending' || t.status_id === 4)
-  const avgPendingHours = pendingTickets.length > 0
-    ? Math.round(pendingTickets.reduce((sum, t) => sum + calcHoursAgo(t.date_mod), 0) / pendingTickets.length)
-    : 0
+    const pendingTickets = tickets.filter(t => t.status_key === 'pending' || t.status_id === 4)
+    const avgPendingHours = pendingTickets.length > 0
+      ? Math.round(pendingTickets.reduce((sum, t) => sum + calcHoursAgo(t.date_mod), 0) / pendingTickets.length)
+      : 0
 
-  // Categoria Raiz
-  const catMap = {}
-  for (const t of tickets) {
-    const cat = t.root_category || 'Não categorizado'
-    catMap[cat] = (catMap[cat] || 0) + 1
-  }
-  const catRows = Object.entries(catMap).sort((a, b) => b[1] - a[1]).slice(0, 10)
-  const maxCat  = catRows[0]?.[1] || 1
+    const catMap = {}
+    for (const t of tickets) {
+      const cat = t.root_category || 'Não categorizado'
+      catMap[cat] = (catMap[cat] || 0) + 1
+    }
+    const catRows = Object.entries(catMap).sort((a, b) => b[1] - a[1]).slice(0, 10)
+    const maxCat  = catRows[0]?.[1] || 1
 
-  // Técnico (top 10 — ranked list)
-  const techMap = {}
-  for (const t of tickets) {
-    const tech = t.technician || '—'
-    if (!techMap[tech]) techMap[tech] = 0
-    techMap[tech]++
-  }
-  const techRows = Object.entries(techMap).sort((a, b) => b[1] - a[1]).slice(0, 10)
-  const maxTech  = techRows[0]?.[1] || 1
+    const techMap = {}
+    for (const t of tickets) {
+      const tech = t.technician || '—'
+      techMap[tech] = (techMap[tech] || 0) + 1
+    }
+    const techRows = Object.entries(techMap).sort((a, b) => b[1] - a[1]).slice(0, 10)
+    const maxTech  = techRows[0]?.[1] || 1
 
-  // Entidade (top 16)
-  const entityMap = {}
-  for (const t of tickets) {
-    const e = processEntity(t.entity) || '—'
-    if (!entityMap[e]) entityMap[e] = { total: 0, peta: 0, gmx: 0 }
-    entityMap[e].total++
-    if ((t.instance || '').toUpperCase() === 'PETA') entityMap[e].peta++
-    else entityMap[e].gmx++
-  }
-  const entityRows = Object.entries(entityMap).sort((a, b) => b[1].total - a[1].total).slice(0, 16)
+    const entityMap = {}
+    for (const t of tickets) {
+      const e = processEntity(t.entity) || '—'
+      if (!entityMap[e]) entityMap[e] = { total: 0, peta: 0, gmx: 0 }
+      entityMap[e].total++
+      if ((t.instance || '').toUpperCase() === 'PETA') entityMap[e].peta++
+      else entityMap[e].gmx++
+    }
+    const entityRows = Object.entries(entityMap).sort((a, b) => b[1].total - a[1].total).slice(0, 16)
 
-  // Grupo
-  const groupMap = {}
-  for (const t of tickets) {
-    const g = lastGroupLabel(t.group_name)
-    groupMap[g] = (groupMap[g] || 0) + 1
-  }
-  const groupRows = Object.entries(groupMap).sort((a, b) => b[1] - a[1]).slice(0, 15)
-  const maxGroup  = groupRows[0]?.[1] || 1
+    const groupMap = {}
+    for (const t of tickets) {
+      const g = lastGroupLabel(t.group_name)
+      groupMap[g] = (groupMap[g] || 0) + 1
+    }
+    const groupRows = Object.entries(groupMap).sort((a, b) => b[1] - a[1]).slice(0, 15)
+    const maxGroup  = groupRows[0]?.[1] || 1
 
-  // Prioridade
-  const prioMap = tickets.reduce((acc, t) => {
-    const pid = t.priority_id || 3
-    acc[pid] = (acc[pid] || 0) + 1; return acc
-  }, {})
+    const prioMap = tickets.reduce((acc, t) => {
+      const pid = t.priority_id || 3
+      acc[pid] = (acc[pid] || 0) + 1; return acc
+    }, {})
 
-  // Tempo médio de resolução
-  const resolvedWithTime = tickets.filter(t => (t.status_key === 'solved' || t.status_key === 'closed') && (t.resolution_duration || 0) > 0)
-  const avgResolutionSec = resolvedWithTime.length > 0
-    ? Math.round(resolvedWithTime.reduce((sum, t) => sum + (t.resolution_duration || 0), 0) / resolvedWithTime.length)
-    : 0
+    const resolvedWithTime = tickets.filter(t => (t.status_key === 'solved' || t.status_key === 'closed') && (t.resolution_duration || 0) > 0)
+    const avgResolutionSec = resolvedWithTime.length > 0
+      ? Math.round(resolvedWithTime.reduce((sum, t) => sum + (t.resolution_duration || 0), 0) / resolvedWithTime.length)
+      : 0
 
-  // Canal de requisição (request_type)
-  const reqTypeMap = {}
-  for (const t of tickets) {
-    const rt = t.request_type || 'Não informado'
-    reqTypeMap[rt] = (reqTypeMap[rt] || 0) + 1
-  }
-  const reqTypeRows = Object.entries(reqTypeMap).sort((a, b) => b[1] - a[1]).slice(0, 8)
-  const maxReqType  = reqTypeRows[0]?.[1] || 1
+    const reqTypeMap = {}
+    for (const t of tickets) {
+      const rt = t.request_type || 'Não informado'
+      reqTypeMap[rt] = (reqTypeMap[rt] || 0) + 1
+    }
+    const reqTypeRows = Object.entries(reqTypeMap).sort((a, b) => b[1] - a[1]).slice(0, 8)
+    const maxReqType  = reqTypeRows[0]?.[1] || 1
 
-  // Tipo de chamado
-  const incidents = tickets.filter(t => t.type_id === 1).length
-  const requests  = tickets.filter(t => t.type_id === 2).length
+    const incidents = tickets.filter(t => t.type_id === 1).length
+    const requests  = tickets.filter(t => t.type_id === 2).length
 
-  // Prioridade — para BarChart vertical
-  const prioEntries = Object.entries(prioMap).sort((a, b) => Number(a[0]) - Number(b[0]))
-  const prioLabels  = prioEntries.map(([k]) => PRIORITY_LABELS[k] || `P${k}`)
-  const prioData    = prioEntries.map(([, v]) => v)
-  const prioColors  = prioEntries.map(([k]) => PRIORITY_COLORS[Number(k) - 1] || '#94a3b8')
+    const prioEntries = Object.entries(prioMap).sort((a, b) => Number(a[0]) - Number(b[0]))
+    const prioLabels  = prioEntries.map(([k]) => PRIORITY_LABELS[k] || `P${k}`)
+    const prioData    = prioEntries.map(([, v]) => v)
+    const prioColors  = prioEntries.map(([k]) => PRIORITY_COLORS[Number(k) - 1] || '#94a3b8')
 
-  // Charts
-  const trend = build30DayTrend(tickets)
-  const lineDatasets = [
-    { label: 'Abertos',  data: trend.opened, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill: true, tension: 0.3, pointRadius: 2 },
-    { label: 'Fechados', data: trend.closed, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)',  fill: true, tension: 0.3, pointRadius: 2 },
-  ]
-  const chartStatusLabels = ['Novo', 'Em atendimento', 'Pendente', 'Aprovação', 'Solucionado', 'Fechado']
-  const chartStatusData   = [byStatusKey.new||0, byStatusKey.processing||0, byStatusKey.pending||0, byStatusKey.approval||0, byStatusKey.solved||0, byStatusKey.closed||0]
-  const chartStatusColors = ['#3b82f6', '#22c55e', '#f97316', '#7c3aed', '#6b7280', '#1f2937']
+    const trend = build30DayTrend(tickets)
+    const lineDatasets = [
+      { label: 'Abertos',  data: trend.opened, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill: true, tension: 0.3, pointRadius: 2 },
+      { label: 'Fechados', data: trend.closed, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)',  fill: true, tension: 0.3, pointRadius: 2 },
+    ]
+    const chartStatusLabels = ['Novo', 'Em atendimento', 'Pendente', 'Aprovação', 'Solucionado', 'Fechado']
+    const chartStatusData   = [byStatusKey.new||0, byStatusKey.processing||0, byStatusKey.pending||0, byStatusKey.approval||0, byStatusKey.solved||0, byStatusKey.closed||0]
+    const chartStatusColors = ['#3b82f6', '#22c55e', '#f97316', '#7c3aed', '#6b7280', '#1f2937']
+
+    return {
+      total, byStatusKey, slaLate, peta, gmx, slaCritico,
+      rate7, rate30, approvalTickets, pendingTickets, avgPendingHours,
+      catRows, maxCat, techRows, maxTech, entityRows,
+      groupRows, maxGroup, resolvedWithTime, avgResolutionSec,
+      reqTypeRows, maxReqType, incidents, requests,
+      prioLabels, prioData, prioColors,
+      trend, lineDatasets, chartStatusLabels, chartStatusData, chartStatusColors,
+    }
+  }, [tickets])
 
   const thTd = { padding: '8px 12px', fontSize: '0.82rem', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }
   const thStyle = { ...thTd, fontWeight: 600, color: 'var(--text-secondary)', textAlign: 'left', background: 'var(--background)' }
@@ -191,6 +252,15 @@ export default function DashboardPage() {
   if (loading) return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
       <div className="spinner" />
+    </div>
+  )
+
+  if (loadError) return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '300px', gap: '16px' }}>
+      <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 'var(--radius-lg)', padding: '16px 24px', color: '#dc2626', fontSize: '0.9rem', maxWidth: '480px', textAlign: 'center' }}>
+        {loadError}
+      </div>
+      <button onClick={load} className="btn-primary">Tentar novamente</button>
     </div>
   )
 
