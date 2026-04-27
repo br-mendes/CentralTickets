@@ -152,12 +152,13 @@ export async function GET(request) {
         const siemPath = endpoint === 'siem-events' ? 'events' : 'alerts'
         const siemQP = new URLSearchParams()
 
-        // Convert ISO date params to from_date (Unix timestamp); clamp to 24h window max
+        // Convert ISO from param to from_date (Unix seconds UTC); Sophos enforces 24h max from *now*
+        const nowMs = Date.now()
+        const minFromMs = nowMs - 24 * 3600 * 1000
         const fromParam = searchParams.get('from')
-        const toParam = searchParams.get('to')
-        const toMs = toParam ? new Date(toParam).getTime() : Date.now()
-        const rawFromMs = fromParam ? new Date(fromParam).getTime() : toMs - 24 * 3600 * 1000
-        siemQP.set('from_date', String(Math.floor(Math.max(rawFromMs, toMs - 24 * 3600 * 1000) / 1000)))
+        const parsedFromMs = fromParam ? new Date(fromParam).getTime() : NaN
+        const rawFromMs = Number.isFinite(parsedFromMs) ? parsedFromMs : minFromMs
+        siemQP.set('from_date', String(Math.floor(Math.max(rawFromMs, minFromMs) / 1000)))
 
         // Clamp limit to 1-1000 as required by Sophos SIEM v1
         const rawLimit = parseInt(searchParams.get('limit') || '100', 10)
