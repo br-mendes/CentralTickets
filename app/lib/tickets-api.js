@@ -38,27 +38,23 @@ export async function fetchTicketsPage(params = {}) {
 }
 
 export async function fetchAllTickets(params = {}, pageSize = 500) {
-  let start = 0
-  let hasMore = true
-  const all = []
-  let total = 0
+  const first = await fetchTicketsPage({ ...params, start: 0, end: pageSize - 1 })
+  const firstData = first?.data || []
+  const total = first?.pagination?.total || firstData.length
 
-  while (hasMore) {
-    const result = await fetchTicketsPage({
-      ...params,
-      start,
-      end: start + pageSize - 1,
-    })
-
-    const pageData = result?.data || []
-    const pagination = result?.pagination || {}
-    total = pagination.total || total
-
-    all.push(...pageData)
-
-    hasMore = Boolean(pagination.hasMore)
-    start = pagination.nextStart || all.length
+  if (!first?.pagination?.hasMore) {
+    return { data: firstData, total }
   }
 
-  return { data: all, total: total || all.length }
+  const pageStarts = []
+  for (let s = pageSize; s < total; s += pageSize) pageStarts.push(s)
+
+  const pages = await Promise.all(
+    pageStarts.map(s => fetchTicketsPage({ ...params, start: s, end: s + pageSize - 1 }))
+  )
+
+  return {
+    data: [firstData, ...pages.map(p => p?.data || [])].flat(),
+    total,
+  }
 }
