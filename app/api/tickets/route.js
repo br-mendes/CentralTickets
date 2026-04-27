@@ -89,12 +89,17 @@ export async function GET(request) {
 
   // 2. Enrich with related data (users, entities, groups, request types)
   // Collect unique IDs per instance
-  const userIds = {}, entityIds = {}, groupIds = {}, requestTypeIds = {}
+  const userIds = {}, entityIds = {}, groupIds = {}, requestTypeIds = {}, technicianIds = {}
   for (const t of tickets) {
     const inst = t.instance || ''
     if (t.requester_id) {
       if (!userIds[inst]) userIds[inst] = new Set()
       userIds[inst].add(t.requester_id)
+    }
+    if (t.assignee_id || t.technician_id) {
+      const techId = t.assignee_id || t.technician_id
+      if (!technicianIds[inst]) technicianIds[inst] = new Set()
+      technicianIds[inst].add(techId)
     }
     if (t.entity_id) {
       if (!entityIds[inst]) entityIds[inst] = new Set()
@@ -111,7 +116,7 @@ export async function GET(request) {
   }
 
   // Fetch maps
-  const [usersMap, entitiesMap, groupsMap, requestTypesMap] = await Promise.all([
+  const [usersMap, entitiesMap, groupsMap, requestTypesMap, techniciansMap] = await Promise.all([
     // users
     (async () => {
       const map = {}
@@ -172,6 +177,21 @@ export async function GET(request) {
       }
       return map
     })(),
+    // technicians
+    (async () => {
+      const map = {}
+      for (const inst of Object.keys(technicianIds)) {
+        const ids = [...technicianIds[inst]]
+        if (ids.length === 0) continue
+        const { data } = await supabase
+          .from('glpi_users')
+          .select('id, fullname')
+          .eq('instance', inst)
+          .in('id', ids)
+        if (data) data.forEach(u => { map[`${inst}:${u.id}`] = u.fullname })
+      }
+      return map
+    })(),
   ])
 
   // Merge into tickets
@@ -181,12 +201,15 @@ export async function GET(request) {
     const entityKey = `${inst}:${t.entity_id}`
     const groupKey = `${inst}:${t.group_id}`
     const requestTypeKey = `${inst}:${t.request_type_id}`
+    const techId = t.assignee_id || t.technician_id
+    const technicianKey = `${inst}:${techId}`
     return {
       ...t,
       requester_name: usersMap[userKey] || t.requester || '',
       entity_name: entitiesMap[entityKey] || t.entity || '',
       group_name: groupsMap[groupKey] || t.group_name || '',
       channel_name: requestTypesMap[requestTypeKey] || t.request_type || '',
+      technician_name: techniciansMap[technicianKey] || t.technician || '',
     }
   })
 

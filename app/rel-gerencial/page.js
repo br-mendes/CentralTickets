@@ -39,7 +39,7 @@ export default function RelGerencialPage() {
     // Check requestor first (primary)
     if (req.includes('user_sophos') || req.includes('api-zabbix')) return true
     // fallback checks
-    const tech = (ticket.technician || '').toLowerCase()
+    const tech = (ticket.technician_name || ticket.technician || '').toLowerCase()
     const sol = (ticket.solution || ticket.solution_content || '').toLowerCase()
     const title = (ticket.title || '').toLowerCase()
     return (tech.includes('zabbix') || tech.includes('sophos') || 
@@ -205,7 +205,7 @@ export default function RelGerencialPage() {
       t.date_created || '',
       t.status_name || '',
       t.requester_name || t.requester || '',
-      t.technician || '',
+      t.technician_name || t.technician || '',
       t.group_name || '',
       formatPriority(t.priority, t.priority_id),
       t.is_overdue_first ? 'Fora do prazo' : 'No prazo',
@@ -373,7 +373,7 @@ export default function RelGerencialPage() {
                       <span className={`status-badge ${t.status_key}`}>{t.status_name || t.status_key}</span>
                     </td>
                     <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{t.requester || '—'}</td>
-                    <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{t.technician || '—'}</td>
+                    <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{t.technician_name || t.technician || '—'}</td>
                     <td style={{ padding: '8px 12px', color: 'var(--text-secondary)', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.group_name || '—'}</td>
                     <td style={{ padding: '8px 12px' }}>
                       <span className={priorityClass(formatPriority(t.priority, t.priority_id))}>{formatPriority(t.priority, t.priority_id)}</span>

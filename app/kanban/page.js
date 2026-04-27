@@ -52,7 +52,7 @@ function TicketCard({ t }) {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '4px', gap: '4px' }}>
         <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '60%' }}>
-          {t.technician || <em>Sem técnico</em>}
+          {t.technician_name || t.technician || <em>Sem técnico</em>}
         </span>
         <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', flexShrink: 0 }}>{fmt(t.date_created)}</span>
       </div>

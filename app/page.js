@@ -117,7 +117,7 @@ export default function DashboardPage() {
   // Técnico (top 10 — ranked list)
   const techMap = {}
   for (const t of tickets) {
-      const tech = t.technician || '—'
+      const tech = t.technician_name || t.technician || '—'
       const requester = t.requester_name || t.requester || '—'
     if (!techMap[tech]) techMap[tech] = 0
     techMap[tech]++
@@ -319,7 +319,7 @@ export default function DashboardPage() {
                        </span>
                      </td>
                      <td style={thTd}>{t.requester_name || t.requester || <em style={{ color: 'var(--text-muted)' }}>Sem solicitante</em>}</td>
-                     <td style={thTd}>{t.technician || <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em>}</td>
+                     <td style={thTd}>{t.technician_name || t.technician || <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em>}</td>
                      <td style={{ ...thTd, color: '#dc2626', fontWeight: 700 }}>
                        {t.daysOverdue > 0 ? `${t.daysOverdue}d atraso` : '< 1d'}
                      </td>

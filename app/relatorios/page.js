@@ -75,7 +75,7 @@ export default function RelatoriosPage() {
         if (t.status_key !== fStatus) return false
       }
     }
-    if (fTech     && (t.technician || '') !== fTech) return false
+    if (fTech     && (t.technician_name || t.technician || '') !== fTech) return false
     if (fGroup    && lastGroupLabel(t.group_name) !== fGroup) return false
     if (fPriority && String(t.priority_id || '') !== fPriority) return false
     return true
@@ -100,7 +100,7 @@ export default function RelatoriosPage() {
         t.requester_name || t.requester || '—',
         t.channel_name || t.request_type || '—',
         lastGroupLabel(t.group_name) || '—',
-        t.technician || '—',
+        t.technician_name || t.technician || '—',
         t.is_overdue_first ? 'Fora do prazo' : 'No prazo',
         t.is_overdue_resolve ? 'Fora do prazo' : 'No prazo',
         fmt(t.date_created),
@@ -277,7 +277,7 @@ CREATE INDEX IF NOT EXISTS idx_tickets_cache_date_solved ON tickets_cache(date_s
                      {t.priority_id ? <span style={{ fontWeight: 600, fontSize: '0.75rem', color: PRIORITY_COLORS[Number(t.priority_id) - 1] }}>{PRIORITY_LABELS[t.priority_id]}</span> : '—'}
                    </td>
                   <td className="col-group" style={{ ...thTd, color: 'var(--text-secondary)' }}>{lastGroupLabel(t.group_name)}</td>
-                  <td className="col-technician" style={{ ...thTd, color: 'var(--text-secondary)' }}>{t.technician || '—'}</td>
+                  <td className="col-technician" style={{ ...thTd, color: 'var(--text-secondary)' }}>{t.technician_name || t.technician || '—'}</td>
                   <td style={thTd}><SLABadge isLate={t.is_overdue_first} /></td>
                   <td style={thTd}><SLABadge isLate={t.is_overdue_resolve} /></td>
                   <td style={{ ...thTd, color: 'var(--text-secondary)' }}>{fmt(t.date_created)}</td>

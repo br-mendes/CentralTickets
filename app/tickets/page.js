@@ -275,7 +275,7 @@ function TicketsContent() {
                         {lastGroupLabel(t.group_name) !== '—' ? lastGroupLabel(t.group_name) : <em style={{ color: 'var(--text-muted)' }}>Sem grupo</em>}
                       </td>
                       <td className="col-technician" style={{ padding: '9px 12px', color: 'var(--text-secondary)' }}>
-                        {t.technician || <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em>}
+                        {t.technician_name || t.technician || <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em>}
                       </td>
                       <td style={{ padding: '9px 12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>{fmt(t.date_created)}</td>
                       <td style={{ padding: '9px 12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>{formatWaitTime(calcHoursAgo(t.date_mod))}</td>
