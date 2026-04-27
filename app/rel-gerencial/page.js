@@ -204,7 +204,7 @@ export default function RelGerencialPage() {
       `"${(t.title || '').replace(/"/g, '""')}"`,
       t.date_created || '',
       t.status_name || '',
-      t.requester_name || t.requester || '',
+      t.requester || '',
       t.technician || '',
       t.group_name || '',
       formatPriority(t.priority, t.priority_id),
