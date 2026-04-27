@@ -49,9 +49,17 @@ export async function fetchAllTickets(params = {}, pageSize = 500) {
   const pageStarts = []
   for (let s = pageSize; s < total; s += pageSize) pageStarts.push(s)
 
-  const pages = await Promise.all(
-    pageStarts.map(s => fetchTicketsPage({ ...params, start: s, end: s + pageSize - 1 }))
-  )
+  // Fetch remaining pages in bounded batches (6 concurrent) to avoid
+  // overwhelming the API route's connection pool on large datasets.
+  const BATCH = 6
+  const pages = []
+  for (let i = 0; i < pageStarts.length; i += BATCH) {
+    const chunk = pageStarts.slice(i, i + BATCH)
+    const results = await Promise.all(
+      chunk.map(s => fetchTicketsPage({ ...params, start: s, end: s + pageSize - 1 }))
+    )
+    pages.push(...results)
+  }
 
   return {
     data: [firstData, ...pages.map(p => p?.data || [])].flat(),

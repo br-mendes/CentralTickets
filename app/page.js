@@ -58,20 +58,23 @@ export default function DashboardPage() {
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
   const [lastSync, setLastSync] = useState(null)
+  const [loadError, setLoadError] = useState(null)
 
   const load = useCallback(async () => {
+    setLoadError(null)
     try {
       const sb = getSupabaseClient()
       if (!sb) return
 
-      // Cutoff for recent tickets (trend + resolution rate need last 30 days)
+      // Cutoff for trend + resolution rate (last 30 days)
       const cutoff = new Date(Date.now() - 30 * 86400000).toISOString()
 
-      // Fire three queries in parallel:
-      // 1. All open/active tickets (the bulk of dashboard stats)
-      // 2. Last-30-day tickets (closed/solved included, for trend + resolution rates)
-      // 3. Last sync timestamp
-      const [activeRes, recentRes, syncRes] = await Promise.all([
+      // Four queries in parallel:
+      // 1. Active (non-closed/solved) tickets — bulk of dashboard stats
+      // 2. Tickets created in last 30 days — for trend open line + resolution rates
+      // 3. Tickets closed/solved in last 30 days but possibly created earlier — fixes trend close undercount
+      // 4. Last sync timestamp (.maybeSingle avoids 406 on empty table)
+      const [activeRes, recentRes, recentlyClosedRes, syncRes] = await Promise.all([
         sb.from('tickets_cache')
           .select(TICKET_COLS)
           .in('instance', ['PETA', 'GMX'])
@@ -87,24 +90,39 @@ export default function DashboardPage() {
           .gte('date_created', cutoff)
           .order('date_created', { ascending: false })
           .range(0, 1999),
+        sb.from('tickets_cache')
+          .select(TICKET_COLS)
+          .in('instance', ['PETA', 'GMX'])
+          .eq('is_deleted', false)
+          .in('status_key', ['closed', 'solved'])
+          .gte('date_mod', cutoff)
+          .order('date_mod', { ascending: false })
+          .range(0, 1999),
         sb.from('sync_control')
           .select('last_sync')
           .order('last_sync', { ascending: false })
           .limit(1)
-          .single(),
+          .maybeSingle(),
       ])
 
-      // Merge: active first, then add recent closed not already present
+      // Merge all sources, deduplicating by instance+ticket_id
       const seen = new Set()
       const merged = []
-      for (const t of [...(activeRes.data || []), ...(recentRes.data || [])]) {
+      for (const t of [
+        ...(activeRes.data || []),
+        ...(recentRes.data || []),
+        ...(recentlyClosedRes.data || []),
+      ]) {
         const key = `${t.instance}:${t.ticket_id}`
         if (!seen.has(key)) { seen.add(key); merged.push(t) }
       }
 
       setTickets(merged)
       if (syncRes.data) setLastSync(syncRes.data.last_sync)
-    } catch { /* no-op */ } finally { setLoading(false) }
+    } catch (e) {
+      console.error('Dashboard load failed', e)
+      setLoadError('Falha ao carregar tickets. Verifique a conexão e tente novamente.')
+    } finally { setLoading(false) }
   }, [])
 
   useEffect(() => {
@@ -234,6 +252,15 @@ export default function DashboardPage() {
   if (loading) return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
       <div className="spinner" />
+    </div>
+  )
+
+  if (loadError) return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '300px', gap: '16px' }}>
+      <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 'var(--radius-lg)', padding: '16px 24px', color: '#dc2626', fontSize: '0.9rem', maxWidth: '480px', textAlign: 'center' }}>
+        {loadError}
+      </div>
+      <button onClick={load} className="btn-primary">Tentar novamente</button>
     </div>
   )
 
