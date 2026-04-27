@@ -40,7 +40,6 @@ export default function RelGerencialPage() {
     if (req.includes('user_sophos') || req.includes('api-zabbix')) return true
     // fallback checks
     const tech = (ticket.technician || '').toLowerCase()
-    const req = (ticket.requester_name || ticket.requester || '').toLowerCase()
     const sol = (ticket.solution || ticket.solution_content || '').toLowerCase()
     const title = (ticket.title || '').toLowerCase()
     return (tech.includes('zabbix') || tech.includes('sophos') || 
