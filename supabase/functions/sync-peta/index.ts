@@ -262,7 +262,7 @@ async function upsert(tickets: TD[], withEnrichment: boolean): Promise<void> {
       }),
       { onConflict: 'ticket_id,instance' }
     )
-    if (error) console.error(`[upsert] batch ${i}:`, error.message)
+    if (error) throw new Error(`[upsert] batch ${i}: ${error.message}`)
   }
 }
 
