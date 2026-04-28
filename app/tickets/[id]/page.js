@@ -78,6 +78,10 @@ export default async function TicketDetailPage({ params, searchParams }) {
           <Field label="Categoria">{ticket.category || '—'}</Field>
           <Field label="Grupo">{lastGroupLabel(ticket.group_name)}</Field>
           <Field label="Técnico">{ticket.technician_name || ticket.technician || '—'}</Field>
+          <Field label="Solicitante">{ticket.requester_name || ticket.requester || '—'}</Field>
+          {(ticket.channel_name || ticket.request_source) && (
+            <Field label="Origem">{ticket.channel_name || ticket.request_source}</Field>
+          )}
           <Field label="Abertura">{fmt(ticket.date_created)}</Field>
           <Field label="Última Atualização">{fmt(ticket.date_mod)}</Field>
           <Field label="Prazo">{fmt(ticket.due_date)}</Field>

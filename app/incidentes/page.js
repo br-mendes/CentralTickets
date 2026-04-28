@@ -227,7 +227,7 @@ ALTER TABLE tickets_cache ADD COLUMN IF NOT EXISTS priority_id INTEGER DEFAULT 3
                       {t.technician_name || t.technician || <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em>}
                     </td>
                     <td style={{ padding: '9px 12px', color: 'var(--text-secondary)' }}>
-                      {t.requester || <em style={{ color: 'var(--text-muted)' }}>—</em>}
+                      {t.requester_name || t.requester || <em style={{ color: 'var(--text-muted)' }}>—</em>}
                     </td>
                     <td style={{ padding: '9px 12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>{fmt(t.date_created)}</td>
                     <td style={{ padding: '9px 12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>{formatWaitTime(calcHoursAgo(t.date_mod))}</td>

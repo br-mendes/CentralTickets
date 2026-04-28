@@ -89,14 +89,18 @@ export async function GET(request) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  // 2. Enrich with related data (users, entities, groups, request types)
+  // 2. Enrich with related data (users, entities, groups)
   // Collect unique IDs per instance
-  const userIds = {}, entityIds = {}, groupIds = {}, requestTypeIds = {}
+  const userIds = {}, entityIds = {}, groupIds = {}
   for (const t of tickets) {
     const inst = t.instance || ''
     if (t.requester_id) {
       if (!userIds[inst]) userIds[inst] = new Set()
       userIds[inst].add(t.requester_id)
+    }
+    if (t.technician_id) {
+      if (!userIds[inst]) userIds[inst] = new Set()
+      userIds[inst].add(t.technician_id)
     }
     if (t.entity_id) {
       if (!entityIds[inst]) entityIds[inst] = new Set()
@@ -106,15 +110,11 @@ export async function GET(request) {
       if (!groupIds[inst]) groupIds[inst] = new Set()
       groupIds[inst].add(t.group_id)
     }
-    if (t.request_type_id) {
-      if (!requestTypeIds[inst]) requestTypeIds[inst] = new Set()
-      requestTypeIds[inst].add(t.request_type_id)
-    }
   }
 
   // Fetch maps
-  const [usersMap, entitiesMap, groupsMap, requestTypesMap] = await Promise.all([
-    // users
+  const [usersMap, entitiesMap, groupsMap] = await Promise.all([
+    // users (requesters + technicians)
     (async () => {
       const map = {}
       for (const inst of Object.keys(userIds)) {
@@ -159,36 +159,22 @@ export async function GET(request) {
       }
       return map
     })(),
-    // request types
-    (async () => {
-      const map = {}
-      for (const inst of Object.keys(requestTypeIds)) {
-        const ids = [...requestTypeIds[inst]]
-        if (ids.length === 0) continue
-        const { data } = await supabase
-          .from('glpi_request_types')
-          .select('id, name')
-          .eq('instance', inst)
-          .in('id', ids)
-        if (data) data.forEach(rt => { map[`${inst}:${rt.id}`] = rt.name })
-      }
-      return map
-    })(),
   ])
 
   // Merge into tickets
   const enriched = tickets.map(t => {
     const inst = t.instance || ''
-    const userKey = `${inst}:${t.requester_id}`
+    const requesterKey = `${inst}:${t.requester_id}`
+    const technicianKey = `${inst}:${t.technician_id}`
     const entityKey = `${inst}:${t.entity_id}`
     const groupKey = `${inst}:${t.group_id}`
-    const requestTypeKey = `${inst}:${t.request_type_id}`
     return {
       ...t,
-      requester_name: usersMap[userKey] || t.requester || '',
+      requester_name: usersMap[requesterKey] || t.requester || '',
+      technician_name: usersMap[technicianKey] || t.technician || '',
       entity_name: entitiesMap[entityKey] || t.entity || '',
       group_name: groupsMap[groupKey] || t.group_name || '',
-      channel_name: requestTypesMap[requestTypeKey] || t.request_type || '',
+      channel_name: t.request_source || t.request_type || '',
     }
   })
 

@@ -17,7 +17,7 @@ const INCREMENTAL_WINDOW    = 15
 const BACKFILL_TECH         = 100
 const BACKFILL_SOL          = 50
 
-const DISPLAY_FIELDS = [1,2,3,4,5,7,8,10,12,14,15,17,18,19,20,22,55,80,83,151]
+const DISPLAY_FIELDS = [1,2,3,4,5,7,8,10,12,13,14,15,17,18,19,20,22,55,80,83,151]
 
 const STRIP = [
   /^gmx\s+tecnologia\s*[>\\/|]\s*/i,
@@ -138,7 +138,7 @@ interface TD {
   resolution_duration: number; waiting_duration: number; location: string
   sla_ttr_name: string; sla_tto_name: string
   is_sla_late: boolean; is_overdue_first: boolean; is_overdue_resolve: boolean
-  is_deleted: boolean; solution: string
+  is_deleted: boolean; solution: string; request_source: string
 }
 
 function processRows(rows: any[]): TD[] {
@@ -168,6 +168,7 @@ function processRows(rows: any[]): TD[] {
       impact:              parseInt(r[5]) || 3,
       priority_id:         parseInt(r[3]) || 3,
       type_id:             parseInt(r[14]) || 2,
+      request_source:      glpiStr(r[13]),
       global_validation:   gv,
       date_created:        toISO(r[15]),
       date_mod:            toISO(r[19]),
@@ -250,7 +251,8 @@ async function upsert(tickets: TD[], withEnrichment: boolean): Promise<void> {
           resolution_duration: t.resolution_duration, waiting_duration: t.waiting_duration,
           location: t.location, sla_ttr_name: t.sla_ttr_name, sla_tto_name: t.sla_tto_name,
           is_sla_late: t.is_sla_late, is_overdue_first: t.is_overdue_first, is_overdue_resolve: t.is_overdue_resolve,
-          is_deleted: t.is_deleted, last_sync: now, updated_at: now,
+          is_deleted: t.is_deleted, request_source: t.request_source || '',
+          last_sync: now, updated_at: now,
         }
         if (withEnrichment) {
           base.technician = t.technician

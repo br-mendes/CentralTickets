@@ -183,7 +183,7 @@ export default function RelatoriosPage() {
     )},
   ]
 
-  const baseHeaders = ['ID','Instância','Entidade','Categoria','Status','Prioridade','Grupo','Técnico','SLA Atend.','SLA Solução','Abertura','Últ. Atualização']
+  const baseHeaders = ['ID','Instância','Entidade','Categoria','Status','Prioridade','Origem','Grupo','Técnico','Solicitante','SLA Atend.','SLA Solução','Abertura','Últ. Atualização']
   const tableHeaders = hasSolution ? [...baseHeaders, 'Data Solução', 'Solução'] : baseHeaders
 
   return (
@@ -276,8 +276,10 @@ CREATE INDEX IF NOT EXISTS idx_tickets_cache_date_solved ON tickets_cache(date_s
                    <td style={thTd}>
                      {t.priority_id ? <span style={{ fontWeight: 600, fontSize: '0.75rem', color: PRIORITY_COLORS[Number(t.priority_id) - 1] }}>{PRIORITY_LABELS[t.priority_id]}</span> : '—'}
                    </td>
+                  <td style={{ ...thTd, color: 'var(--text-secondary)' }}>{t.channel_name || t.request_source || '—'}</td>
                   <td className="col-group" style={{ ...thTd, color: 'var(--text-secondary)' }}>{lastGroupLabel(t.group_name)}</td>
                   <td className="col-technician" style={{ ...thTd, color: 'var(--text-secondary)' }}>{t.technician_name || t.technician || '—'}</td>
+                  <td style={{ ...thTd, color: 'var(--text-secondary)' }}>{t.requester_name || t.requester || '—'}</td>
                   <td style={thTd}><SLABadge isLate={t.is_overdue_first} /></td>
                   <td style={thTd}><SLABadge isLate={t.is_overdue_resolve} /></td>
                   <td style={{ ...thTd, color: 'var(--text-secondary)' }}>{fmt(t.date_created)}</td>
