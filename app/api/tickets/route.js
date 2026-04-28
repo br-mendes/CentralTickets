@@ -143,13 +143,31 @@ export async function GET(request) {
     })(),
   ])
 
-  // Merge into tickets
+  // Merge into tickets and calculate SLA percentages
+  const now = Date.now()
   const enriched = tickets.map(t => {
     const inst = t.instance || ''
     const userKey = `${inst}:${t.requester_id}`
     const entityKey = `${inst}:${t.entity_id}`
     const groupKey = `${inst}:${t.group_id}`
     const requestTypeKey = `${inst}:${t.request_type_id}`
+    
+    // Calculate SLA percentage based on due_date
+    let slaPercentage = 0
+    if (t.due_date) {
+      const created = new Date(t.date_created).getTime()
+      const due = new Date(t.due_date).getTime()
+      const elapsed = now - created
+      const total = due - created
+      if (total > 0) {
+        slaPercentage = Math.min(100, Math.max(0, (elapsed / total) * 100))
+      }
+      // If overdue, show 100%
+      if (t.is_sla_late || t.is_overdue_first) {
+        slaPercentage = 100
+      }
+    }
+    
     return {
       ...t,
       requester_name: usersMap[userKey] || t.requester || '',
@@ -157,6 +175,8 @@ export async function GET(request) {
       group_name: groupsMap[groupKey] || t.group_name || '',
       channel_name: requestTypesMap[requestTypeKey] || t.request_type || '',
       technician_name: usersMap[`${inst}:${t.technician_id}`] || t.technician || '',
+      sla_percentage_first: slaPercentage,
+      sla_percentage_resolve: slaPercentage,
     }
   })
 
