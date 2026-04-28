@@ -87,7 +87,7 @@ export default function RelatoriosPage() {
   const PRIORITY_COLORS = ['#64748b', '#3b82f6', '#d97706', '#ea580c', '#dc2626', '#7f1d1d']
 
   function exportCSV() {
-    const baseH = ['ID','Instância','Entidade','Categoria','Status','Prioridade','Canal','Grupo Responsável','Técnico','SLA Atendimento','SLA Solução','Abertura','Últ. Atualização']
+    const baseH = ['ID','Instância','Entidade','Categoria','Status','Prioridade','Origem','Grupo Responsável','Técnico','Solicitante','SLA Atendimento','SLA Solução','Abertura','Últ. Atualização']
     const headers = hasSolution ? [...baseH, 'Data Solução', 'Solução'] : baseH
     const rows = filtered.map(t => {
       const base = [
@@ -97,10 +97,10 @@ export default function RelatoriosPage() {
         t.category || '',
         getStatusConfig(t.status_id, t.status_key).label,
         PRIORITY_LABELS[t.priority_id] || '—',
-        t.requester_name || t.requester || '—',
-        t.channel_name || t.request_type || '—',
+        t.channel_name || t.request_source || t.request_type || '—',
         lastGroupLabel(t.group_name) || '—',
         t.technician_name || t.technician || '—',
+        t.requester_name || t.requester || '—',
         t.is_overdue_first ? 'Fora do prazo' : 'No prazo',
         t.is_overdue_resolve ? 'Fora do prazo' : 'No prazo',
         fmt(t.date_created),
