@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import config from '@/lib/config'
 
 const VALID_INSTANCES = ['PETA', 'GMX']
-const VALID_DATE_FIELDS = ['date_created', 'date_mod', 'date_solved']
 const DEFAULT_PAGE_SIZE = 200
 const MAX_PAGE_SIZE = 1000
 
@@ -12,20 +10,12 @@ export async function GET(request) {
   const rawInstance = (searchParams.get('instance') || '').toUpperCase()
   const startParam = Number.parseInt(searchParams.get('start') || '0', 10)
   const endParam = Number.parseInt(searchParams.get('end') || `${DEFAULT_PAGE_SIZE - 1}`, 10)
-  const statusesParam = searchParams.get('statuses') || ''
-  const typeIdParam = searchParams.get('typeId') || ''
-  const dateFieldParam = searchParams.get('dateField') || 'date_mod'
-  const fromDate = searchParams.get('fromDate') || ''
-  const toDate = searchParams.get('toDate') || ''
-  const includeDeleted = searchParams.get('includeDeleted') === 'true'
 
   let start = Number.isNaN(startParam) || startParam < 0 ? 0 : startParam
   let end = Number.isNaN(endParam) || endParam < start ? start + DEFAULT_PAGE_SIZE - 1 : endParam
   if (end - start + 1 > MAX_PAGE_SIZE) {
     end = start + MAX_PAGE_SIZE - 1
   }
-
-  const dateField = VALID_DATE_FIELDS.includes(dateFieldParam) ? dateFieldParam : 'date_mod'
 
   const instances = rawInstance
     ? rawInstance.split(',').map(v => v.trim()).filter(Boolean)
@@ -38,57 +28,40 @@ export async function GET(request) {
     )
   }
 
-  const statuses = statusesParam
-    .split(',')
-    .map(v => v.trim())
-    .filter(Boolean)
+  // Read environment variables directly
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+  const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
-  const typeId = typeIdParam ? Number.parseInt(typeIdParam, 10) : null
-  if (typeIdParam && Number.isNaN(typeId)) {
+  if (!supabaseUrl || !supabaseKey) {
+    console.error('Missing env vars:', { hasUrl: !!supabaseUrl, hasKey: !!supabaseKey })
     return NextResponse.json(
-      { error: 'typeId invalido.' },
-      { status: 400 }
+      { error: 'Configuração incompleta. Verifique as variáveis de ambiente.' },
+      { status: 500 }
     )
   }
 
-  const supabase = createClient(config.supabase.url, config.supabase.anonKey)
+  const supabase = createClient(supabaseUrl, supabaseKey)
 
   // 1. Fetch tickets
   let query = supabase
     .from('tickets_cache')
     .select('*', { count: 'exact' })
     .in('instance', instances)
-    .order(dateField, { ascending: false })
+    .order('date_mod', { ascending: false })
     .range(start, end)
-
-  if (!includeDeleted) {
-    query = query.eq('is_deleted', false)
-  }
-
-  if (statuses.length > 0) {
-    query = query.in('status_key', statuses)
-  }
-
-  if (typeId !== null) {
-    query = query.eq('type_id', typeId)
-  }
-
-  if (fromDate) {
-    query = query.gte(dateField, fromDate)
-  }
-
-  if (toDate) {
-    query = query.lte(dateField, toDate)
-  }
 
   const { data: tickets, error, count } = await query
 
   if (error) {
+    console.error('Supabase error:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
+  if (!tickets || tickets.length === 0) {
+    return NextResponse.json({ data: [], pagination: { total: 0, loaded: 0, hasMore: false } })
+  }
+
   // 2. Enrich with related data (users, entities, groups, request types)
-  // Collect unique IDs per instance
   const userIds = {}, entityIds = {}, groupIds = {}, requestTypeIds = {}
   for (const t of tickets) {
     const inst = t.instance || ''
@@ -112,7 +85,6 @@ export async function GET(request) {
 
   // Fetch maps
   const [usersMap, entitiesMap, groupsMap, requestTypesMap] = await Promise.all([
-    // users
     (async () => {
       const map = {}
       for (const inst of Object.keys(userIds)) {
@@ -127,7 +99,6 @@ export async function GET(request) {
       }
       return map
     })(),
-    // entities
     (async () => {
       const map = {}
       for (const inst of Object.keys(entityIds)) {
@@ -142,7 +113,6 @@ export async function GET(request) {
       }
       return map
     })(),
-    // groups
     (async () => {
       const map = {}
       for (const inst of Object.keys(groupIds)) {
@@ -157,7 +127,6 @@ export async function GET(request) {
       }
       return map
     })(),
-    // request types
     (async () => {
       const map = {}
       for (const inst of Object.keys(requestTypeIds)) {
@@ -187,25 +156,22 @@ export async function GET(request) {
       entity_name: entitiesMap[entityKey] || t.entity || '',
       group_name: groupsMap[groupKey] || t.group_name || '',
       channel_name: requestTypesMap[requestTypeKey] || t.request_type || '',
+      technician_name: usersMap[`${inst}:${t.technician_id}`] || t.technician || '',
     }
   })
 
   const safeCount = typeof count === 'number' ? count : tickets.length
-  const pageSize = end - start + 1
   const loaded = enriched.length
-  const nextStart = start + loaded
-  const hasMore = nextStart < safeCount && loaded === pageSize
+  const hasMore = start + loaded < safeCount
 
   return NextResponse.json({
     data: enriched,
     pagination: {
       start,
       end,
-      pageSize,
-      loaded,
       total: safeCount,
+      loaded,
       hasMore,
-      nextStart: hasMore ? nextStart : null,
     },
   })
 }
