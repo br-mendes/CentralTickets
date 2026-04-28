@@ -1,0 +1,6 @@
+[
+  {
+    "source": "/api/config",
+    "Destination": "/api/config.html"
+  }
+]
