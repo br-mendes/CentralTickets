@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import config from '@/lib/config'
 
 const VALID_INSTANCES = ['PETA', 'GMX']
 const VALID_DATE_FIELDS = ['date_created', 'date_mod', 'date_solved']
 const DEFAULT_PAGE_SIZE = 200
 const MAX_PAGE_SIZE = 1000
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url)
@@ -51,7 +53,7 @@ export async function GET(request) {
     )
   }
 
-  const supabase = createClient(config.supabase.url, config.supabase.anonKey)
+  const supabase = createClient(supabaseUrl, supabaseKey)
 
   // 1. Fetch tickets
   let query = supabase

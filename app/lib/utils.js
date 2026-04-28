@@ -148,6 +148,9 @@ const STATUS_MAP = {
 }
 
 export function getStatusConfig(statusId, statusKey) {
+  if (statusKey === 'pending-approval' || statusKey === 'approval') {
+    return { label: 'Aprovação', key: 'approval', color: '#7c3aed' }
+  }
   return STATUS_MAP[statusId] || STATUS_MAP[statusKey] || {
     label: String(statusId || statusKey || '—'), key: 'unknown', color: '#94a3b8',
   }
