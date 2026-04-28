@@ -10,7 +10,7 @@ const INCREMENTAL_WINDOW    = 15
 const BACKFILL_TECH         = 100
 const BACKFILL_SOL          = 50
 
-const DISPLAY_FIELDS = [1,2,3,4,5,7,8,10,12,13,14,15,17,18,19,20,22,55,80,83,151]
+const DISPLAY_FIELDS = [1,2,3,4,5,7,8,9,10,12,14,15,17,18,19,20,22,55,80,83,151]
 
 interface InstConfig {
   name: string
@@ -187,7 +187,7 @@ function processRows(ic: InstConfig, rows: any[]): TD[] {
       impact:              parseInt(r[5]) || 3,
       priority_id:         parseInt(r[3]) || 3,
       type_id:             parseInt(r[14]) || 2,
-      request_source:      glpiStr(r[13]),
+      request_source:      glpiStr(r[9]),
       global_validation:   gv,
       date_created:        toISO(r[15]),
       date_mod:            toISO(r[19]),
