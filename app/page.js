@@ -104,9 +104,9 @@ export default function DashboardPage() {
           .order('last_sync', { ascending: false })
           .limit(1)
           .maybeSingle(),
-        // Lightweight query — only 3 columns, all tickets — for accurate instance totals
+        // Lightweight query — all tickets, minimal columns — drives accurate global counts
         sb.from('tickets_cache')
-          .select('instance,status_id,status_key')
+          .select('instance,status_id,status_key,type_id,is_sla_late,is_overdue_resolve')
           .in('instance', ['PETA', 'GMX'])
           .eq('is_deleted', false)
           .range(0, 49999),
@@ -141,7 +141,7 @@ export default function DashboardPage() {
 
   // ── Stats (memoized — recompute only when tickets array changes) ──
   const {
-    total, byStatusKey, slaLate, peta, gmx, petaByStatus, gmxByStatus, slaCritico,
+    total, byStatusKey, slaLate, slaTotalAll, peta, gmx, petaByStatus, gmxByStatus, slaCritico,
     rate7, rate30, approvalTickets, pendingTickets, avgPendingHours,
     catRows, maxCat, techRows, maxTech, entityRows,
     groupRows, maxGroup, resolvedWithTime, avgResolutionSec,
@@ -149,14 +149,19 @@ export default function DashboardPage() {
     prioLabels, prioData, prioColors,
     trend, lineDatasets, chartStatusLabels, chartStatusData, chartStatusColors,
   } = useMemo(() => {
-    const total = tickets.length
-    const byStatusKey = tickets.reduce((acc, t) => {
+    // Global stats derived from instanceCounts (full table, all statuses)
+    // so totals are never capped by the active/recent 30-day window.
+    const total = instanceCounts.length
+    const byStatusKey = instanceCounts.reduce((acc, t) => {
       const k = getStatusConfig(t.status_id, t.status_key).key
       acc[k] = (acc[k] || 0) + 1; return acc
     }, {})
-    const slaLate = tickets.filter(t => t.is_sla_late || t.is_overdue_resolve).length
+    // SLA Excedido: only tickets that are still open (closed/solved are irrelevant for ops)
+    const slaLate = instanceCounts.filter(t =>
+      (t.is_sla_late || t.is_overdue_resolve) &&
+      t.status_key !== 'closed' && t.status_key !== 'solved'
+    ).length
 
-    // Accurate per-instance counts from the lightweight full-table query
     const petaAll = instanceCounts.filter(t => (t.instance || '').toUpperCase() === 'PETA')
     const gmxAll  = instanceCounts.filter(t => (t.instance || '').toUpperCase() === 'GMX')
     const petaByStatus = petaAll.reduce((a, t) => {
@@ -168,11 +173,14 @@ export default function DashboardPage() {
     const peta = petaAll
     const gmx  = gmxAll
 
+    // slaCritico: top-8 array for table display only (slice does NOT affect the stat card count)
     const slaCritico = tickets
       .filter(t => (t.is_sla_late || t.is_overdue_resolve) && t.status_key !== 'closed' && t.status_key !== 'solved')
       .map(t => ({ ...t, daysOverdue: calcDaysOverdue(t.due_date) }))
       .sort((a, b) => b.daysOverdue - a.daysOverdue)
       .slice(0, 8)
+    // slaTotalAll: total SLA breaches including already closed/solved (historical metric)
+    const slaTotalAll = instanceCounts.filter(t => t.is_sla_late || t.is_overdue_resolve).length
 
     const rate7  = resolutionRate(tickets, 7)
     const rate30 = resolutionRate(tickets, 30)
@@ -236,8 +244,9 @@ export default function DashboardPage() {
     const reqTypeRows = Object.entries(reqTypeMap).sort((a, b) => b[1] - a[1]).slice(0, 8)
     const maxReqType  = reqTypeRows[0]?.[1] || 1
 
-    const incidents = tickets.filter(t => t.type_id === 1).length
-    const requests  = tickets.filter(t => t.type_id === 2).length
+    // Derived from instanceCounts for accurate all-time totals (not capped to 30-day window)
+    const incidents = instanceCounts.filter(t => t.type_id === 1).length
+    const requests  = instanceCounts.filter(t => t.type_id === 2).length
 
     const prioEntries = Object.entries(prioMap).sort((a, b) => Number(a[0]) - Number(b[0]))
     const prioLabels  = prioEntries.map(([k]) => PRIORITY_LABELS[k] || `P${k}`)
@@ -254,7 +263,7 @@ export default function DashboardPage() {
     const chartStatusColors = ['#3b82f6', '#22c55e', '#f97316', '#7c3aed', '#6b7280', '#1f2937']
 
     return {
-      total, byStatusKey, slaLate, peta, gmx, petaByStatus, gmxByStatus, slaCritico,
+      total, byStatusKey, slaLate, slaTotalAll, peta, gmx, petaByStatus, gmxByStatus, slaCritico,
       rate7, rate30, approvalTickets, pendingTickets, avgPendingHours,
       catRows, maxCat, techRows, maxTech, entityRows,
       groupRows, maxGroup, resolvedWithTime, avgResolutionSec,
@@ -306,9 +315,9 @@ export default function DashboardPage() {
          <StatCard label="Requisições"     value={requests}                   color="#3b82f6" href="/tickets" />
          <StatCard label="Em Atendimento"  value={byStatusKey.processing || 0} color="#16a34a" href="/tickets?status=processing" />
          <StatCard label="Pendentes"       value={byStatusKey.pending || 0}   color="#ea580c" href="/tickets?status=pending" />
-         <StatCard label="Aprovação"       value={approvalTickets.length}     color="#7c3aed" href="/tickets?status=approval" />
-         <StatCard label="SLA Excedido (Não resolvido)" value={slaCritico.length} color="#dc2626" href="/tickets?sla=late" />
-         <StatCard label="SLA Excedido"    value={slaLate}                   color="#dc2626" href="/tickets?sla=late" />
+         <StatCard label="Aprovação"       value={byStatusKey.approval || 0}  color="#7c3aed" href="/tickets?status=approval" />
+         <StatCard label="SLA Excedido (Abertos)"  value={slaLate}           color="#dc2626" href="/tickets?sla=late" sub="apenas tickets ativos" />
+         <StatCard label="SLA Excedido (Total)"    value={slaTotalAll}       color="#b91c1c" href="/tickets?sla=late" sub="inclui fechados/resolvidos" />
          {avgResolutionSec > 0 && <StatCard label="Tempo Médio Resolução" value={formatSeconds(avgResolutionSec)} color="#6b7280" sub={`${resolvedWithTime.length} tickets`} />}
        </div>
 
