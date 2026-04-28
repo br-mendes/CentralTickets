@@ -87,7 +87,7 @@ export default function RelatoriosPage() {
   const PRIORITY_COLORS = ['#64748b', '#3b82f6', '#d97706', '#ea580c', '#dc2626', '#7f1d1d']
 
   function exportCSV() {
-    const baseH = ['ID','Instância','Entidade','Categoria','Status','Prioridade','Canal','Grupo Responsável','Técnico','SLA Atendimento','SLA Solução','Abertura','Últ. Atualização']
+    const baseH = ['ID','Instância','Entidade','Categoria','Status','Prioridade','Origem','Grupo Responsável','Técnico','Solicitante','SLA Atendimento','SLA Solução','Abertura','Últ. Atualização']
     const headers = hasSolution ? [...baseH, 'Data Solução', 'Solução'] : baseH
     const rows = filtered.map(t => {
       const base = [
@@ -97,10 +97,10 @@ export default function RelatoriosPage() {
         t.category || '',
         getStatusConfig(t.status_id, t.status_key).label,
         PRIORITY_LABELS[t.priority_id] || '—',
-        t.requester_name || t.requester || '—',
-        t.channel_name || t.request_type || '—',
+        t.channel_name || t.request_source || t.request_type || '—',
         lastGroupLabel(t.group_name) || '—',
         t.technician_name || t.technician || '—',
+        t.requester_name || t.requester || '—',
         t.is_overdue_first ? 'Fora do prazo' : 'No prazo',
         t.is_overdue_resolve ? 'Fora do prazo' : 'No prazo',
         fmt(t.date_created),
@@ -183,7 +183,7 @@ export default function RelatoriosPage() {
     )},
   ]
 
-  const baseHeaders = ['ID','Instância','Entidade','Categoria','Status','Prioridade','Grupo','Técnico','SLA Atend.','SLA Solução','Abertura','Últ. Atualização']
+  const baseHeaders = ['ID','Instância','Entidade','Categoria','Status','Prioridade','Origem','Grupo','Técnico','Solicitante','SLA Atend.','SLA Solução','Abertura','Últ. Atualização']
   const tableHeaders = hasSolution ? [...baseHeaders, 'Data Solução', 'Solução'] : baseHeaders
 
   return (
@@ -276,8 +276,10 @@ CREATE INDEX IF NOT EXISTS idx_tickets_cache_date_solved ON tickets_cache(date_s
                    <td style={thTd}>
                      {t.priority_id ? <span style={{ fontWeight: 600, fontSize: '0.75rem', color: PRIORITY_COLORS[Number(t.priority_id) - 1] }}>{PRIORITY_LABELS[t.priority_id]}</span> : '—'}
                    </td>
+                  <td style={{ ...thTd, color: 'var(--text-secondary)' }}>{t.channel_name || t.request_source || '—'}</td>
                   <td className="col-group" style={{ ...thTd, color: 'var(--text-secondary)' }}>{lastGroupLabel(t.group_name)}</td>
                   <td className="col-technician" style={{ ...thTd, color: 'var(--text-secondary)' }}>{t.technician_name || t.technician || '—'}</td>
+                  <td style={{ ...thTd, color: 'var(--text-secondary)' }}>{t.requester_name || t.requester || '—'}</td>
                   <td style={thTd}><SLABadge isLate={t.is_overdue_first} /></td>
                   <td style={thTd}><SLABadge isLate={t.is_overdue_resolve} /></td>
                   <td style={{ ...thTd, color: 'var(--text-secondary)' }}>{fmt(t.date_created)}</td>
