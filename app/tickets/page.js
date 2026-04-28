@@ -267,19 +267,19 @@ function TicketsContent() {
                         <span style={{ fontWeight: 700, color: 'var(--primary)' }}>#{t.ticket_id}</span>
                         {t.title && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.title}</div>}
                       </td>
-                      <td style={{ padding: '9px 12px' }}><InstanceBadge instance={t.instance} /></td>
-                      <td className="col-entity" style={{ padding: '9px 12px' }}>{processEntity(t.entity)}</td>
-                      <td style={{ padding: '9px 12px' }}><StatusBadge statusId={t.status_id} statusKey={t.status_key} statusName={t.status_name} /></td>
-                      <td className="col-group" style={{ padding: '9px 12px', color: 'var(--text-secondary)' }}>
-                        {lastGroupLabel(t.group_name) !== '—' ? lastGroupLabel(t.group_name) : <em style={{ color: 'var(--text-muted)' }}>Sem grupo</em>}
-                      </td>
-                      <td className="col-technician" style={{ padding: '9px 12px', color: 'var(--text-secondary)' }}>
-                        {t.technician || <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em>}
-                      </td>
-                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>{fmt(t.date_created)}</td>
-                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>{formatWaitTime(calcHoursAgo(t.date_mod))}</td>
-                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>{fmt(t.due_date)}</td>
-                      <td style={{ padding: '9px 12px' }}><SLABadge isLate={isLate} /></td>
+                       <td style={{ padding: '9px 12px' }}><InstanceBadge instance={t.instance} /></td>
+                       <td className="col-entity" style={{ padding: '9px 12px' }}>{processEntity(t.entity_name || t.entity)}</td>
+                       <td style={{ padding: '9px 12px' }}><StatusBadge statusId={t.status_id} statusKey={t.status_key} statusName={t.status_name} /></td>
+                       <td className="col-group" style={{ padding: '9px 12px', color: 'var(--text-secondary)' }}>
+                         {lastGroupLabel(t.group_name) !== '—' ? lastGroupLabel(t.group_name) : <em style={{ color: 'var(--text-muted)' }}>Sem grupo</em>}
+                       </td>
+                       <td className="col-technician" style={{ padding: '9px 12px', color: 'var(--text-secondary)' }}>
+                         {t.technician || <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em>}
+                       </td>
+                       <td style={{ padding: '9px 12px', color: 'var(--text-secondary)' }}>{fmt(t.date_created)}</td>
+                       <td style={{ padding: '9px 12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>{formatWaitTime(calcHoursAgo(t.date_mod))}</td>
+                       <td style={{ padding: '9px 12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>{fmt(t.due_date)}</td>
+                       <td style={{ padding: '9px 12px' }}><SLABadge isLate={isLate} /></td>
                     </tr>
                   )
                 })}
