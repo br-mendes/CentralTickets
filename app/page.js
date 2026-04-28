@@ -2,7 +2,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { getSupabaseClient } from '@/lib/supabase/client'
-import { fetchAllTickets } from './lib/tickets-api'
 import { DoughnutChart, LineChart, BarChart } from './components/Charts'
 import {
   processEntity, lastGroupLabel, fmt, calcDaysOverdue,
@@ -59,11 +58,15 @@ export default function DashboardPage() {
 
   const load = useCallback(async () => {
     try {
-      const { data } = await fetchAllTickets({ instance: 'PETA,GMX' })
-      setTickets(data || [])
-
       const sb = getSupabaseClient()
       if (!sb) return
+      const { data: raw } = await sb
+        .from('tickets_cache')
+        .select('*')
+        .eq('is_deleted', false)
+        .order('date_mod', { ascending: false })
+        .range(0, 9999)
+      setTickets(raw || [])
       const { data: sync } = await sb.from('sync_control').select('last_sync').order('last_sync', { ascending: false }).limit(1).single()
       if (sync) setLastSync(sync.last_sync)
     } catch { /* no-op */ } finally { setLoading(false) }
@@ -117,8 +120,7 @@ export default function DashboardPage() {
   // Técnico (top 10 — ranked list)
   const techMap = {}
   for (const t of tickets) {
-      const tech = t.technician_name || t.technician || '—'
-      const requester = t.requester_name || t.requester || '—'
+    const tech = t.technician || '—'
     if (!techMap[tech]) techMap[tech] = 0
     techMap[tech]++
   }
@@ -160,7 +162,7 @@ export default function DashboardPage() {
   // Canal de requisição (request_type)
   const reqTypeMap = {}
   for (const t of tickets) {
-    const rt = t.channel_name || t.request_type || 'Não informado'
+    const rt = t.request_source || 'Não informado'
     reqTypeMap[rt] = (reqTypeMap[rt] || 0) + 1
   }
   const reqTypeRows = Object.entries(reqTypeMap).sort((a, b) => b[1] - a[1]).slice(0, 8)
@@ -318,8 +320,8 @@ export default function DashboardPage() {
                          {getStatusConfig(t.status_id, t.status_key).label}
                        </span>
                      </td>
-                     <td style={thTd}>{t.requester_name || t.requester || <em style={{ color: 'var(--text-muted)' }}>Sem solicitante</em>}</td>
-                     <td style={thTd}>{t.technician_name || t.technician || <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em>}</td>
+                     <td style={thTd}>{t.requester || <em style={{ color: 'var(--text-muted)' }}>Sem solicitante</em>}</td>
+                     <td style={thTd}>{t.technician || <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em>}</td>
                      <td style={{ ...thTd, color: '#dc2626', fontWeight: 700 }}>
                        {t.daysOverdue > 0 ? `${t.daysOverdue}d atraso` : '< 1d'}
                      </td>

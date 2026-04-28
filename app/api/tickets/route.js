@@ -174,7 +174,7 @@ export async function GET(request) {
       technician_name: usersMap[technicianKey] || t.technician || '',
       entity_name: entitiesMap[entityKey] || t.entity || '',
       group_name: groupsMap[groupKey] || t.group_name || '',
-      channel_name: t.request_source || t.request_type || '',
+      channel_name: t.request_source || '',
     }
   })
 
