@@ -16,8 +16,6 @@ Formato de saída:
 - **[Tema 3]:** [arquivo/trecho relevante]
 - **[Tema 4]:** [erro corrigido ou problema resolvido]
 - **[Tema 5]:** [estado atual + próximo passo]
-- **[Tema 6 — se necessário]:** [contexto adicional relevante]
-- **[Tema 7 — se necessário]:** [detalhe crítico remanescente]
 ---
 
 Gere agora o resumo compactado desta conversa.
