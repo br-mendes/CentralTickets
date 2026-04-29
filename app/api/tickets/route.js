@@ -8,8 +8,11 @@ const MAX_PAGE_SIZE = 1000
 export async function GET(request) {
   const { searchParams } = new URL(request.url)
   const rawInstance = (searchParams.get('instance') || '').toUpperCase()
-  const startParam = Number.parseInt(searchParams.get('start') || '0', 10)
-  const endParam = Number.parseInt(searchParams.get('end') || `${DEFAULT_PAGE_SIZE - 1}`, 10)
+  
+  // Support different parameter names from various frontends
+  const startParam = Number.parseInt(searchParams.get('start') || searchParams.get('cursorId') || '0', 10)
+  const limitParam = Number.parseInt(searchParams.get('limit') || searchParams.get('end') || '200', 10)
+  const endParam = startParam + limitParam - 1
 
   let start = Number.isNaN(startParam) || startParam < 0 ? 0 : startParam
   let end = Number.isNaN(endParam) || endParam < start ? start + DEFAULT_PAGE_SIZE - 1 : endParam
