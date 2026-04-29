@@ -1,4 +1,4 @@
-const DEFAULT_PAGE_SIZE = 200
+const DEFAULT_PAGE_SIZE = 100
 const DEFAULT_INSTANCE = 'PETA,GMX'
 
 export async function fetchTicketsPage(params = {}) {
@@ -14,9 +14,13 @@ export async function fetchTicketsPage(params = {}) {
     end = start + DEFAULT_PAGE_SIZE - 1,
   } = params
 
+  // Cap page size to 100 max
+  const safeStart = Math.max(0, start)
+  const safeEnd = Math.min(safeStart + 99, end)
+
   const query = new URLSearchParams({
-    start: String(start),
-    end: String(end),
+    start: String(safeStart),
+    end: String(safeEnd),
   })
 
   if (instance) query.set('instance', instance)
@@ -37,13 +41,14 @@ export async function fetchTicketsPage(params = {}) {
   return payload
 }
 
-export async function fetchAllTickets(params = {}, pageSize = 500) {
+export async function fetchAllTickets(params = {}, pageSize = 100) {
   let start = 0
   let hasMore = true
   const all = []
-  let total = 0
+  const maxPages = 10 // Safety limit
+  let pageCount = 0
 
-  while (hasMore) {
+  while (hasMore && pageCount < maxPages) {
     const result = await fetchTicketsPage({
       ...params,
       start,
@@ -52,13 +57,15 @@ export async function fetchAllTickets(params = {}, pageSize = 500) {
 
     const pageData = result?.data || []
     const pagination = result?.pagination || {}
-    total = pagination.total || total
 
     all.push(...pageData)
 
     hasMore = Boolean(pagination.hasMore)
-    start = pagination.nextStart || all.length
+    start = pagination.nextStart || start + pageSize
+    pageCount++
+
+    if (!hasMore || pageData.length === 0) break
   }
 
-  return { data: all, total: total || all.length }
+  return { data: all, total: all.length }
 }
