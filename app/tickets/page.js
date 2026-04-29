@@ -42,12 +42,15 @@ function TicketsContent() {
 
   const instanceFilter = fInstance ? fInstance.toUpperCase() : ALL_INSTANCES
 
+  // Fix: Ensure single instance only (PETA or GMX, not both)
+  const safeInstance = instanceFilter.includes(',') ? instanceFilter.split(',')[0].trim() : instanceFilter
+
   const load = useCallback(async (reset = true) => {
     if (!hasData.current || reset) setLoading(true)
     setError(null)
     try {
       const result = await fetchTicketsPage({
-        instance: instanceFilter,
+        instance: safeInstance,
         statuses: OPEN_STATUSES,
         cursor: null,
         limit: PAGE_SIZE,
@@ -75,7 +78,7 @@ function TicketsContent() {
 
     try {
       const result = await fetchTicketsPage({
-        instance: instanceFilter,
+        instance: safeInstance,
         statuses: OPEN_STATUSES,
         cursor: nextCursor,
         limit: PAGE_SIZE,
