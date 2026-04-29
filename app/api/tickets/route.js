@@ -14,7 +14,7 @@ export async function GET(request) {
   }
 
   const { searchParams } = new URL(request.url)
-  const rawInstance = searchParams.get('instance')?.toUpperCase() || 'PETA'
+  const rawInstance = searchParams.get('instance')?.toUpperCase() || 'PETA,GMX'
   const cursorDate = searchParams.get('cursorDate')
   const cursorId = searchParams.get('cursorId')
   const limitParam = parseInt(searchParams.get('limit') || String(DEFAULT_LIMIT))
@@ -22,10 +22,9 @@ export async function GET(request) {
 
   const limit = Math.min(MAX_LIMIT, Math.max(1, limitParam))
 
-  // Validate single instance (PETA ou GMX)
-  const instance = rawInstance.split(',')[0].trim()
-  if (!instance || !VALID_INSTANCES.includes(instance)) {
-    return NextResponse.json({ error: 'Invalid instance. Use PETA or GMX' }, { status: 400 })
+  const instances = rawInstance.split(',').map(v => v.trim()).filter(Boolean)
+  if (instances.length === 0 || instances.some(v => !VALID_INSTANCES.includes(v))) {
+    return NextResponse.json({ error: 'Invalid instance. Use PETA, GMX or PETA,GMX' }, { status: 400 })
   }
 
   const supabase = createClient(supabaseUrl, supabaseKey)
@@ -34,7 +33,7 @@ export async function GET(request) {
     let query = supabase
       .from('tickets_cache')
       .select('*')
-      .eq('instance', instance)
+      .in('instance', instances)
       .order('date_mod', { ascending: false })
       .order('ticket_id', { ascending: false })
       .limit(limit)
