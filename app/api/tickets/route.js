@@ -17,8 +17,10 @@ export async function GET(request) {
   const rawInstance = searchParams.get('instance')?.toUpperCase() || 'PETA,GMX'
   const cursorDate = searchParams.get('cursorDate')
   const cursorId = searchParams.get('cursorId')
-  const limitParam = parseInt(searchParams.get('limit') || String(DEFAULT_LIMIT))
+  const limitParam = parseInt(searchParams.get('limit') || String(DEFAULT_LIMIT), 10)
   const includeDeleted = searchParams.get('includeDeleted') === 'true'
+  const statusesParam = searchParams.get('statuses') || ''
+  const typeIdParam = searchParams.get('typeId') || ''
 
   const limit = Math.min(MAX_LIMIT, Math.max(1, limitParam))
 
@@ -26,6 +28,9 @@ export async function GET(request) {
   if (instances.length === 0 || instances.some(v => !VALID_INSTANCES.includes(v))) {
     return NextResponse.json({ error: 'Invalid instance. Use PETA, GMX or PETA,GMX' }, { status: 400 })
   }
+
+  const statuses = statusesParam.split(',').map(v => v.trim()).filter(Boolean)
+  const typeId = typeIdParam ? parseInt(typeIdParam, 10) : null
 
   const supabase = createClient(supabaseUrl, supabaseKey)
 
@@ -39,12 +44,20 @@ export async function GET(request) {
       .limit(limit)
 
     if (!includeDeleted) {
-      query = query.eq('is_deleted', false)
+      query = query.neq('is_deleted', true)
+    }
+
+    if (statuses.length > 0) {
+      query = query.in('status_key', statuses)
+    }
+
+    if (typeId !== null && !isNaN(typeId)) {
+      query = query.eq('type_id', typeId)
     }
 
     // Cursor-based pagination
     if (cursorDate && cursorId) {
-      query = query.lt('date_mod', cursorDate).lt('ticket_id', parseInt(cursorId))
+      query = query.or(`date_mod.lt.${cursorDate},and(date_mod.eq.${cursorDate},ticket_id.lt.${parseInt(cursorId, 10)})`)
     }
 
     const { data, error } = await query
