@@ -79,8 +79,8 @@ export default function DashboardPage() {
         'ticket_id','instance','title','entity','status_id','status_key',
         'type_id','priority_id','is_sla_late','is_overdue_resolve','due_date',
         'date_created','date_mod','date_solved','technician','technician_id',
-        'technician_name','requester','requester_id','requester_name',
-        'group_name','root_category','channel_name','request_type',
+        'requester','requester_id','requester_fullname',
+        'group_name','root_category','request_type',
         'resolution_duration','waiting_duration','is_deleted',
       ].join(',')
 
@@ -165,8 +165,7 @@ export default function DashboardPage() {
   // Técnico (top 10 — ranked list)
   const techMap = {}
   for (const t of tickets) {
-      const tech = t.technician_name || t.technician || '—'
-      const requester = t.requester_name || t.requester || '—'
+      const tech = t.technician || '—'
     if (!techMap[tech]) techMap[tech] = 0
     techMap[tech]++
   }
@@ -208,7 +207,7 @@ export default function DashboardPage() {
   // Canal de requisição (request_type)
   const reqTypeMap = {}
   for (const t of tickets) {
-    const rt = t.channel_name || t.request_type || 'Não informado'
+    const rt = t.request_type || 'Não informado'
     reqTypeMap[rt] = (reqTypeMap[rt] || 0) + 1
   }
   const reqTypeRows = Object.entries(reqTypeMap).sort((a, b) => b[1] - a[1]).slice(0, 8)
@@ -372,8 +371,8 @@ export default function DashboardPage() {
                          {getStatusConfig(t.status_id, t.status_key).label}
                        </span>
                      </td>
-                     <td style={thTd}>{t.requester_name || t.requester || <em style={{ color: 'var(--text-muted)' }}>Sem solicitante</em>}</td>
-                     <td style={thTd}>{t.technician_name || t.technician || <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em>}</td>
+                     <td style={thTd}>{t.requester_fullname || t.requester || <em style={{ color: 'var(--text-muted)' }}>Sem solicitante</em>}</td>
+                     <td style={thTd}>{t.technician || <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em>}</td>
                      <td style={{ ...thTd, color: '#dc2626', fontWeight: 700 }}>
                        {t.daysOverdue > 0 ? `${t.daysOverdue}d atraso` : '< 1d'}
                      </td>
