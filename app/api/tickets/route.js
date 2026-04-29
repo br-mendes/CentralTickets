@@ -22,7 +22,7 @@ export async function GET(request) {
   const statusesParam = searchParams.get('statuses') || ''
   const typeIdParam = searchParams.get('typeId') || ''
 
-  const limit = Math.min(MAX_LIMIT, Math.max(1, limitParam))
+  const limit = Math.min(MAX_LIMIT, Math.max(1, Number.isFinite(limitParam) ? limitParam : DEFAULT_LIMIT))
 
   const instances = rawInstance.split(',').map(v => v.trim()).filter(Boolean)
   if (instances.length === 0 || instances.some(v => !VALID_INSTANCES.includes(v))) {
@@ -56,8 +56,9 @@ export async function GET(request) {
     }
 
     // Cursor-based pagination
-    if (cursorDate && cursorId) {
-      query = query.or(`date_mod.lt.${cursorDate},and(date_mod.eq.${cursorDate},ticket_id.lt.${parseInt(cursorId, 10)})`)
+    const parsedCursorId = parseInt(cursorId, 10)
+    if (cursorDate && cursorId && !isNaN(Date.parse(cursorDate)) && !isNaN(parsedCursorId)) {
+      query = query.or(`date_mod.lt.${cursorDate},and(date_mod.eq.${cursorDate},ticket_id.lt.${parsedCursorId})`)
     }
 
     const { data, error } = await query

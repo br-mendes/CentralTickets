@@ -92,6 +92,7 @@ export default function DashboardPage() {
           .neq('is_deleted', true)
           .or(`status_key.not.in.(closed,solved),date_created.gte.${oneYearAgo}`)
           .order('date_mod', { ascending: false })
+          .order('ticket_id', { ascending: false })
           .range(from, from + pageSize - 1)
 
         if (error) { setFetchError(error.message); break }
@@ -243,8 +244,11 @@ export default function DashboardPage() {
   )
 
   if (fetchError) return (
-    <div style={{ padding: '24px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '8px', color: '#dc2626' }}>
-      <strong>Erro ao carregar tickets:</strong> {fetchError}
+    <div style={{ padding: '24px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '8px', color: '#dc2626', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+      <span><strong>Erro ao carregar tickets:</strong> {fetchError}</span>
+      <button onClick={load} style={{ padding: '6px 14px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', flexShrink: 0 }}>
+        Tentar novamente
+      </button>
     </div>
   )
 
@@ -355,7 +359,7 @@ export default function DashboardPage() {
              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
                <thead>
                  <tr>
-                   {['ID', 'Título', 'Entidade', 'Status', 'Técnico', 'Atraso'].map(h => (
+                   {['ID', 'Título', 'Entidade', 'Status', 'Solicitante', 'Técnico', 'Atraso'].map(h => (
                      <th key={h} style={thStyle}>{h}</th>
                    ))}
                  </tr>
