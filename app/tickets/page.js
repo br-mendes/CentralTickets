@@ -7,9 +7,9 @@ import StatusBadge from '../components/StatusBadge'
 import InstanceBadge from '../components/InstanceBadge'
 import SLABadge from '../components/SLABadge'
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 1000
 const OPEN_STATUSES = 'new,processing,pending,pending-approval'
-const ALL_INSTANCES = 'PETA,GMX'
+const ALL_INSTANCES = 'PETA'
 
 const sel = {
   padding: '7px 10px',

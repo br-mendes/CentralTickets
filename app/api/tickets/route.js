@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 const VALID_INSTANCES = ['PETA', 'GMX']
-const DEFAULT_LIMIT = 20
-const MAX_LIMIT = 100
+const DEFAULT_LIMIT = 1000
+const MAX_LIMIT = 1000
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -14,7 +14,7 @@ export async function GET(request) {
   }
 
   const { searchParams } = new URL(request.url)
-  const rawInstance = searchParams.get('instance')?.toUpperCase() || 'PETA,GMX'
+  const rawInstance = searchParams.get('instance')?.toUpperCase() || 'PETA'
   const cursorDate = searchParams.get('cursorDate')
   const cursorId = searchParams.get('cursorId')
   const limitParam = parseInt(searchParams.get('limit') || String(DEFAULT_LIMIT))
@@ -22,9 +22,10 @@ export async function GET(request) {
 
   const limit = Math.min(MAX_LIMIT, Math.max(1, limitParam))
 
-  const instances = rawInstance.split(',').map(v => v.trim()).filter(Boolean)
-  if (instances.length === 0 || instances.some(v => !VALID_INSTANCES.includes(v))) {
-    return NextResponse.json({ error: 'Invalid instance' }, { status: 400 })
+  // Validate single instance (PETA ou GMX)
+  const instance = rawInstance.split(',')[0].trim()
+  if (!instance || !VALID_INSTANCES.includes(instance)) {
+    return NextResponse.json({ error: 'Invalid instance. Use PETA or GMX' }, { status: 400 })
   }
 
   const supabase = createClient(supabaseUrl, supabaseKey)
@@ -33,7 +34,7 @@ export async function GET(request) {
     let query = supabase
       .from('tickets_cache')
       .select('*')
-      .in('instance', instances)
+      .eq('instance', instance)
       .order('date_mod', { ascending: false })
       .order('ticket_id', { ascending: false })
       .limit(limit)
@@ -61,7 +62,7 @@ export async function GET(request) {
 
     return NextResponse.json({
       tickets,
-      nextCursor,
+      nextCursor: nextCursor || undefined,
       hasMore: !!nextCursor,
     })
   } catch (e) {

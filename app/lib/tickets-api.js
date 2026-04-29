@@ -1,5 +1,5 @@
-const DEFAULT_LIMIT = 20
-const DEFAULT_INSTANCE = 'PETA,GMX'
+const DEFAULT_LIMIT = 1000
+const DEFAULT_INSTANCE = 'PETA'
 
 export async function fetchTicketsPage(params = {}) {
   const {
@@ -13,7 +13,7 @@ export async function fetchTicketsPage(params = {}) {
 
   const query = new URLSearchParams({
     instance,
-    limit: String(Math.min(100, Math.max(1, limit))),
+    limit: String(Math.min(1000, Math.max(1, limit))),
   })
 
   if (statuses) query.set('statuses', statuses)
