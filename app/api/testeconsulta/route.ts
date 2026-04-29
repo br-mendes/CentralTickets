@@ -19,7 +19,7 @@ export async function GET() {
       .from('tickets_cache')
       .select('*')
       .order('date_mod', { ascending: false })
-      .limit(5)
+      .limit(20)
 
     if (error) {
       return NextResponse.json(
@@ -53,18 +53,44 @@ export async function GET() {
         ticket_id: t.ticket_id,
         instance: t.instance,
         title: t.title,
+        content: t.content,
+        entity: t.entity,
+        entity_full: t.entity_full,
+        category: t.category,
+        root_category: t.root_category,
         technician: t.technician,
+        technician_id: t.technician_id,
         technician_name: t.technician_name || '(vazio)',
         requester: t.requester,
+        requester_id: t.requester_id,
         requester_name: t.requester_name || '(vazio)',
         group_name: t.group_name || '(vazio)',
+        group_id: t.group_id,
+        entity_id: t.entity_id,
+        request_type: t.request_type,
+        request_type_id: t.request_type_id,
+        status_id: t.status_id,
         status_key: t.status_key,
         status_name: t.status_name,
+        priority_id: t.priority_id,
+        priority: t.priority,
+        type_id: t.type_id,
+        urgency: t.urgency,
+        impact: t.impact,
+        date_created: t.date_created,
+        date_mod: t.date_mod,
+        date_solved: t.date_solved,
+        date_close: t.date_close,
+        due_date: t.due_date,
         is_sla_late: t.is_sla_late,
         is_overdue_first: t.is_overdue_first,
         is_overdue_resolve: t.is_overdue_resolve,
         sla_percentage_first: t.sla_percentage_first,
         sla_percentage_resolve: t.sla_percentage_resolve,
+        solution: t.solution,
+        location: t.location,
+        request_source: t.request_source,
+        is_deleted: t.is_deleted,
       }))
     })
 
