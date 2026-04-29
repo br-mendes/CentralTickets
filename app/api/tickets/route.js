@@ -6,10 +6,13 @@ const VALID_DATE_FIELDS = ['date_created', 'date_mod', 'date_solved']
 const DEFAULT_PAGE_SIZE = 100
 const MAX_PAGE_SIZE = 100
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
 export async function GET(request) {
+  if (!supabaseUrl || !supabaseKey) {
+    return NextResponse.json({ error: 'Supabase config missing' }, { status: 500 })
+  }
   const { searchParams } = new URL(request.url)
   const rawInstance = (searchParams.get('instance') || '').toUpperCase()
   const startParam = Number.parseInt(searchParams.get('start') || '0', 10)
@@ -90,10 +93,16 @@ export async function GET(request) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    // Enrichment maps (optional, keeps max 100 per page)
-    const enriched = tickets?.length
-      ? await enrichTicketsWithReferences(tickets, supabase)
-      : []
+    // Enrichment maps (safe: skip if fails)
+    let enriched = tickets || []
+    try {
+      if (enriched.length) {
+        enriched = await enrichTicketsWithReferences(enriched, supabase)
+      }
+    } catch (enrErr) {
+      console.error('Enrichment error:', enrErr?.message)
+      // keep raw tickets if enrichment fails
+    }
 
     const loaded = enriched.length
     const hasMore = loaded === pageSize
@@ -110,8 +119,8 @@ export async function GET(request) {
       },
     })
   } catch (e) {
-    console.error('API Route Error:', e?.message || e)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('API Route Error:', e?.message || e, e?.stack)
+    return NextResponse.json({ error: 'Internal server error', details: e?.message }, { status: 500 })
   }
 }
 
