@@ -173,25 +173,35 @@ export default function DashboardPage() {
   const techRows = Object.entries(techMap).sort((a, b) => b[1] - a[1]).slice(0, 10)
   const maxTech  = techRows[0]?.[1] || 1
 
-  // Entidade (top 16)
+  // Entidade (top 8 com status breakdown)
   const entityMap = {}
   for (const t of tickets) {
     const e = processEntity(t.entity) || '—'
-    if (!entityMap[e]) entityMap[e] = { total: 0, peta: 0, gmx: 0 }
+    if (!entityMap[e]) entityMap[e] = { total: 0, peta: 0, gmx: 0, new: 0, processing: 0, pending: 0 }
     entityMap[e].total++
+    const statusKey = getStatusConfig(t.status_id, t.status_key).key
+    if (statusKey === 'new') entityMap[e].new++
+    else if (statusKey === 'processing') entityMap[e].processing++
+    else if (statusKey === 'pending') entityMap[e].pending++
     if ((t.instance || '').toUpperCase() === 'PETA') entityMap[e].peta++
     else entityMap[e].gmx++
   }
-  const entityRows = Object.entries(entityMap).sort((a, b) => b[1].total - a[1].total).slice(0, 16)
+  const entityRows = Object.entries(entityMap).sort((a, b) => b[1].total - a[1].total).slice(0, 8)
 
-  // Grupo
+  // Grupo com status breakdown
   const groupMap = {}
   for (const t of tickets) {
     const g = lastGroupLabel(t.group_name)
-    groupMap[g] = (groupMap[g] || 0) + 1
+    if (!groupMap[g]) groupMap[g] = { total: 0, new: 0, processing: 0, pending: 0, approval: 0 }
+    groupMap[g].total++
+    const statusKey = getStatusConfig(t.status_id, t.status_key).key
+    if (statusKey === 'new') groupMap[g].new++
+    else if (statusKey === 'processing') groupMap[g].processing++
+    else if (statusKey === 'pending') groupMap[g].pending++
+    else if (statusKey === 'approval') groupMap[g].approval++
   }
-  const groupRows = Object.entries(groupMap).sort((a, b) => b[1] - a[1]).slice(0, 15)
-  const maxGroup  = groupRows[0]?.[1] || 1
+  const groupRows = Object.entries(groupMap).sort((a, b) => b[1].total - a[1].total).slice(0, 15)
+  const maxGroup  = groupRows[0]?.[1].total || 1
 
   // Prioridade
   const prioMap = tickets.reduce((acc, t) => {
@@ -205,14 +215,19 @@ export default function DashboardPage() {
     ? Math.round(resolvedWithTime.reduce((sum, t) => sum + (t.resolution_duration || 0), 0) / resolvedWithTime.length)
     : 0
 
-  // Canal de requisição (request_type)
+  // Canal de requisição com status
   const reqTypeMap = {}
   for (const t of tickets) {
     const rt = t.request_type || 'Não informado'
-    reqTypeMap[rt] = (reqTypeMap[rt] || 0) + 1
+    if (!reqTypeMap[rt]) reqTypeMap[rt] = { total: 0, new: 0, processing: 0, pending: 0 }
+    reqTypeMap[rt].total++
+    const statusKey = getStatusConfig(t.status_id, t.status_key).key
+    if (statusKey === 'new') reqTypeMap[rt].new++
+    else if (statusKey === 'processing') reqTypeMap[rt].processing++
+    else if (statusKey === 'pending') reqTypeMap[rt].pending++
   }
-  const reqTypeRows = Object.entries(reqTypeMap).sort((a, b) => b[1] - a[1]).slice(0, 8)
-  const maxReqType  = reqTypeRows[0]?.[1] || 1
+  const reqTypeRows = Object.entries(reqTypeMap).sort((a, b) => b[1].total - a[1].total).slice(0, 8)
+  const maxReqType  = reqTypeRows[0]?.[1].total || 1
 
   // Tipo de chamado
   const incidents = tickets.filter(t => t.type_id === 1).length
@@ -345,14 +360,21 @@ export default function DashboardPage() {
           {reqTypeRows.length > 1 && (
             <Card>
               <SectionTitle>Canal de Requisição</SectionTitle>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
-                {reqTypeRows.map(([name, count]) => (
-                  <div key={name} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ width: '130px', fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0, color: 'var(--text-secondary)' }}>{name}</div>
-                    <div style={{ flex: 1, height: '8px', background: 'var(--border)', borderRadius: '9999px', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${(count / maxReqType) * 100}%`, background: 'var(--primary)', borderRadius: '9999px' }} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {reqTypeRows.map(([name, stats]) => (
+                  <div key={name} style={{ borderBottom: '1px solid var(--border)', paddingBottom: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                      <div style={{ width: '110px', fontSize: '0.76rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0, fontWeight: 500 }}>{name}</div>
+                      <div style={{ flex: 1, height: '6px', background: 'var(--border)', borderRadius: '9999px', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${(stats.total / maxReqType) * 100}%`, background: 'var(--primary)', borderRadius: '9999px' }} />
+                      </div>
+                      <span style={{ fontSize: '0.77rem', fontWeight: 600, width: '24px', textAlign: 'right' }}>{stats.total}</span>
                     </div>
-                    <span style={{ fontSize: '0.8rem', fontWeight: 600, width: '28px', textAlign: 'right' }}>{count}</span>
+                    <div style={{ display: 'flex', gap: '10px', fontSize: '0.68rem', color: 'var(--text-secondary)', paddingLeft: '2px' }}>
+                      {stats.new > 0 && <span>🆕 {stats.new}</span>}
+                      {stats.processing > 0 && <span>⚙️ {stats.processing}</span>}
+                      {stats.pending > 0 && <span>⏳ {stats.pending}</span>}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -468,35 +490,48 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      {/* Entity cards */}
+      {/* Entity cards — top 8 com status */}
       {entityRows.length > 0 && (
         <div>
-          <SectionTitle>Tickets por Entidade (top {Math.min(entityRows.length, 16)})</SectionTitle>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '10px' }}>
-            {entityRows.slice(0, 16).map(([name, s]) => (
-              <Card key={name} style={{ padding: '14px 16px' }}>
-                <div style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{s.total}</div>
+          <SectionTitle>Tickets por Entidade (top 8)</SectionTitle>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '10px' }}>
+            {entityRows.slice(0, 8).map(([name, s]) => (
+              <Card key={name} style={{ padding: '12px 14px' }}>
+                <div style={{ fontWeight: 600, fontSize: '0.82rem', marginBottom: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '6px' }}>{s.total}</div>
+                <div style={{ display: 'flex', gap: '8px', fontSize: '0.68rem', color: 'var(--text-secondary)' }}>
+                  {s.new > 0 && <span>🆕 {s.new}</span>}
+                  {s.processing > 0 && <span>⚙️ {s.processing}</span>}
+                  {s.pending > 0 && <span>⏳ {s.pending}</span>}
+                </div>
               </Card>
             ))}
           </div>
         </div>
       )}
 
-      {/* Por Grupo */}
+      {/* Por Grupo com status */}
       {groupRows.length > 0 && (
         <Card>
           <SectionTitle>Tickets por Grupo (top {groupRows.length})</SectionTitle>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {groupRows.map(([name, count]) => (
-              <div key={name} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '180px', fontSize: '0.8rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0, color: 'var(--text-secondary)' }}>
-                  {name === '—' ? <em>Sem grupo</em> : name}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {groupRows.map(([name, stats]) => (
+              <div key={name} style={{ borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+                  <div style={{ width: '160px', fontSize: '0.8rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0, color: 'var(--text-secondary)', fontWeight: 500 }}>
+                    {name === '—' ? <em>Sem grupo</em> : name}
+                  </div>
+                  <div style={{ flex: 1, height: '8px', background: 'var(--border)', borderRadius: '9999px', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', borderRadius: '9999px', width: `${(stats.total / maxGroup) * 100}%`, background: 'linear-gradient(90deg, var(--primary), var(--primary-dark))' }} />
+                  </div>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600, width: '32px', textAlign: 'right' }}>{stats.total}</span>
                 </div>
-                <div style={{ flex: 1, height: '10px', background: 'var(--border)', borderRadius: '9999px', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', borderRadius: '9999px', width: `${(count / maxGroup) * 100}%`, background: 'linear-gradient(90deg, var(--primary), var(--primary-dark))' }} />
+                <div style={{ display: 'flex', gap: '12px', fontSize: '0.7rem', color: 'var(--text-secondary)', paddingLeft: '4px' }}>
+                  {stats.new > 0 && <span>🆕 {stats.new}</span>}
+                  {stats.processing > 0 && <span>⚙️ {stats.processing}</span>}
+                  {stats.pending > 0 && <span>⏳ {stats.pending}</span>}
+                  {stats.approval > 0 && <span>✓ {stats.approval}</span>}
                 </div>
-                <span style={{ fontSize: '0.8rem', fontWeight: 600, width: '28px', textAlign: 'right' }}>{count}</span>
               </div>
             ))}
           </div>
