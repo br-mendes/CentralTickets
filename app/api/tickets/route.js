@@ -112,69 +112,45 @@ export async function GET(request) {
     }
   }
 
-  // Fetch maps
-  const [usersMap, entitiesMap, groupsMap, requestTypesMap] = await Promise.all([
-    // users
-    (async () => {
-      const map = {}
-      for (const inst of Object.keys(userIds)) {
-        const ids = [...userIds[inst]]
-        if (ids.length === 0) continue
-        const { data } = await supabase
-          .from('glpi_users')
-          .select('id, fullname')
-          .eq('instance', inst)
-          .in('id', ids)
-        if (data) data.forEach(u => { map[`${inst}:${u.id}`] = u.fullname })
+  // Helper to fetch IDs in batches
+  async function fetchIdsInBatches(table, idsByInstance, selectFields) {
+    const map = {}
+    for (const inst of Object.keys(idsByInstance)) {
+      const ids = [...idsByInstance[inst]]
+      if (ids.length === 0) continue
+      const batchSize = 100
+      for (let i = 0; i < ids.length; i += batchSize) {
+        const batch = ids.slice(i, i + batchSize)
+        try {
+          const { data } = await supabase
+            .from(table)
+            .select(selectFields)
+            .eq('instance', inst)
+            .in('id', batch)
+          if (data) {
+            const keyField = selectFields.split(',')[1].trim()
+            data.forEach(row => { map[`${inst}:${row.id}`] = row[keyField] })
+          }
+        } catch (e) {
+          console.error(`Error fetching ${table} for ${inst}:`, e.message)
+        }
       }
-      return map
-    })(),
-    // entities
-    (async () => {
-      const map = {}
-      for (const inst of Object.keys(entityIds)) {
-        const ids = [...entityIds[inst]]
-        if (ids.length === 0) continue
-        const { data } = await supabase
-          .from('glpi_entities')
-          .select('id, name')
-          .eq('instance', inst)
-          .in('id', ids)
-        if (data) data.forEach(e => { map[`${inst}:${e.id}`] = e.name })
-      }
-      return map
-    })(),
-    // groups
-    (async () => {
-      const map = {}
-      for (const inst of Object.keys(groupIds)) {
-        const ids = [...groupIds[inst]]
-        if (ids.length === 0) continue
-        const { data } = await supabase
-          .from('glpi_groups')
-          .select('id, name')
-          .eq('instance', inst)
-          .in('id', ids)
-        if (data) data.forEach(g => { map[`${inst}:${g.id}`] = g.name })
-      }
-      return map
-    })(),
-    // request types
-    (async () => {
-      const map = {}
-      for (const inst of Object.keys(requestTypeIds)) {
-        const ids = [...requestTypeIds[inst]]
-        if (ids.length === 0) continue
-        const { data } = await supabase
-          .from('glpi_request_types')
-          .select('id, name')
-          .eq('instance', inst)
-          .in('id', ids)
-        if (data) data.forEach(rt => { map[`${inst}:${rt.id}`] = rt.name })
-      }
-      return map
-    })(),
-  ])
+    }
+    return map
+  }
+
+  // Fetch maps with batching
+  let usersMap = {}, entitiesMap = {}, groupsMap = {}, requestTypesMap = {}
+  try {
+    ;[usersMap, entitiesMap, groupsMap, requestTypesMap] = await Promise.all([
+      fetchIdsInBatches('glpi_users', userIds, 'id, fullname'),
+      fetchIdsInBatches('glpi_entities', entityIds, 'id, name'),
+      fetchIdsInBatches('glpi_groups', groupIds, 'id, name'),
+      fetchIdsInBatches('glpi_request_types', requestTypeIds, 'id, name'),
+    ])
+  } catch (e) {
+    console.error('Error enriching tickets:', e.message)
+  }
 
   // Merge into tickets
   const enriched = tickets.map(t => {
