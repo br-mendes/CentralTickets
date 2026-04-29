@@ -55,10 +55,11 @@ export async function GET(request) {
 
   const supabase = createClient(supabaseUrl, supabaseKey)
 
-  // 1. Fetch tickets
+  try {
+    // 1. Fetch tickets
   let query = supabase
     .from('tickets_cache')
-    .select('*', { count: 'exact' })
+    .select('*', { count: 'planned' })
     .in('instance', instances)
     .order(dateField, { ascending: false })
     .range(start, end)
@@ -175,15 +176,19 @@ export async function GET(request) {
   const hasMore = nextStart < safeCount && loaded === pageSize
 
   return NextResponse.json({
-    data: enriched,
-    pagination: {
-      start,
-      end,
-      pageSize,
-      loaded,
-      total: safeCount,
-      hasMore,
-      nextStart: hasMore ? nextStart : null,
-    },
-  })
+      data: enriched,
+      pagination: {
+        start,
+        end,
+        pageSize,
+        loaded,
+        total: safeCount,
+        hasMore,
+        nextStart: hasMore ? nextStart : null,
+      },
+    })
+  } catch (e) {
+    console.error('API Error:', e.message)
+    return NextResponse.json({ error: e.message || 'Internal server error' }, { status: 500 })
+  }
 }
