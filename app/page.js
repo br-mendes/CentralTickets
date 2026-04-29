@@ -59,8 +59,8 @@ export default function DashboardPage() {
 
   const load = useCallback(async () => {
     try {
-      const { data } = await fetchAllTickets({ instance: 'PETA,GMX' })
-      setTickets(data || [])
+      const { tickets } = await fetchAllTickets({ instance: 'PETA,GMX' })
+      setTickets(tickets || [])
 
       const sb = getSupabaseClient()
       if (!sb) return
