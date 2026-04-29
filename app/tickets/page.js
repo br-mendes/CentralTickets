@@ -56,7 +56,7 @@ function TicketsContent() {
 
       setTickets(tickets)
       setHasMore(result.hasMore)
-      setNextStart(result.nextCursor)
+      setNextCursor(result.nextCursor)
       setTotalTickets(tickets.length)
       hasData.current = true
       setLastUpdate(new Date())
@@ -93,7 +93,7 @@ function TicketsContent() {
       })
 
       setHasMore(result.hasMore)
-      setNextStart(result.nextCursor)
+      setNextCursor(result.nextCursor)
       setTotalTickets(totalTickets + pageData.length)
     } catch (e) {
       setError(e.message)
