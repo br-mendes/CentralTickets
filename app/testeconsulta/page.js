@@ -14,7 +14,7 @@ export default function TesteConsultaPage() {
     setError(null)
     try {
       const { tickets } = await fetchAllTickets({ instance })
-      setTickets(data || [])
+      setTickets(tickets || [])
     } catch (e) {
       setError(e.message)
     } finally {
