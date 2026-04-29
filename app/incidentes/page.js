@@ -44,7 +44,7 @@ function IncidentesContent() {
          statuses: ACTIVE_STATUSES,
        })
 
-      const data = (result?.data || []).sort((a, b) => {
+      const data = (result?.tickets || []).sort((a, b) => {
         const urgencyDiff = (b.urgency || 0) - (a.urgency || 0)
         if (urgencyDiff !== 0) return urgencyDiff
         return new Date(b.date_mod || 0).getTime() - new Date(a.date_mod || 0).getTime()

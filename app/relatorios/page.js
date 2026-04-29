@@ -53,7 +53,7 @@ export default function RelatoriosPage() {
         fromDate: startDate,
         toDate: endDate,
       })
-      const data = result?.data || []
+      const data = result?.tickets || []
       setMissingColumns(data.length > 0 && !('date_solved' in data[0] && 'solution' in data[0]))
       setAllTickets(data)
     } catch (e) { setError(e.message) }

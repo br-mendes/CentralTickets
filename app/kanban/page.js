@@ -134,7 +134,7 @@ export default function KanbanPage() {
     setLoading(true); setError(null)
     try {
       const result = await fetchAllTickets({ instance: 'PETA,GMX', statuses: KANBAN_STATUSES })
-      const all = result?.data || []
+      const all = result?.tickets || []
       setTickets(all)
       setLastUpdate(new Date())
       const techs = [...new Set(all.map(t => t.technician).filter(Boolean))].sort()

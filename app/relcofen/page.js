@@ -224,9 +224,9 @@ const threatsRes = await fetch('/api/sophos?endpoint=threats').then(r => r.json(
         fromDate: startDate,
         toDate: endDate,
       })
-      const data = result?.data || []
-      setMissingColumns(data.length > 0 && !('date_solved' in data[0] && 'solution' in data[0]))
-      setAllTickets(data)
+      const tickets = result?.tickets || []
+      setMissingColumns(tickets.length > 0 && !('date_solved' in tickets[0] && 'solution' in tickets[0]))
+      setAllTickets(tickets)
     } catch (e) { setError(e.message) }
     finally { setLoading(false) }
   }, [dateType, year, month])

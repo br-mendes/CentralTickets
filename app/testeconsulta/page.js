@@ -13,7 +13,7 @@ export default function TesteConsultaPage() {
     setLoading(true)
     setError(null)
     try {
-      const { data } = await fetchAllTickets({ instance })
+      const { tickets } = await fetchAllTickets({ instance })
       setTickets(data || [])
     } catch (e) {
       setError(e.message)
