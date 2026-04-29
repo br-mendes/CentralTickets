@@ -21,11 +21,11 @@ export async function GET(request) {
   const toDate = searchParams.get('toDate') || ''
   const includeDeleted = searchParams.get('includeDeleted') === 'true'
 
-  let start = Number.isNaN(startParam) || startParam < 0 ? 0 : startParam
-  let end = Number.isNaN(endParam) || endParam < start ? start + DEFAULT_PAGE_SIZE - 1 : endParam
-  if (end - start + 1 > MAX_PAGE_SIZE) {
-    end = start + MAX_PAGE_SIZE - 1
-  }
+  // Safe pagination
+  let start = Math.max(0, startParam)
+  let end = Math.max(start, endParam)
+  const pageSize = Math.min(MAX_PAGE_SIZE, end - start + 1)
+  end = start + pageSize - 1
 
   const dateField = VALID_DATE_FIELDS.includes(dateFieldParam) ? dateFieldParam : 'date_mod'
 
@@ -86,97 +86,15 @@ export async function GET(request) {
     const { data: tickets, error } = await query
 
     if (error) {
-      console.error('Supabase error:', error.message)
+      console.error('Supabase query error:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    if (!tickets || tickets.length === 0) {
-      return NextResponse.json({ data: [], pagination: { start, end, loaded: 0, total: 0, hasMore: false } })
-    }
+    // Enrichment maps (optional, keeps max 100 per page)
+    const enriched = tickets?.length
+      ? await enrichTicketsWithReferences(tickets, supabase)
+      : []
 
-    // Collect unique IDs per instance for enrichment
-    const userIds = {}
-    const entityIds = {}
-    const groupIds = {}
-    const requestTypeIds = {}
-
-    for (const t of tickets) {
-      const inst = t.instance || ''
-      if (t.requester_id) {
-        if (!userIds[inst]) userIds[inst] = new Set()
-        userIds[inst].add(t.requester_id)
-      }
-      if (t.entity_id) {
-        if (!entityIds[inst]) entityIds[inst] = new Set()
-        entityIds[inst].add(t.entity_id)
-      }
-      if (t.group_id) {
-        if (!groupIds[inst]) groupIds[inst] = new Set()
-        groupIds[inst].add(t.group_id)
-      }
-      if (t.request_type_id) {
-        if (!requestTypeIds[inst]) requestTypeIds[inst] = new Set()
-        requestTypeIds[inst].add(t.request_type_id)
-      }
-    }
-
-    // Helper to fetch IDs in batches
-    async function fetchIdsInBatches(table, idsByInstance, selectFields) {
-      const map = {}
-      for (const inst of Object.keys(idsByInstance)) {
-        const ids = [...idsByInstance[inst]]
-        if (ids.length === 0) continue
-        const batchSize = 50
-        for (let i = 0; i < ids.length; i += batchSize) {
-          const batch = ids.slice(i, i + batchSize)
-          try {
-            const { data } = await supabase
-              .from(table)
-              .select(selectFields)
-              .eq('instance', inst)
-              .in('id', batch)
-            if (data) {
-              const keyField = selectFields.split(',')[1].trim()
-              data.forEach(row => { map[`${inst}:${row.id}`] = row[keyField] })
-            }
-          } catch (e) {
-            console.error(`Error fetching ${table} for ${inst}:`, e.message)
-          }
-        }
-      }
-      return map
-    }
-
-    // Fetch maps with batching
-    const [
-      usersMap,
-      entitiesMap,
-      groupsMap,
-      requestTypesMap
-    ] = await Promise.all([
-      fetchIdsInBatches('glpi_users', userIds, 'id, fullname'),
-      fetchIdsInBatches('glpi_entities', entityIds, 'id, name'),
-      fetchIdsInBatches('glpi_groups', groupIds, 'id, name'),
-      fetchIdsInBatches('glpi_request_types', requestTypeIds, 'id, name'),
-    ])
-
-    // Merge into tickets
-    const enriched = tickets.map(t => {
-      const inst = t.instance || ''
-      const userKey = `${inst}:${t.requester_id}`
-      const entityKey = `${inst}:${t.entity_id}`
-      const groupKey = `${inst}:${t.group_id}`
-      const requestTypeKey = `${inst}:${t.request_type_id}`
-      return {
-        ...t,
-        requester_name: usersMap[userKey] || t.requester || '',
-        entity_name: entitiesMap[entityKey] || t.entity || '',
-        group_name: groupsMap[groupKey] || t.group_name || '',
-        channel_name: requestTypesMap[requestTypeKey] || t.request_type || '',
-      }
-    })
-
-    const pageSize = end - start + 1
     const loaded = enriched.length
     const hasMore = loaded === pageSize
 
@@ -192,7 +110,73 @@ export async function GET(request) {
       },
     })
   } catch (e) {
-    console.error('API Error:', e.message)
-    return NextResponse.json({ error: e.message || 'Internal server error' }, { status: 500 })
+    console.error('API Route Error:', e?.message || e)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
+}
+
+// Lightweight enrichment using IDs (batched)
+async function enrichTicketsWithReferences(tickets, supabase) {
+  const userIds = {}
+  const entityIds = {}
+  const groupIds = {}
+  const requestTypeIds = {}
+  for (const t of tickets) {
+    const inst = t.instance || ''
+    if (t.requester_id) {
+      if (!userIds[inst]) userIds[inst] = new Set()
+      userIds[inst].add(t.requester_id)
+    }
+    if (t.entity_id) {
+      if (!entityIds[inst]) entityIds[inst] = new Set()
+      entityIds[inst].add(t.entity_id)
+    }
+    if (t.group_id) {
+      if (!groupIds[inst]) groupIds[inst] = new Set()
+      groupIds[inst].add(t.group_id)
+    }
+    if (t.request_type_id) {
+      if (!requestTypeIds[inst]) requestTypeIds[inst] = new Set()
+      requestTypeIds[inst].add(t.request_type_id)
+    }
+  }
+  async function fetchIdsInBatches(table, idsByInstance, selectFields) {
+    const map = {}
+    for (const inst of Object.keys(idsByInstance)) {
+      const ids = [...idsByInstance[inst]]
+      if (!ids.length) continue
+      const batchSize = 50
+      for (let i = 0; i < ids.length; i += batchSize) {
+        const batch = ids.slice(i, i + batchSize)
+        try {
+          const { data } = await supabase
+            .from(table)
+            .select(selectFields)
+            .eq('instance', inst)
+            .in('id', batch)
+          if (data) {
+            const field = selectFields.split(',')[1].trim()
+            data.forEach(row => { map[`${inst}:${row.id}`] = row[field] })
+          }
+        } catch (e) {
+          // ignore per-batch errors to keep partial enrichment
+        }
+      }
+    }
+    return map
+  }
+  const [usersMap, entitiesMap, groupsMap, requestTypesMap] = await Promise.all([
+    fetchIdsInBatches('glpi_users', userIds, 'id, fullname'),
+    fetchIdsInBatches('glpi_entities', entityIds, 'id, name'),
+    fetchIdsInBatches('glpi_groups', groupIds, 'id, name'),
+    fetchIdsInBatches('glpi_request_types', requestTypeIds, 'id, name'),
+  ])
+  return tickets.map(t => {
+    const inst = t.instance || ''
+    const requesterName = usersMap[`${inst}:${t.requester_id}`] || t.requester || ''
+    const entityName = entitiesMap[`${inst}:${t.entity_id}`] || t.entity || ''
+    const groupName = groupsMap[`${inst}:${t.group_id}`] || t.group_name || ''
+    const channelName = requestTypesMap[`${inst}:${t.request_type_id}`] || t.request_type || ''
+    return { ...t, requester_name: requesterName, entity_name: entityName, group_name: groupName, channel_name: channelName }
+  })
 }
