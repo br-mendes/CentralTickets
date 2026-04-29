@@ -5,6 +5,17 @@ const VALID_INSTANCES = ['PETA', 'GMX']
 const DEFAULT_LIMIT = 1000
 const MAX_LIMIT = 1000
 
+const COLS = [
+  'ticket_id','instance','title','entity','status_id','status_key',
+  'type_id','priority_id','urgency','is_sla_late','is_overdue_resolve','due_date',
+  'date_created','date_mod','date_solved','technician','technician_id',
+  'requester','requester_id','requester_fullname',
+  'group_name','root_category','request_type',
+  'resolution_duration','waiting_duration','is_deleted',
+].join(',')
+
+const ONE_YEAR_MS = 365 * 86400 * 1000
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
@@ -35,10 +46,13 @@ export async function GET(request) {
   const supabase = createClient(supabaseUrl, supabaseKey)
 
   try {
+    const oneYearAgo = new Date(Date.now() - ONE_YEAR_MS).toISOString()
+
     let query = supabase
       .from('tickets_cache')
-      .select('*')
+      .select(COLS)
       .in('instance', instances)
+      .or(`status_key.not.in.(closed,solved),date_created.gte.${oneYearAgo}`)
       .order('date_mod', { ascending: false })
       .order('ticket_id', { ascending: false })
       .limit(limit)
