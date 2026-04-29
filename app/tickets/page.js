@@ -7,7 +7,7 @@ import StatusBadge from '../components/StatusBadge'
 import InstanceBadge from '../components/InstanceBadge'
 import SLABadge from '../components/SLABadge'
 
-const PAGE_SIZE = 200
+const PAGE_SIZE = 20
 const OPEN_STATUSES = 'new,processing,pending,pending-approval'
 const ALL_INSTANCES = 'PETA,GMX'
 
@@ -28,7 +28,7 @@ function TicketsContent() {
   const [error, setError] = useState(null)
   const [lastUpdate, setLastUpdate] = useState(null)
   const [hasMore, setHasMore] = useState(false)
-  const [nextStart, setNextStart] = useState(0)
+  const [nextCursor, setNextCursor] = useState(null)
   const [totalTickets, setTotalTickets] = useState(0)
   const hasData = useRef(false)
 
@@ -49,20 +49,19 @@ function TicketsContent() {
       const result = await fetchTicketsPage({
         instance: instanceFilter,
         statuses: OPEN_STATUSES,
-        start: 0,
-        end: PAGE_SIZE - 1,
+        cursor: null,
+        limit: PAGE_SIZE,
       })
-      const data = result?.data || []
-      const pagination = result?.pagination || {}
+      const tickets = result?.tickets || []
 
-      setTickets(data)
-      setHasMore(Boolean(pagination.hasMore))
-      setNextStart(pagination.nextStart || data.length)
-      setTotalTickets(pagination.total || data.length)
+      setTickets(tickets)
+      setHasMore(result.hasMore)
+      setNextStart(result.nextCursor)
+      setTotalTickets(tickets.length)
       hasData.current = true
       setLastUpdate(new Date())
-      const techs = [...new Set(data.map(t => t.technician).filter(Boolean))].sort()
-      const requesters = [...new Set(data.map(t => t.requester_name || t.requester).filter(Boolean))].sort()
+      const techs = [...new Set(tickets.map(t => t.technician).filter(Boolean))].sort()
+      const requesters = [...new Set(tickets.map(t => t.requester_name || t.requester).filter(Boolean))].sort()
       setAvailableTechnicians(techs)
     } catch (e) { setError(e.message) }
     finally { setLoading(false) }
@@ -78,12 +77,11 @@ function TicketsContent() {
       const result = await fetchTicketsPage({
         instance: instanceFilter,
         statuses: OPEN_STATUSES,
-        start: nextStart,
-        end: nextStart + PAGE_SIZE - 1,
+        cursor: nextCursor,
+        limit: PAGE_SIZE,
       })
 
-      const pageData = result?.data || []
-      const pagination = result?.pagination || {}
+      const pageData = result?.tickets || []
 
       setTickets(prev => {
         const map = new Map(prev.map(t => [`${t.ticket_id}-${t.instance}`, t]))
@@ -94,15 +92,15 @@ function TicketsContent() {
         return merged
       })
 
-      setHasMore(Boolean(pagination.hasMore))
-      setNextStart(pagination.nextStart || (nextStart + pageData.length))
-      setTotalTickets(pagination.total || totalTickets)
+      setHasMore(result.hasMore)
+      setNextStart(result.nextCursor)
+      setTotalTickets(totalTickets + pageData.length)
     } catch (e) {
       setError(e.message)
     } finally {
       setLoadingMore(false)
     }
-  }, [hasMore, instanceFilter, loadingMore, nextStart, setAvailableTechnicians, totalTickets])
+  }, [hasMore, instanceFilter, loadingMore, nextCursor, setAvailableTechnicians, totalTickets])
 
   useEffect(() => {
     load(true)

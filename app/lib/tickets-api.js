@@ -1,4 +1,4 @@
-const DEFAULT_PAGE_SIZE = 100
+const DEFAULT_LIMIT = 20
 const DEFAULT_INSTANCE = 'PETA,GMX'
 
 export async function fetchTicketsPage(params = {}) {
@@ -6,30 +6,21 @@ export async function fetchTicketsPage(params = {}) {
     instance = DEFAULT_INSTANCE,
     statuses = '',
     typeId = null,
-    dateField = '',
-    fromDate = '',
-    toDate = '',
     includeDeleted = false,
-    start = 0,
-    end = start + DEFAULT_PAGE_SIZE - 1,
+    cursor = null,
+    limit = DEFAULT_LIMIT,
   } = params
 
-  // Cap page size to 100 max
-  const safeStart = Math.max(0, start)
-  const safeEnd = Math.min(safeStart + 99, end)
-
   const query = new URLSearchParams({
-    start: String(safeStart),
-    end: String(safeEnd),
+    instance,
+    limit: String(Math.min(100, Math.max(1, limit))),
   })
 
-  if (instance) query.set('instance', instance)
   if (statuses) query.set('statuses', statuses)
   if (typeId !== null && typeId !== undefined) query.set('typeId', String(typeId))
-  if (dateField) query.set('dateField', dateField)
-  if (fromDate) query.set('fromDate', fromDate)
-  if (toDate) query.set('toDate', toDate)
   if (includeDeleted) query.set('includeDeleted', 'true')
+  if (cursor?.date_mod) query.set('cursorDate', cursor.date_mod)
+  if (cursor?.ticket_id) query.set('cursorId', String(cursor.ticket_id))
 
   const response = await fetch(`/api/tickets?${query.toString()}`)
   const payload = await response.json()
@@ -38,30 +29,29 @@ export async function fetchTicketsPage(params = {}) {
     throw new Error(payload?.error || 'Falha ao buscar tickets')
   }
 
-  return payload
+  return {
+    tickets: payload.tickets || [],
+    nextCursor: payload.nextCursor,
+    hasMore: payload.hasMore,
+  }
 }
 
-export async function fetchAllTickets(params = {}, pageSize = 100) {
-  let start = 0
+export async function fetchAllTickets(params = {}, maxPages = 10) {
   let hasMore = true
   const all = []
-  const maxPages = 10 // Safety limit
   let pageCount = 0
+  let nextCursor = null
 
   while (hasMore && pageCount < maxPages) {
     const result = await fetchTicketsPage({
       ...params,
-      start,
-      end: start + pageSize - 1,
+      cursor: nextCursor,
     })
 
-    const pageData = result?.data || []
-    const pagination = result?.pagination || {}
-
+    const pageData = result.tickets || []
     all.push(...pageData)
-
-    hasMore = Boolean(pagination.hasMore)
-    start = pagination.nextStart || start + pageSize
+    hasMore = result.hasMore && pageData.length > 0
+    nextCursor = result.nextCursor
     pageCount++
 
     if (!hasMore || pageData.length === 0) break
