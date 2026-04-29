@@ -243,7 +243,7 @@ export default function DashboardPage() {
     </div>
   )
 
-  if (fetchError) return (
+  if (fetchError && tickets.length === 0) return (
     <div style={{ padding: '24px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '8px', color: '#dc2626', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
       <span><strong>Erro ao carregar tickets:</strong> {fetchError}</span>
       <button onClick={load} style={{ padding: '6px 14px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', flexShrink: 0 }}>
@@ -254,6 +254,15 @@ export default function DashboardPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+      {fetchError && (
+        <div style={{ padding: '12px 16px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '8px', color: '#dc2626', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+          <span><strong>Erro ao atualizar:</strong> {fetchError}</span>
+          <button onClick={load} style={{ padding: '4px 12px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', flexShrink: 0 }}>
+            Tentar novamente
+          </button>
+        </div>
+      )}
 
       {/* Page title */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '8px' }}>
