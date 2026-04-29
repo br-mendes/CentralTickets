@@ -5,121 +5,105 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
 async function syncUserNames(): Promise<void> {
-  console.log('[syncUserNames] iniciando busca de nomes de usuarios')
+  console.log('[syncUserNames] iniciando...')
 
-  // Buscar tickets com technician_id ou requester_id para sincronizar nomes
-  const { data: ticketsWithIds, error: queryError } = await supabase
+  // Primeiro, verificar quais campos existem e têm valores
+  const { data: sampleTickets, error: sampleError } = await supabase
+    .from('tickets_cache')
+    .select('ticket_id, instance, technician, technician_id, requester, requester_id')
+    .limit(10)
+
+  if (sampleError) {
+    console.error('[syncUserNames] erro ao buscar sample:', sampleError.message)
+    return
+  }
+
+  console.log('[syncUserNames] Sample de tickets:')
+  for (const t of sampleTickets || []) {
+    console.log(`  Ticket ${t.ticket_id} (${t.instance}): tech=${t.technician}, tech_id=${t.technician_id}, req=${t.requester}, req_id=${t.requester_id}`)
+  }
+
+  // Verificar se glpi_users tem dados
+  const { data: glpiUsers } = await supabase
+    .from('glpi_users')
+    .select('id, instance, name, firstname, realname')
+    .limit(5)
+  
+  console.log('[syncUserNames] Sample glpi_users:')
+  for (const u of glpiUsers || []) {
+    console.log(`  User ${u.id} (${u.instance}): name=${u.name}, firstname=${u.firstname}, realname=${u.realname}`)
+  }
+
+  // Buscar tickets que precisam de atualização (onde technician ou requester estão vazios mas têm ID)
+  const { data: ticketsNeedingUpdate } = await supabase
     .from('tickets_cache')
     .select('ticket_id, instance, technician_id, requester_id')
-    .or('technician_id.not.is.null,requester_id.not.is.null')
-    .limit(5000)
+    .gt('technician_id', 0)
+    .or('requester_id.gt.0')
+    .limit(2000)
 
-  if (queryError) {
-    console.error('[syncUserNames] erro ao buscar tickets:', queryError.message)
+  if (!ticketsNeedingUpdate || ticketsNeedingUpdate.length === 0) {
+    console.log('[syncUserNames] Nenhum ticket com ID de usuário para atualizar')
     return
   }
 
-  if (!ticketsWithIds || ticketsWithIds.length === 0) {
-    console.log('[syncUserNames] nenhum ticket encontrado com IDs de usuario')
-    return
+  console.log(`[syncUserNames] ${ticketsNeedingUpdate.length} tickets para processar`)
+
+  // Coletar IDs únicos
+  const allTechIds = [...new Set(ticketsNeedingUpdate.map(t => t.technician_id).filter(id => id > 0))]
+  const allReqIds = [...new Set(ticketsNeedingUpdate.map(t => t.requester_id).filter(id => id > 0))]
+  
+  console.log(`[syncUserNames] IDs únicos - técnicos: ${allTechIds.length}, solicitantes: ${allReqIds.length}`)
+
+  // Buscar todos os usuários necessários de uma vez
+  const allUserIds = [...new Set([...allTechIds, ...allReqIds])]
+  
+  const { data: allUsers } = await supabase
+    .from('glpi_users')
+    .select('id, instance, name, firstname, realname')
+    .in('id', allUserIds)
+
+  // Criar mapa de nomes por instância e ID
+  const userMap: Record<string, Record<number, string>> = { PETA: {}, GMX: {} }
+  for (const u of allUsers || []) {
+    const fullName = [u.firstname, u.realname].filter(Boolean).join(' ') || u.name || ''
+    userMap[u.instance || 'PETA'][u.id] = fullName
   }
 
-  console.log(`[syncUserNames] processando ${ticketsWithIds.length} tickets`)
+  console.log(`[syncUserNames] Usuários carregados no mapa`)
 
-  // Coletar IDs únicos por instância
-  const techIdsByInstance: Record<string, number[]> = { PETA: [], GMX: [] }
-  const reqIdsByInstance: Record<string, number[]> = { PETA: [], GMX: [] }
-
-  for (const t of ticketsWithIds) {
-    const inst = t.instance || 'PETA'
-    if (t.technician_id && t.technician_id > 0 && !techIdsByInstance[inst].includes(t.technician_id)) {
-      techIdsByInstance[inst].push(t.technician_id)
-    }
-    if (t.requester_id && t.requester_id > 0 && !reqIdsByInstance[inst].includes(t.requester_id)) {
-      reqIdsByInstance[inst].push(t.requester_id)
-    }
-  }
-
-  // Buscar nomes de técnicos por instância
-  const techNames: Record<string, Record<number, string>> = { PETA: {}, GMX: {} }
-  for (const inst of ['PETA', 'GMX'] as const) {
-    const ids = techIdsByInstance[inst]
-    if (ids.length === 0) continue
-
-    const { data: techUsers } = await supabase
-      .from('glpi_users')
-      .select('id, name')
-      .eq('instance', inst)
-      .in('id', ids)
-
-    if (techUsers) {
-      for (const u of techUsers) {
-        techNames[inst][u.id] = u.name || ''
-      }
-    }
-  }
-
-  // Buscar nomes de solicitantes por instância
-  const reqNames: Record<string, Record<number, string>> = { PETA: {}, GMX: {} }
-  for (const inst of ['PETA', 'GMX'] as const) {
-    const ids = reqIdsByInstance[inst]
-    if (ids.length === 0) continue
-
-    const { data: reqUsers } = await supabase
-      .from('glpi_users')
-      .select('id, name')
-      .eq('instance', inst)
-      .in('id', ids)
-
-    if (reqUsers) {
-      for (const u of reqUsers) {
-        reqNames[inst][u.id] = u.name || ''
-      }
-    }
-  }
-
-  console.log(`[syncUserNames] PETA técnicos: ${Object.keys(techNames.PETA).length}, PETA solicitantes: ${Object.keys(reqNames.PETA).length}`)
-  console.log(`[syncUserNames] GMX técnicos: ${Object.keys(techNames.GMX).length}, GMX solicitantes: ${Object.keys(reqNames.GMX).length}`)
-
-  // Atualizar tickets com nomes encontrados
+  // Atualizar tickets em lotes
   let updated = 0
-  for (const t of ticketsWithIds) {
-    const inst = t.instance || 'PETA'
-    const techName = t.technician_id ? techNames[inst][t.technician_id] : null
-    const reqName = t.requester_id ? reqNames[inst][t.requester_id] : null
+  for (const ticket of ticketsNeedingUpdate) {
+    const inst = ticket.instance || 'PETA'
+    const techName = ticket.technician_id > 0 ? userMap[inst][ticket.technician_id] : null
+    const reqName = ticket.requester_id > 0 ? userMap[inst][ticket.requester_id] : null
 
     if (techName || reqName) {
-      const updateData: Record<string, unknown> = {
-        ticket_id: t.ticket_id,
+      const updates: Record<string, unknown> = {
+        ticket_id: ticket.ticket_id,
         instance: inst,
       }
-      if (techName) updateData.technician = techName
-      if (reqName) updateData.requester = reqName
+      if (techName) updates.technician = techName
+      if (reqName) updates.requester = reqName
 
       const { error } = await supabase
         .from('tickets_cache')
-        .upsert(updateData, { onConflict: 'ticket_id,instance' })
+        .upsert(updates, { onConflict: 'ticket_id,instance' })
 
       if (!error) updated++
     }
   }
 
-  console.log(`[syncUserNames] concluído, ${updated} tickets atualizados`)
+  console.log(`[syncUserNames] Concluído! ${updated} tickets atualizados`)
 }
 
 Deno.serve(async (req) => {
   try {
-    // Suporte para método GET (cron) e POST (manual)
-    if (req.method === 'OPTIONS') {
-      return new Response(null, { status: 200 })
-    }
-
     await syncUserNames()
-    return new Response(JSON.stringify({ ok: true, message: 'Nomes de usuarios sincronizados com sucesso' }), {
-      headers: { 'Content-Type': 'application/json' }
-    })
+    return new Response(JSON.stringify({ ok: true }), { headers: { 'Content-Type': 'application/json' } })
   } catch (e) {
-    console.error('[syncUserNames] erro:', e?.message || e)
+    console.error('[syncUserNames] ERRO:', e?.message || e)
     return new Response(JSON.stringify({ error: String(e) }), { status: 500 })
   }
 })
