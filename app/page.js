@@ -1,8 +1,7 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
-import { getSupabaseClient } from '@/lib/supabase/client'
-import { fetchAllTickets } from './lib/tickets-api'
+import { createClient } from '@supabase/supabase-js'
 import { DoughnutChart, LineChart, BarChart } from './components/Charts'
 import {
   processEntity, lastGroupLabel, fmt, calcDaysOverdue,
@@ -52,21 +51,57 @@ function resolutionRate(tickets, days) {
   return { rate: Math.round((resolved.length / inPeriod.length) * 100), resolved: resolved.length, total: inPeriod.length }
 }
 
+const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
 export default function DashboardPage() {
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
   const [lastSync, setLastSync] = useState(null)
+  const [fetchError, setFetchError] = useState(null)
 
   const load = useCallback(async () => {
+    setFetchError(null)
     try {
-      const { tickets } = await fetchAllTickets({ instance: 'PETA,GMX' })
-      setTickets(tickets || [])
+      if (!sbUrl || !sbKey) {
+        setFetchError('Supabase não configurado (verifique variáveis de ambiente)')
+        return
+      }
+      const supabase = createClient(sbUrl, sbKey)
+      const all = []
+      const pageSize = 1000
+      let from = 0
 
-      const sb = getSupabaseClient()
-      if (!sb) return
-      const { data: sync } = await sb.from('sync_control').select('last_sync').order('last_sync', { ascending: false }).limit(1).single()
+      while (true) {
+        const { data, error } = await supabase
+          .from('tickets_cache')
+          .select('*')
+          .in('instance', ['PETA', 'GMX'])
+          .neq('is_deleted', true)
+          .order('date_mod', { ascending: false })
+          .range(from, from + pageSize - 1)
+
+        if (error) { setFetchError(error.message); break }
+        if (!data || data.length === 0) break
+        all.push(...data)
+        if (data.length < pageSize) break
+        from += pageSize
+      }
+
+      setTickets(all)
+
+      const { data: sync } = await supabase
+        .from('sync_control')
+        .select('last_sync')
+        .order('last_sync', { ascending: false })
+        .limit(1)
+        .single()
       if (sync) setLastSync(sync.last_sync)
-    } catch { /* no-op */ } finally { setLoading(false) }
+    } catch (e) {
+      setFetchError(e.message)
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => {
@@ -192,6 +227,12 @@ export default function DashboardPage() {
   if (loading) return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
       <div className="spinner" />
+    </div>
+  )
+
+  if (fetchError) return (
+    <div style={{ padding: '24px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '8px', color: '#dc2626' }}>
+      <strong>Erro ao carregar tickets:</strong> {fetchError}
     </div>
   )
 
