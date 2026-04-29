@@ -72,12 +72,25 @@ export default function DashboardPage() {
       const pageSize = 1000
       let from = 0
 
+      // Limita a 1 ano para evitar timeout; inclui todos os ativos independente da data
+      const oneYearAgo = new Date(Date.now() - 365 * 86400000).toISOString()
+
+      const COLS = [
+        'ticket_id','instance','title','entity','status_id','status_key',
+        'type_id','priority_id','is_sla_late','is_overdue_resolve','due_date',
+        'date_created','date_mod','date_solved','technician','technician_id',
+        'technician_name','requester','requester_id','requester_name',
+        'group_name','root_category','channel_name','request_type',
+        'resolution_duration','waiting_duration','is_deleted',
+      ].join(',')
+
       while (true) {
         const { data, error } = await supabase
           .from('tickets_cache')
-          .select('*')
+          .select(COLS)
           .in('instance', ['PETA', 'GMX'])
           .neq('is_deleted', true)
+          .or(`status_key.not.in.(closed,solved),date_created.gte.${oneYearAgo}`)
           .order('date_mod', { ascending: false })
           .range(from, from + pageSize - 1)
 
