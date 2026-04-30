@@ -23,8 +23,7 @@ export function lastGroupLabel(name) {
       if (Array.isArray(arr)) {
         const filtered = arr
           .filter(v => v && String(v).trim() && !/^(GMX|PETA)$/i.test(String(v).trim()))
-          .sort((a, b) => b.length - a.length)
-        str = String(filtered[0] || arr[0] || '').trim()
+        str = String(filtered[filtered.length - 1] || arr[arr.length - 1] || '').trim()
       }
     } catch { /* not JSON */ }
   }
