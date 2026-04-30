@@ -4,6 +4,10 @@ GET /api/py/analytics?instance=PETA,GMX&days=365
 Returns pre-aggregated dashboard stats computed with Polars server-side.
 The frontend receives ~20 aggregated values instead of thousands of raw rows.
 """
+import sys
+import os
+sys.path.insert(0, os.path.dirname(__file__))
+
 from datetime import datetime, timedelta, date
 
 import polars as pl

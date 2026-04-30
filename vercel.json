@@ -1,6 +1,10 @@
 {
   "functions": {
-    "api/py/*.py": {
+    "api/py/analytics.py": {
+      "runtime": "python3.11",
+      "maxDuration": 30
+    },
+    "api/py/tickets.py": {
       "runtime": "python3.11",
       "maxDuration": 30
     }

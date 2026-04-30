@@ -4,6 +4,10 @@ GET /api/py/tickets?instance=PETA,GMX&status=processing&type_id=1&priority_id=4
 
 Paginated ticket list with server-side Polars filtering.
 """
+import sys
+import os
+sys.path.insert(0, os.path.dirname(__file__))
+
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
