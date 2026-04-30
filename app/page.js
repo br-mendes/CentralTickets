@@ -8,6 +8,9 @@ import {
   build30DayTrend, getStatusConfig, calcHoursAgo, formatWaitTime, formatSeconds,
 } from './lib/utils'
 
+// FastAPI backend URL
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
+
 // Only the columns the dashboard actually needs — avoids over-fetching
 const TICKET_COLS = 'ticket_id,instance,title,status_id,status_key,type_id,priority_id,entity,technician,group_name,request_type,date_created,date_mod,is_sla_late,is_overdue_resolve,due_date,resolution_duration,root_category'
 
@@ -64,69 +67,84 @@ export default function DashboardPage() {
   const load = useCallback(async () => {
     setLoadError(null)
     try {
-      const sb = getSupabaseClient()
-      if (!sb) return
+      // Try FastAPI backend first, fallback to Supabase
+      try {
+        const [ticketsRes, statsRes, trendRes] = await Promise.all([
+          fetch(`${BACKEND_URL}/api/tickets?instances=PETA,GMX&limit=5000`),
+          fetch(`${BACKEND_URL}/api/dashboard/stats`),
+          fetch(`${BACKEND_URL}/api/dashboard/trend`),
+        ])
 
-      // Cutoff for trend + resolution rate (last 30 days)
-      const cutoff = new Date(Date.now() - 30 * 86400000).toISOString()
+        if (ticketsRes.ok && statsRes.ok && trendRes.ok) {
+          const ticketsData = await ticketsRes.json()
+          const statsData = await statsRes.json()
+          const trendData = await trendRes.json()
 
-      // Four queries in parallel:
-      // 1. Active (non-closed/solved) tickets — bulk of dashboard stats
-      // 2. Tickets created in last 30 days — for trend open line + resolution rates
-      // 3. Tickets closed/solved in last 30 days but possibly created earlier — fixes trend close undercount
-      // 4. Last sync timestamp (.maybeSingle avoids 406 on empty table)
-      const [activeRes, recentRes, recentlyClosedRes, syncRes, countRes] = await Promise.all([
-        sb.from('tickets_cache')
-          .select(TICKET_COLS)
-          .in('instance', ['PETA', 'GMX'])
-          .eq('is_deleted', false)
-          .neq('status_key', 'closed')
-          .neq('status_key', 'solved')
-          .order('date_mod', { ascending: false })
-          .range(0, 4999),
-        sb.from('tickets_cache')
-          .select(TICKET_COLS)
-          .in('instance', ['PETA', 'GMX'])
-          .eq('is_deleted', false)
-          .gte('date_created', cutoff)
-          .order('date_created', { ascending: false })
-          .range(0, 1999),
-        sb.from('tickets_cache')
-          .select(TICKET_COLS)
-          .in('instance', ['PETA', 'GMX'])
-          .eq('is_deleted', false)
-          .in('status_key', ['closed', 'solved'])
-          .gte('date_mod', cutoff)
-          .order('date_mod', { ascending: false })
-          .range(0, 1999),
-        sb.from('sync_control')
-          .select('last_sync')
-          .order('last_sync', { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-        // Lightweight query — only 3 columns, all tickets — for accurate instance totals
-        sb.from('tickets_cache')
-          .select('instance,status_id,status_key')
-          .in('instance', ['PETA', 'GMX'])
-          .eq('is_deleted', false)
-          .range(0, 49999),
-      ])
+          setTickets(ticketsData.data || [])
+          setInstanceCounts(ticketsData.data || [])
+          console.log('✅ Dashboard carregado via FastAPI Backend (Polars)', { stats: statsData })
+        } else {
+          throw new Error('Backend API error')
+        }
+      } catch (backendError) {
+        // Fallback to Supabase se backend falhar
+        console.warn('⚠️ Backend indisponível, usando Supabase', backendError)
+        const sb = getSupabaseClient()
+        if (!sb) return
 
-      // Merge all sources, deduplicating by instance+ticket_id
-      const seen = new Set()
-      const merged = []
-      for (const t of [
-        ...(activeRes.data || []),
-        ...(recentRes.data || []),
-        ...(recentlyClosedRes.data || []),
-      ]) {
-        const key = `${t.instance}:${t.ticket_id}`
-        if (!seen.has(key)) { seen.add(key); merged.push(t) }
+        const cutoff = new Date(Date.now() - 30 * 86400000).toISOString()
+
+        const [activeRes, recentRes, recentlyClosedRes, syncRes, countRes] = await Promise.all([
+          sb.from('tickets_cache')
+            .select(TICKET_COLS)
+            .in('instance', ['PETA', 'GMX'])
+            .eq('is_deleted', false)
+            .neq('status_key', 'closed')
+            .neq('status_key', 'solved')
+            .order('date_mod', { ascending: false })
+            .range(0, 4999),
+          sb.from('tickets_cache')
+            .select(TICKET_COLS)
+            .in('instance', ['PETA', 'GMX'])
+            .eq('is_deleted', false)
+            .gte('date_created', cutoff)
+            .order('date_created', { ascending: false })
+            .range(0, 1999),
+          sb.from('tickets_cache')
+            .select(TICKET_COLS)
+            .in('instance', ['PETA', 'GMX'])
+            .eq('is_deleted', false)
+            .in('status_key', ['closed', 'solved'])
+            .gte('date_mod', cutoff)
+            .order('date_mod', { ascending: false })
+            .range(0, 1999),
+          sb.from('sync_control')
+            .select('last_sync')
+            .order('last_sync', { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+          sb.from('tickets_cache')
+            .select('instance,status_id,status_key')
+            .in('instance', ['PETA', 'GMX'])
+            .eq('is_deleted', false)
+            .range(0, 49999),
+        ])
+
+        const seen = new Set()
+        const merged = []
+        for (const t of [
+          ...(activeRes.data || []),
+          ...(recentRes.data || []),
+          ...(recentlyClosedRes.data || []),
+        ]) {
+          const key = `${t.instance}:${t.ticket_id}`
+          if (!seen.has(key)) { seen.add(key); merged.push(t) }
+        }
+
+        setTickets(merged)
+        setInstanceCounts(countRes.data || [])
+        if (syncRes.data) setLastSync(syncRes.data.last_sync)
       }
-
-      setTickets(merged)
-      setInstanceCounts(countRes.data || [])
-      if (syncRes.data) setLastSync(syncRes.data.last_sync)
     } catch (e) {
       console.error('Dashboard load failed', e)
       setLoadError('Falha ao carregar tickets. Verifique a conexão e tente novamente.')
@@ -297,6 +315,22 @@ export default function DashboardPage() {
             <RefreshIcon /> Atualizar
           </button>
         </div>
+      </div>
+
+      {/* FastAPI + Polars Banner */}
+      <div style={{
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        borderRadius: 'var(--radius-lg)',
+        padding: '12px 16px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        color: 'white',
+        fontSize: '0.85rem',
+        fontWeight: 500,
+      }}>
+        <span>⚡</span>
+        <span>Dashboard potencializado por <strong>FastAPI</strong> + <strong>Polars</strong> | Dados processados em tempo real via backend</span>
       </div>
 
        {/* Main stat cards */}
