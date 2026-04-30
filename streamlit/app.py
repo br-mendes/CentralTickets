@@ -131,6 +131,7 @@ def load_tickets(instances: tuple[str, ...]) -> pl.DataFrame:
             .neq("is_deleted", True)
             .or_(f"status_key.not.in.(closed,solved),date_created.gte.{one_year_ago}")
             .order("date_mod", desc=True)
+            .order("ticket_id", desc=True)
             .range(from_row, from_row + PAGE_SIZE - 1)
             .execute()
         )
@@ -175,7 +176,15 @@ def render_sidebar() -> dict:
     st.sidebar.markdown("---")
     st.sidebar.subheader("Filtros")
 
-    status_opts = {"Todos": None, **{v: k for k, v in STATUS_LABELS.items() if k not in ("approval",)}}
+    status_opts = {
+        "Todos": None,
+        "Novo": ["new"],
+        "Em Atendimento": ["processing"],
+        "Pendente": ["pending"],
+        "Solucionado": ["solved"],
+        "Fechado": ["closed"],
+        "Aprovação": ["approval", "pending-approval"],
+    }
     status_sel = st.sidebar.selectbox("Status", list(status_opts.keys()))
 
     type_opts = {"Todos": None, "Incidente": 1, "Requisição": 2}
@@ -223,7 +232,7 @@ def apply_filters(df: pl.DataFrame, filters: dict) -> pl.DataFrame:
         )
 
     if filters["status"]:
-        df = df.filter(pl.col("status_key") == filters["status"])
+        df = df.filter(pl.col("status_key").is_in(filters["status"]))
 
     if filters["type_id"]:
         df = df.filter(pl.col("type_id") == filters["type_id"])
@@ -302,9 +311,9 @@ def chart_trend_30d(df: pl.DataFrame) -> go.Figure:
         )
         closed_df = df.filter(
             pl.col("status_key").is_in(["closed", "solved"]) &
-            pl.col("date_mod").is_not_null() &
-            pl.col("date_mod").is_between(pl.lit(start), pl.lit(end))
-        ) if "date_mod" in df.columns else pl.DataFrame()
+            pl.col("date_solved").is_not_null() &
+            pl.col("date_solved").is_between(pl.lit(start), pl.lit(end))
+        ) if "date_solved" in df.columns else pl.DataFrame()
         closed.append(closed_df.height if not closed_df.is_empty() else 0)
 
     fig = go.Figure()
@@ -494,7 +503,7 @@ def render_reports_tab(df: pl.DataFrame) -> None:
         result = result.filter(pl.col("root_category") == sel_cat)
     if search:
         result = result.filter(
-            pl.col("title").str.contains(search, literal=False) if "title" in result.columns else pl.lit(True)
+            pl.col("title").str.contains(search, literal=True) if "title" in result.columns else pl.lit(True)
         )
 
     st.markdown(f"**{result.height}** tickets encontrados")

@@ -84,6 +84,7 @@ export default function DashboardPage() {
         'resolution_duration','waiting_duration','is_deleted',
       ].join(',')
 
+      let failed = false
       while (true) {
         const { data, error } = await supabase
           .from('tickets_cache')
@@ -95,14 +96,14 @@ export default function DashboardPage() {
           .order('ticket_id', { ascending: false })
           .range(from, from + pageSize - 1)
 
-        if (error) { setFetchError(error.message); break }
+        if (error) { setFetchError(error.message); failed = true; break }
         if (!data || data.length === 0) break
         all.push(...data)
         if (data.length < pageSize) break
         from += pageSize
       }
 
-      setTickets(all)
+      if (!failed) setTickets(all)
 
       const { data: sync } = await supabase
         .from('sync_control')
