@@ -176,10 +176,10 @@ def render_custom_kpi(label: str, value: str | int | float, mini: str | None = N
 def process_entity(entity: str | None) -> str:
     if not entity:
         return "—"
-    cleaned = re.sub(r"^PETA\\s+GRUPO\\s*>\\s*", "", entity, flags=re.IGNORECASE)
-    cleaned = re.sub(r"^GMX\\s+TECNOLOGIA\\s*>\\s*", "", cleaned, flags=re.IGNORECASE)
-    cleaned = re.sub(r"^PETA\\s*>\\s*", "", cleaned, flags=re.IGNORECASE)
-    cleaned = re.sub(r"^GMX\\s*>\\s*", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"^PETA\s+GRUPO\s*>\s*", "", entity, flags=re.IGNORECASE)
+    cleaned = re.sub(r"^GMX\s+TECNOLOGIA\s*>\s*", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"^PETA\s*>\s*", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"^GMX\s*>\s*", "", cleaned, flags=re.IGNORECASE)
     return cleaned.strip() or entity
 
 
@@ -196,8 +196,7 @@ def last_group_label(name: str | None) -> str:
                     v for v in arr
                     if v and str(v).strip() and not re.match(r"^(GMX|PETA)$", str(v).strip(), re.IGNORECASE)
                 ]
-                filtered.sort(key=lambda x: len(str(x)), reverse=True)
-                s = str(filtered[0] if filtered else (arr[0] if arr else "")).strip()
+                s = str(filtered[-1] if filtered else (arr[-1] if arr else "")).strip()
         except Exception:
             pass
 
