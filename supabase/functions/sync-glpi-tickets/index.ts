@@ -188,6 +188,15 @@ serve(async (req) => {
   }
 });
 
+const MONITORED_FIELDS = [
+  'title', 'content', 'entity', 'category', 'technician', 'technician_id',
+  'requester', 'requester_id', 'group_name', 'group_id', 'request_type',
+  'status_id', 'status_key', 'status_name', 'priority_id', 'priority', 'type_id',
+  'urgency', 'impact', 'date_mod', 'date_solved', 'date_close', 'due_date',
+  'is_sla_late', 'is_overdue_first', 'is_overdue_resolve', 'sla_percentage_first',
+  'sla_percentage_resolve', 'solution', 'is_deleted'
+];
+
 async function syncTickets(payload: SyncPayload) {
   if (!payload.instance) {
     return new Response(
@@ -217,7 +226,12 @@ async function syncTickets(payload: SyncPayload) {
     tickets_processed: payload.all_tickets.length,
     tickets_added: 0,
     tickets_updated: 0,
-    changes_detected: [],
+    changes_detected: [] as Array<{
+      ticket_id: number;
+      changed_fields: string[];
+      old_values: Record<string, unknown>;
+      new_values: Record<string, unknown>;
+    }>,
     errors: [],
     details: [
       `🚀 Iniciando sincronização para ${payload.instance}`,
@@ -235,55 +249,93 @@ async function syncTickets(payload: SyncPayload) {
       const normalized = {
         ticket_id: ticket.ticket_id,
         instance: payload.instance,
-        title: ticket.title || null,
-        entity: ticket.entity || null,
-        entity_full: ticket.entity_full || null,
-        entity_id: ticket.entity_id || 0,
-        category: ticket.category || null,
-        category_name: ticket.category_name || null,
-        root_category: ticket.root_category || null,
-        status_id: ticket.status_id || null,
-        status_key: ticket.status_key || null,
-        status_name: ticket.status_name || null,
-        group_name: ticket.group_name || null,
-        group_id: ticket.group_id || 0,
-        date_created: ticket.date_created || null,
-        date_mod: ticket.date_mod || null,
-        due_date: ticket.due_date || null,
-        is_sla_late: ticket.is_sla_late || false,
-        sla_percentage_first: ticket.sla_percentage_first || null,
-        sla_percentage_resolve: ticket.sla_percentage_resolve || null,
+        title: ticket.title ?? null,
+        entity: ticket.entity ?? null,
+        entity_full: ticket.entity_full ?? null,
+        entity_id: ticket.entity_id ?? 0,
+        category: ticket.category ?? null,
+        category_name: ticket.category_name ?? null,
+        root_category: ticket.root_category ?? null,
+        status_id: ticket.status_id ?? null,
+        status_key: ticket.status_key ?? null,
+        status_name: ticket.status_name ?? null,
+        group_name: ticket.group_name ?? null,
+        group_id: ticket.group_id ?? 0,
+        date_created: ticket.date_created ?? null,
+        date_mod: ticket.date_mod ?? null,
+        due_date: ticket.due_date ?? null,
+        is_sla_late: ticket.is_sla_late ?? false,
+        sla_percentage_first: ticket.sla_percentage_first ?? null,
+        sla_percentage_resolve: ticket.sla_percentage_resolve ?? null,
         raw_data: ticket,
         last_sync: new Date().toISOString(),
-        technician: ticket.technician || null,
-        technician_id: ticket.technician_id || 0,
-        priority_id: ticket.priority_id || 1,
-        priority: ticket.priority || "1-Baixa",
-        urgency: ticket.urgency || 3,
-        date_solved: ticket.date_solved || null,
-        type_id: ticket.type_id || 2,
-        solution: ticket.solution || null,
-        content: ticket.content || null,
-        requester: ticket.requester || null,
-        requester_id: ticket.requester_id || 0,
-        impact: ticket.impact || 3,
-        date_close: ticket.date_close || null,
-        is_overdue_first: ticket.is_overdue_first || false,
-        is_overdue_resolve: ticket.is_overdue_resolve || false,
-        request_type: ticket.request_type || null,
-        is_deleted: ticket.is_deleted || false,
+        technician: ticket.technician ?? null,
+        technician_id: ticket.technician_id ?? 0,
+        priority_id: ticket.priority_id ?? 1,
+        priority: ticket.priority ?? "1-Baixa",
+        urgency: ticket.urgency ?? 3,
+        date_solved: ticket.date_solved ?? null,
+        type_id: ticket.type_id ?? 2,
+        solution: ticket.solution ?? null,
+        content: ticket.content ?? null,
+        requester: ticket.requester ?? null,
+        requester_id: ticket.requester_id ?? 0,
+        impact: ticket.impact ?? 3,
+        date_close: ticket.date_close ?? null,
+        is_overdue_first: ticket.is_overdue_first ?? false,
+        is_overdue_resolve: ticket.is_overdue_resolve ?? false,
+        request_type: ticket.request_type ?? null,
+        is_deleted: ticket.is_deleted ?? false,
       };
 
-      const { error } = await supabase
+      const { data: existing, error: fetchError } = await supabase
+        .from("tickets_cache")
+        .select("*")
+        .eq("ticket_id", ticket.ticket_id)
+        .eq("instance", payload.instance)
+        .single();
+
+      let isNew = true;
+      const changedFields: string[] = [];
+      const oldValues: Record<string, unknown> = {};
+      const newValues: Record<string, unknown> = {};
+
+      if (existing) {
+        isNew = false;
+        for (const field of MONITORED_FIELDS) {
+          const oldVal = existing[field];
+          const newVal = normalized[field as keyof typeof normalized];
+          if (JSON.stringify(oldVal) !== JSON.stringify(newVal)) {
+            changedFields.push(field);
+            oldValues[field] = oldVal;
+            newValues[field] = newVal;
+          }
+        }
+      }
+
+      const { error: upsertError } = await supabase
         .from("tickets_cache")
         .upsert([normalized], { onConflict: "ticket_id,instance" });
 
-      if (error) {
-        log.errors.push({ ticket_id: ticket.ticket_id, error: error.message });
-        log.details.push(`❌ Erro #${ticket.ticket_id}: ${error.message}`);
+      if (upsertError) {
+        log.errors.push({ ticket_id: ticket.ticket_id, error: upsertError.message });
+        log.details.push(`❌ Erro #${ticket.ticket_id}: ${upsertError.message}`);
       } else {
-        log.tickets_added++;
-        log.details.push(`✅ Ticket #${ticket.ticket_id}`);
+        if (isNew) {
+          log.tickets_added++;
+          log.details.push(`✅ Novo ticket #${ticket.ticket_id}`);
+        } else if (changedFields.length > 0) {
+          log.tickets_updated++;
+          log.changes_detected.push({
+            ticket_id: ticket.ticket_id,
+            changed_fields: changedFields,
+            old_values: oldValues,
+            new_values: newValues,
+          });
+          log.details.push(`♻️ Ticket #${ticket.ticket_id} atualizado: ${changedFields.join(', ')}`);
+        } else {
+          log.details.push(`⊘ Ticket #${ticket.ticket_id} sem mudanças`);
+        }
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -305,7 +357,7 @@ async function syncTickets(payload: SyncPayload) {
   );
 
   log.details.push(
-    `✨ Concluído: ${log.tickets_added}/${payload.all_tickets.length}, ${log.errors.length} erros`
+    `✨ Concluído: ${log.tickets_added} adicionados, ${log.tickets_updated} atualizados, ${log.errors.length} erros`
   );
 
   return new Response(JSON.stringify(log), {
