@@ -57,5 +57,5 @@ export async function fetchAllTickets(params = {}, maxPages = 10) {
     if (!hasMore || pageData.length === 0) break
   }
 
-  return { data: all, total: all.length }
+  return { tickets: all, total: all.length }
 }

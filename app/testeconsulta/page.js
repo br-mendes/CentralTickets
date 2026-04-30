@@ -14,7 +14,7 @@ export default function TesteConsultaPage() {
     setError(null)
     try {
       const { tickets } = await fetchAllTickets({ instance })
-      setTickets(data || [])
+      setTickets(tickets || [])
     } catch (e) {
       setError(e.message)
     } finally {
@@ -132,7 +132,7 @@ export default function TesteConsultaPage() {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
           <thead>
             <tr style={{ background: '#f8fafc' }}>
-              {['ticket_id', 'instance', 'title', 'requester_name', 'entity_name', 'group_name', 'channel_name', 'solution_content', 'priority', 'urgency', 'status_key'].map(h => (
+              {['ticket_id', 'instance', 'title', 'requester_fullname', 'entity', 'group_name', 'request_type', 'priority_id', 'urgency', 'status_key'].map(h => (
                 <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, borderBottom: '2px solid #e2e8f0' }}>{h}</th>
               ))}
             </tr>
@@ -143,15 +143,14 @@ export default function TesteConsultaPage() {
                 <td style={{ padding: '8px 12px', borderBottom: '1px solid #e2e8f0' }}>#{t.ticket_id}</td>
                 <td style={{ padding: '8px 12px', borderBottom: '1px solid #e2e8f0' }}>{t.instance}</td>
                 <td style={{ padding: '8px 12px', borderBottom: '1px solid #e2e8f0', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.title}</td>
-                <td style={{ padding: '8px 12px', borderBottom: '1px solid #e2e8f0' }}>{t.requester_name || t.requester || '—'}</td>
-                <td style={{ padding: '8px 12px', borderBottom: '1px solid #e2e8f0' }}>{t.entity_name || t.entity || '—'}</td>
+                <td style={{ padding: '8px 12px', borderBottom: '1px solid #e2e8f0' }}>{t.requester_fullname || t.requester || '—'}</td>
+                <td style={{ padding: '8px 12px', borderBottom: '1px solid #e2e8f0' }}>{t.entity || '—'}</td>
                 <td style={{ padding: '8px 12px', borderBottom: '1px solid #e2e8f0' }}>{t.group_name || '—'}</td>
-                <td style={{ padding: '8px 12px', borderBottom: '1px solid #e2e8f0' }}>{t.channel_name || '—'}</td>
-                <td style={{ padding: '8px 12px', borderBottom: '1px solid #e2e8f0', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.solution_content?.substring(0, 50) || '—'}</td>
-                <td style={{ padding: '8px 12px', borderBottom: '1px solid #e2e8f0' }}>{t.priority || '—'}</td>
-                <td style={{ padding: '8px 12px', borderBottom: '1px solid #e2e8f0' }}>{t.urgency}</td>
+                <td style={{ padding: '8px 12px', borderBottom: '1px solid #e2e8f0' }}>{t.request_type || '—'}</td>
+                <td style={{ padding: '8px 12px', borderBottom: '1px solid #e2e8f0' }}>{t.priority_id ?? '—'}</td>
+                <td style={{ padding: '8px 12px', borderBottom: '1px solid #e2e8f0' }}>{t.urgency ?? '—'}</td>
                 <td style={{ padding: '8px 12px', borderBottom: '1px solid #e2e8f0' }}>
-                  <span className={`status-badge ${t.status_key}`}>{t.status_name || t.status_key}</span>
+                  <span className={`status-badge ${t.status_key}`}>{t.status_key}</span>
                 </td>
               </tr>
             ))}

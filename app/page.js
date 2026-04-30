@@ -1,8 +1,7 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
-import { getSupabaseClient } from '@/lib/supabase/client'
-import { fetchAllTickets } from './lib/tickets-api'
+import { createClient } from '@supabase/supabase-js'
 import { DoughnutChart, LineChart, BarChart } from './components/Charts'
 import {
   processEntity, lastGroupLabel, fmt, calcDaysOverdue,
@@ -52,21 +51,72 @@ function resolutionRate(tickets, days) {
   return { rate: Math.round((resolved.length / inPeriod.length) * 100), resolved: resolved.length, total: inPeriod.length }
 }
 
+const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
 export default function DashboardPage() {
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
   const [lastSync, setLastSync] = useState(null)
+  const [fetchError, setFetchError] = useState(null)
 
   const load = useCallback(async () => {
+    setFetchError(null)
     try {
-      const { tickets } = await fetchAllTickets({ instance: 'PETA,GMX' })
-      setTickets(tickets || [])
+      if (!sbUrl || !sbKey) {
+        setFetchError('Supabase não configurado (verifique variáveis de ambiente)')
+        return
+      }
+      const supabase = createClient(sbUrl, sbKey)
+      const all = []
+      const pageSize = 1000
+      let from = 0
 
-      const sb = getSupabaseClient()
-      if (!sb) return
-      const { data: sync } = await sb.from('sync_control').select('last_sync').order('last_sync', { ascending: false }).limit(1).single()
+      // Limita a 1 ano para evitar timeout; inclui todos os ativos independente da data
+      const oneYearAgo = new Date(Date.now() - 365 * 86400000).toISOString()
+
+      const COLS = [
+        'ticket_id','instance','title','entity','status_id','status_key',
+        'type_id','priority_id','is_sla_late','is_overdue_resolve','due_date',
+        'date_created','date_mod','date_solved','technician','technician_id',
+        'requester','requester_id','requester_fullname',
+        'group_name','root_category','request_type',
+        'resolution_duration','waiting_duration','is_deleted',
+      ].join(',')
+
+      let failed = false
+      while (true) {
+        const { data, error } = await supabase
+          .from('tickets_cache')
+          .select(COLS)
+          .in('instance', ['PETA', 'GMX'])
+          .neq('is_deleted', true)
+          .or(`status_key.not.in.(closed,solved),date_created.gte.${oneYearAgo}`)
+          .order('date_mod', { ascending: false })
+          .order('ticket_id', { ascending: false })
+          .range(from, from + pageSize - 1)
+
+        if (error) { setFetchError(error.message); failed = true; break }
+        if (!data || data.length === 0) break
+        all.push(...data)
+        if (data.length < pageSize) break
+        from += pageSize
+      }
+
+      if (!failed) setTickets(all)
+
+      const { data: sync } = await supabase
+        .from('sync_control')
+        .select('last_sync')
+        .order('last_sync', { ascending: false })
+        .limit(1)
+        .single()
       if (sync) setLastSync(sync.last_sync)
-    } catch { /* no-op */ } finally { setLoading(false) }
+    } catch (e) {
+      setFetchError(e.message)
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => {
@@ -117,8 +167,7 @@ export default function DashboardPage() {
   // Técnico (top 10 — ranked list)
   const techMap = {}
   for (const t of tickets) {
-      const tech = t.technician_name || t.technician || '—'
-      const requester = t.requester_name || t.requester || '—'
+      const tech = t.technician || '—'
     if (!techMap[tech]) techMap[tech] = 0
     techMap[tech]++
   }
@@ -160,7 +209,7 @@ export default function DashboardPage() {
   // Canal de requisição (request_type)
   const reqTypeMap = {}
   for (const t of tickets) {
-    const rt = t.channel_name || t.request_type || 'Não informado'
+    const rt = t.request_type || 'Não informado'
     reqTypeMap[rt] = (reqTypeMap[rt] || 0) + 1
   }
   const reqTypeRows = Object.entries(reqTypeMap).sort((a, b) => b[1] - a[1]).slice(0, 8)
@@ -195,8 +244,26 @@ export default function DashboardPage() {
     </div>
   )
 
+  if (fetchError && tickets.length === 0) return (
+    <div style={{ padding: '24px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '8px', color: '#dc2626', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+      <span><strong>Erro ao carregar tickets:</strong> {fetchError}</span>
+      <button onClick={load} style={{ padding: '6px 14px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', flexShrink: 0 }}>
+        Tentar novamente
+      </button>
+    </div>
+  )
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+      {fetchError && (
+        <div style={{ padding: '12px 16px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '8px', color: '#dc2626', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+          <span><strong>Erro ao atualizar:</strong> {fetchError}</span>
+          <button onClick={load} style={{ padding: '4px 12px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', flexShrink: 0 }}>
+            Tentar novamente
+          </button>
+        </div>
+      )}
 
       {/* Page title */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '8px' }}>
@@ -302,7 +369,7 @@ export default function DashboardPage() {
              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
                <thead>
                  <tr>
-                   {['ID', 'Título', 'Entidade', 'Status', 'Técnico', 'Atraso'].map(h => (
+                   {['ID', 'Título', 'Entidade', 'Status', 'Solicitante', 'Técnico', 'Atraso'].map(h => (
                      <th key={h} style={thStyle}>{h}</th>
                    ))}
                  </tr>
@@ -318,8 +385,8 @@ export default function DashboardPage() {
                          {getStatusConfig(t.status_id, t.status_key).label}
                        </span>
                      </td>
-                     <td style={thTd}>{t.requester_name || t.requester || <em style={{ color: 'var(--text-muted)' }}>Sem solicitante</em>}</td>
-                     <td style={thTd}>{t.technician_name || t.technician || <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em>}</td>
+                     <td style={thTd}>{t.requester_fullname || t.requester || <em style={{ color: 'var(--text-muted)' }}>Sem solicitante</em>}</td>
+                     <td style={thTd}>{t.technician || <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em>}</td>
                      <td style={{ ...thTd, color: '#dc2626', fontWeight: 700 }}>
                        {t.daysOverdue > 0 ? `${t.daysOverdue}d atraso` : '< 1d'}
                      </td>
