@@ -1,5 +1,5 @@
 // app/glpi/[source]/tickets/page.js
-import config from '@/lib/config'
+import config from '../../../../lib/config'
 
 // Marcar como página dinâmica (forçar renderização no servidor)
 export const dynamic = 'force-dynamic'

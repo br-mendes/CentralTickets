@@ -1,4 +1,4 @@
-import { getSupabaseServerClient } from '@/lib/supabase/server'
+import { getSupabaseServerClient } from '../../../lib/supabase/server'
 import Link from 'next/link'
 import StatusBadge from '../../components/StatusBadge'
 import InstanceBadge from '../../components/InstanceBadge'

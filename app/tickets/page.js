@@ -126,7 +126,8 @@ function TicketsContent() {
     if (fUrgency && String(t.urgency) !== fUrgency) return false
     if (search) {
       const s = search.toLowerCase()
-      if (!String(t.ticket_id).includes(s) && !(t.title || '').toLowerCase().includes(s) && !processEntity(t.entity).toLowerCase().includes(s) && !(t.requester || '').toLowerCase().includes(s)) return false
+      const req = (t.requester_name || t.requester || '').toLowerCase()
+      if (!String(t.ticket_id).includes(s) && !(t.title || '').toLowerCase().includes(s) && !processEntity(t.entity).toLowerCase().includes(s) && !req.includes(s)) return false
     }
     return true
   })

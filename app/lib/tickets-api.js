@@ -1,26 +1,31 @@
-const DEFAULT_LIMIT = 1000
-const DEFAULT_INSTANCE = 'PETA'
+const DEFAULT_PAGE_SIZE = 200
+const DEFAULT_INSTANCE = 'PETA,GMX'
 
 export async function fetchTicketsPage(params = {}) {
   const {
     instance = DEFAULT_INSTANCE,
     statuses = '',
     typeId = null,
+    dateField = '',
+    fromDate = '',
+    toDate = '',
     includeDeleted = false,
-    cursor = null,
-    limit = DEFAULT_LIMIT,
+    start = 0,
+    end = start + DEFAULT_PAGE_SIZE - 1,
   } = params
 
   const query = new URLSearchParams({
-    instance,
-    limit: String(Math.min(1000, Math.max(1, limit))),
+    start: String(start),
+    end: String(end),
   })
 
+  if (instance) query.set('instance', instance)
   if (statuses) query.set('statuses', statuses)
   if (typeId !== null && typeId !== undefined) query.set('typeId', String(typeId))
+  if (dateField) query.set('dateField', dateField)
+  if (fromDate) query.set('fromDate', fromDate)
+  if (toDate) query.set('toDate', toDate)
   if (includeDeleted) query.set('includeDeleted', 'true')
-  if (cursor?.date_mod) query.set('cursorDate', cursor.date_mod)
-  if (cursor?.ticket_id) query.set('cursorId', String(cursor.ticket_id))
 
   const response = await fetch(`/api/tickets?${query.toString()}`)
   const payload = await response.json()
@@ -29,33 +34,35 @@ export async function fetchTicketsPage(params = {}) {
     throw new Error(payload?.error || 'Falha ao buscar tickets')
   }
 
-  return {
-    tickets: payload.tickets || [],
-    nextCursor: payload.nextCursor,
-    hasMore: payload.hasMore,
-  }
+  return payload
 }
 
-export async function fetchAllTickets(params = {}, maxPages = 10) {
-  let hasMore = true
-  const all = []
-  let pageCount = 0
-  let nextCursor = null
+export async function fetchAllTickets(params = {}, pageSize = 500) {
+  const first = await fetchTicketsPage({ ...params, start: 0, end: pageSize - 1 })
+  const firstData = first?.data || []
+  const total = first?.pagination?.total || firstData.length
 
-  while (hasMore && pageCount < maxPages) {
-    const result = await fetchTicketsPage({
-      ...params,
-      cursor: nextCursor,
-    })
-
-    const pageData = result.tickets || []
-    all.push(...pageData)
-    hasMore = result.hasMore && pageData.length > 0
-    nextCursor = result.nextCursor
-    pageCount++
-
-    if (!hasMore || pageData.length === 0) break
+  if (!first?.pagination?.hasMore) {
+    return { data: firstData, total }
   }
 
-  return { tickets: all, total: all.length }
+  const pageStarts = []
+  for (let s = pageSize; s < total; s += pageSize) pageStarts.push(s)
+
+  // Fetch remaining pages in bounded batches (6 concurrent) to avoid
+  // overwhelming the API route's connection pool on large datasets.
+  const BATCH = 6
+  const pages = []
+  for (let i = 0; i < pageStarts.length; i += BATCH) {
+    const chunk = pageStarts.slice(i, i + BATCH)
+    const results = await Promise.all(
+      chunk.map(s => fetchTicketsPage({ ...params, start: s, end: s + pageSize - 1 }))
+    )
+    pages.push(...results)
+  }
+
+  return {
+    data: [firstData, ...pages.map(p => p?.data || [])].flat(),
+    total,
+  }
 }
