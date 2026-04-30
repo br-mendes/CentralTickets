@@ -224,11 +224,34 @@ def analytics(
             .to_dicts()
         )
 
+    # ── Approval tickets (top 5 for dashboard preview) ───────────────
+    approval_tickets = []
+    if "status_key" in df.columns:
+        appr_df = (
+            df.filter(pl.col("status_key").is_in(["approval", "pending-approval"]))
+            .with_columns(
+                pl.col("entity").map_elements(process_entity, return_dtype=pl.Utf8).alias("entity_clean")
+            )
+            .select([c for c in ["ticket_id", "instance", "title", "entity_clean"] if c in df.columns])
+            .head(5)
+        )
+        approval_tickets = appr_df.to_dicts()
+
+    # ── Last sync ─────────────────────────────────────────────────────
+    last_sync = None
+    try:
+        sync_resp = sb.table("sync_control").select("last_sync").order("last_sync", desc=True).limit(1).execute()
+        if sync_resp.data:
+            last_sync = sync_resp.data[0]["last_sync"]
+    except Exception:
+        pass
+
     # ── Build response ────────────────────────────────────────────────
     return {
         "total": total,
         "instances": instances,
         "generated_at": datetime.now().isoformat(),
+        "last_sync": last_sync,
         "kpis": {
             "total": total,
             "incidents": incidents,
@@ -264,6 +287,7 @@ def analytics(
         "resolution_rate_30d": _resolution_rate(df, 30),
         "sla_critical": _sla_critical(df, top=8),
         "sla_total": sla_late,
+        "approval_tickets": approval_tickets,
     }
 
 
