@@ -76,7 +76,7 @@ def fetch_tickets(instances: list[str], days: int = ONE_YEAR_DAYS) -> pl.DataFra
     for col in ("date_created", "date_mod", "date_solved", "due_date"):
         if col in df.columns:
             df = df.with_columns(
-                pl.col(col).str.to_datetime(format=None, strict=False, use_earliest=True)
+                pl.col(col).str.to_datetime(format=None, strict=False)
             )
     for col in ("ticket_id", "status_id", "type_id", "priority_id", "urgency",
                 "resolution_duration", "waiting_duration"):
