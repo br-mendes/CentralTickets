@@ -84,7 +84,7 @@ def fetch_tickets(
     for col in ("date_created", "date_mod", "date_solved", "due_date"):
         if col in df.columns:
             df = df.with_columns(
-                pl.col(col).str.to_datetime(format=None, strict=False)
+                pl.col(col).str.to_datetime(format=None, strict=False, ambiguous="earliest")
             )
     for col in ("ticket_id", "status_id", "type_id", "priority_id", "urgency",
                 "resolution_duration", "waiting_duration"):
