@@ -43,12 +43,16 @@ def get_supabase() -> Client:
     return create_client(url, key)
 
 
-def fetch_tickets(instances: list[str], days: int = ONE_YEAR_DAYS, max_pages: int = 25) -> pl.DataFrame:
+def fetch_tickets(
+    instances: list[str], days: int = ONE_YEAR_DAYS, max_pages: int = 25
+) -> tuple[pl.DataFrame, bool]:
+    """Return (df, truncated). truncated=True when the page cap was hit."""
     sb = get_supabase()
     one_year_ago = (datetime.now() - timedelta(days=days)).isoformat()
     rows: list[dict] = []
     from_row = 0
     pages_read = 0
+    truncated = False
 
     while pages_read < max_pages:
         resp = (
@@ -69,9 +73,11 @@ def fetch_tickets(instances: list[str], days: int = ONE_YEAR_DAYS, max_pages: in
         if len(resp.data) < PAGE_SIZE:
             break
         from_row += PAGE_SIZE
+    else:
+        truncated = True
 
     if not rows:
-        return pl.DataFrame()
+        return pl.DataFrame(), truncated
 
     df = pl.DataFrame(rows, infer_schema_length=500)
 
@@ -85,7 +91,7 @@ def fetch_tickets(instances: list[str], days: int = ONE_YEAR_DAYS, max_pages: in
         if col in df.columns:
             df = df.with_columns(pl.col(col).cast(pl.Int64, strict=False))
 
-    return df
+    return df, truncated
 
 
 def process_entity(entity: str | None) -> str:

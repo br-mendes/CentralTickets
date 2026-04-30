@@ -160,11 +160,11 @@ def sla_analytics(
     if not instances or any(i not in {"PETA", "GMX"} for i in instances):
         raise HTTPException(status_code=400, detail="instance inválido. Use PETA, GMX ou PETA,GMX")
 
-    df = fetch_tickets(instances, days)
+    df, data_truncated = fetch_tickets(instances, days)
 
     if df.is_empty():
         return {
-            "instances": instances, "days": days,
+            "instances": instances, "days": days, "data_truncated": False,
             "summary": {"total": 0, "late": 0, "compliance_pct": 100.0},
             "by_entity": [], "by_technician": [], "by_month": [],
             "mttr": {}, "open_late": [],
@@ -186,6 +186,7 @@ def sla_analytics(
         "instances": instances,
         "days": days,
         "generated_at": datetime.now().isoformat(),
+        "data_truncated": data_truncated,
         "summary": {
             "total": total,
             "late": late,

@@ -49,10 +49,10 @@ def get_tickets(
     if not instances or any(i not in valid for i in instances):
         raise HTTPException(status_code=400, detail="instance inválido. Use PETA, GMX ou PETA,GMX")
 
-    df = fetch_tickets(instances, days)
+    df, data_truncated = fetch_tickets(instances, days)
 
     if df.is_empty():
-        return {"tickets": [], "total": 0, "page": page, "page_size": page_size, "pages": 0}
+        return {"tickets": [], "total": 0, "page": page, "page_size": page_size, "pages": 0, "data_truncated": False}
 
     # ── Filters ───────────────────────────────────────────────────────
     if status and "status_key" in df.columns:
@@ -123,6 +123,7 @@ def get_tickets(
         "page": page,
         "page_size": page_size,
         "pages": pages,
+        "data_truncated": data_truncated,
     }
 
 

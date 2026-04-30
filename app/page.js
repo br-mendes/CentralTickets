@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { DoughnutChart, LineChart, BarChart } from './components/Charts'
 import { fmt, formatWaitTime } from './lib/utils'
@@ -38,8 +38,10 @@ export default function DashboardPage() {
   const [analytics, setAnalytics] = useState(null)
   const [loading, setLoading]     = useState(true)
   const [fetchError, setFetchError] = useState(null)
+  const loadSeq = useRef(0)
 
   const load = useCallback(async () => {
+    const seq = ++loadSeq.current
     setFetchError(null)
     try {
       const res = await fetch('/api/py/analytics?instance=PETA,GMX')
@@ -47,11 +49,12 @@ export default function DashboardPage() {
         const err = await res.json().catch(() => ({}))
         throw new Error(err?.detail || `HTTP ${res.status}`)
       }
-      setAnalytics(await res.json())
+      const data = await res.json()
+      if (seq === loadSeq.current) setAnalytics(data)
     } catch (e) {
-      setFetchError(e.message)
+      if (seq === loadSeq.current) setFetchError(e.message)
     } finally {
-      setLoading(false)
+      if (seq === loadSeq.current) setLoading(false)
     }
   }, [])
 

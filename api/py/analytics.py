@@ -142,17 +142,26 @@ def analytics(
     if not instances or any(i not in valid for i in instances):
         raise HTTPException(status_code=400, detail="instance inválido. Use PETA, GMX ou PETA,GMX")
 
-    df = fetch_tickets(instances, days)
+    df, data_truncated = fetch_tickets(instances, days)
 
     if df.is_empty():
         return {
             "total": 0, "instances": instances, "generated_at": datetime.now().isoformat(),
-            "kpis": {}, "by_status": [], "by_type": [], "by_priority": [],
+            "last_sync": None, "data_truncated": data_truncated,
+            "kpis": {
+                "total": 0, "incidents": 0, "requests": 0,
+                "new": 0, "processing": 0, "pending": 0, "approval": 0,
+                "solved": 0, "closed": 0, "sla_late": 0, "sla_late_active": 0,
+                "avg_resolution": "—", "avg_pending_hours": 0,
+            },
+            "by_status": [], "by_type": [], "by_priority": [],
             "by_entity": [], "by_technician": [], "by_category": [],
-            "by_group": [], "by_request_type": [], "trend_30d": {},
-            "resolution_rate_7d": {}, "resolution_rate_30d": {},
-            "sla_critical": [], "sla_total": 0, "avg_resolution": "—",
-            "avg_pending_hours": 0, "instance_breakdown": {},
+            "by_group": [], "by_request_type": [],
+            "trend_30d": {"labels": [], "opened": [], "closed": []},
+            "resolution_rate_7d": {"rate": 0, "resolved": 0, "total": 0},
+            "resolution_rate_30d": {"rate": 0, "resolved": 0, "total": 0},
+            "sla_critical": [], "sla_total": 0,
+            "approval_tickets": [], "instance_breakdown": {},
         }
 
     # ── KPIs ─────────────────────────────────────────────────────────
@@ -256,6 +265,7 @@ def analytics(
         "instances": instances,
         "generated_at": datetime.now().isoformat(),
         "last_sync": last_sync,
+        "data_truncated": data_truncated,
         "kpis": {
             "total": total,
             "incidents": incidents,
