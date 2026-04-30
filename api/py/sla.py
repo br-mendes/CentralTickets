@@ -128,9 +128,9 @@ def _open_late(df: pl.DataFrame, top: int = 20) -> list[dict]:
         )
         .with_columns([
             pl.col("entity").map_elements(process_entity, return_dtype=pl.Utf8).alias("entity_clean"),
-            pl.col("status_key").replace(STATUS_LABELS, default="—").alias("status_label"),
+            pl.col("status_key").replace(list(STATUS_LABELS.keys()), list(STATUS_LABELS.values()), default="—").alias("status_label"),
             pl.col("priority_id").cast(pl.Utf8).replace(
-                {str(k): v for k, v in PRIORITY_LABELS.items()}, default="—"
+                [str(k) for k in PRIORITY_LABELS.keys()], list(PRIORITY_LABELS.values()), default="—"
             ).alias("priority_label"),
         ])
     )
