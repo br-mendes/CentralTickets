@@ -118,7 +118,7 @@ def _open_late(df: pl.DataFrame, top: int = 20) -> list[dict]:
             return 0
         try:
             return max(0, (now - dt.replace(tzinfo=None)).days)
-        except Exception:
+        except (AttributeError, TypeError, ValueError):
             return 0
 
     sla = (

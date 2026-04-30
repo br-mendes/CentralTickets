@@ -16,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
 
 from _utils import (
-    fetch_tickets, process_entity, last_group_label, fmt_duration,
+    fetch_tickets, get_supabase, process_entity, last_group_label, fmt_duration,
     PRIORITY_LABELS, STATUS_LABELS, TYPE_LABELS,
 )
 
@@ -237,9 +237,13 @@ def analytics(
         )
         approval_tickets = appr_df.to_dicts()
 
+    # ── SLA critical (compute once, reuse for count and preview) ─────
+    _sla_critical_all = _sla_critical(df, top=999)
+
     # ── Last sync ─────────────────────────────────────────────────────
     last_sync = None
     try:
+        sb = get_supabase()
         sync_resp = sb.table("sync_control").select("last_sync").order("last_sync", desc=True).limit(1).execute()
         if sync_resp.data:
             last_sync = sync_resp.data[0]["last_sync"]
@@ -263,7 +267,7 @@ def analytics(
             "solved": status_map.get("solved", 0),
             "closed": status_map.get("closed", 0),
             "sla_late": sla_late,
-            "sla_late_active": len(_sla_critical(df, top=999)),
+            "sla_late_active": len(_sla_critical_all),
             "avg_resolution": fmt_duration(avg_resolution_sec),
             "avg_pending_hours": avg_pending_hours,
         },
@@ -285,7 +289,7 @@ def analytics(
         "trend_30d": _trend_30d(df),
         "resolution_rate_7d": _resolution_rate(df, 7),
         "resolution_rate_30d": _resolution_rate(df, 30),
-        "sla_critical": _sla_critical(df, top=8),
+        "sla_critical": _sla_critical_all[:8],
         "sla_total": sla_late,
         "approval_tickets": approval_tickets,
     }

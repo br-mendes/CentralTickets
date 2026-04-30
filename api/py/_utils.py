@@ -43,13 +43,14 @@ def get_supabase() -> Client:
     return create_client(url, key)
 
 
-def fetch_tickets(instances: list[str], days: int = ONE_YEAR_DAYS) -> pl.DataFrame:
+def fetch_tickets(instances: list[str], days: int = ONE_YEAR_DAYS, max_pages: int = 25) -> pl.DataFrame:
     sb = get_supabase()
     one_year_ago = (datetime.now() - timedelta(days=days)).isoformat()
     rows: list[dict] = []
     from_row = 0
+    pages_read = 0
 
-    while True:
+    while pages_read < max_pages:
         resp = (
             sb.table("tickets_cache")
             .select(",".join(COLS))
@@ -61,6 +62,7 @@ def fetch_tickets(instances: list[str], days: int = ONE_YEAR_DAYS) -> pl.DataFra
             .range(from_row, from_row + PAGE_SIZE - 1)
             .execute()
         )
+        pages_read += 1
         if not resp.data:
             break
         rows.extend(resp.data)

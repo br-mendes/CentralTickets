@@ -94,7 +94,7 @@ def get_tickets(
         )
 
     total = df.height
-    pages = max(1, math.ceil(total / page_size))
+    pages = math.ceil(total / page_size) if total > 0 else 0
     offset = (page - 1) * page_size
 
     page_df = (

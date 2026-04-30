@@ -241,7 +241,7 @@ export default function DashboardPage() {
                     <td style={{ ...thTd, maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.title || '—'}</td>
                     <td style={{ ...thTd, maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.entity_clean || '—'}</td>
                     <td style={thTd}>
-                      <span className={`status-badge ${t.status_key || ''}`}>{t.status_label || t.status_key || '—'}</span>
+                      <span className="status-badge">{t.status_label || '—'}</span>
                     </td>
                     <td style={thTd}>{t.requester_fullname || <em style={{ color: 'var(--text-muted)' }}>Sem solicitante</em>}</td>
                     <td style={thTd}>{t.technician     || <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em>}</td>
