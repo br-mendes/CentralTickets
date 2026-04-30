@@ -44,7 +44,7 @@ function IncidentesContent() {
          statuses: ACTIVE_STATUSES,
        })
 
-      const data = (result?.data || []).sort((a, b) => {
+      const data = (result?.tickets || []).sort((a, b) => {
         const urgencyDiff = (b.urgency || 0) - (a.urgency || 0)
         if (urgencyDiff !== 0) return urgencyDiff
         return new Date(b.date_mod || 0).getTime() - new Date(a.date_mod || 0).getTime()
@@ -225,7 +225,7 @@ ALTER TABLE tickets_cache ADD COLUMN IF NOT EXISTS priority_id INTEGER DEFAULT 3
                       {lastGroupLabel(t.group_name) !== '—' ? lastGroupLabel(t.group_name) : <em style={{ color: 'var(--text-muted)' }}>Sem grupo</em>}
                     </td>
                     <td className="col-technician" style={{ padding: '9px 12px', color: 'var(--text-secondary)' }}>
-                      {t.technician || <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em>}
+                      {t.technician_name || t.technician || <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em>}
                     </td>
                     <td style={{ padding: '9px 12px', color: 'var(--text-secondary)' }}>
                       {t.requester_name || t.requester || <em style={{ color: 'var(--text-muted)' }}>—</em>}

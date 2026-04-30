@@ -7,9 +7,9 @@ import StatusBadge from '../components/StatusBadge'
 import InstanceBadge from '../components/InstanceBadge'
 import SLABadge from '../components/SLABadge'
 
-const PAGE_SIZE = 200
+const PAGE_SIZE = 1000
 const OPEN_STATUSES = 'new,processing,pending,pending-approval'
-const ALL_INSTANCES = 'PETA,GMX'
+const ALL_INSTANCES = 'PETA'
 
 const sel = {
   padding: '7px 10px',
@@ -28,7 +28,7 @@ function TicketsContent() {
   const [error, setError] = useState(null)
   const [lastUpdate, setLastUpdate] = useState(null)
   const [hasMore, setHasMore] = useState(false)
-  const [nextStart, setNextStart] = useState(0)
+  const [nextCursor, setNextCursor] = useState(null)
   const [totalTickets, setTotalTickets] = useState(0)
   const hasData = useRef(false)
 
@@ -42,26 +42,29 @@ function TicketsContent() {
 
   const instanceFilter = fInstance ? fInstance.toUpperCase() : ALL_INSTANCES
 
+  // Fix: Ensure single instance only (PETA or GMX, not both)
+  const safeInstance = instanceFilter.includes(',') ? instanceFilter.split(',')[0].trim() : instanceFilter
+
   const load = useCallback(async (reset = true) => {
     if (!hasData.current || reset) setLoading(true)
     setError(null)
     try {
       const result = await fetchTicketsPage({
-        instance: instanceFilter,
+        instance: safeInstance,
         statuses: OPEN_STATUSES,
-        start: 0,
-        end: PAGE_SIZE - 1,
+        cursor: null,
+        limit: PAGE_SIZE,
       })
-      const data = result?.data || []
-      const pagination = result?.pagination || {}
+      const tickets = result?.tickets || []
 
-      setTickets(data)
-      setHasMore(Boolean(pagination.hasMore))
-      setNextStart(pagination.nextStart || data.length)
-      setTotalTickets(pagination.total || data.length)
+      setTickets(tickets)
+      setHasMore(result.hasMore)
+      setNextCursor(result.nextCursor)
+      setTotalTickets(tickets.length)
       hasData.current = true
       setLastUpdate(new Date())
-      const techs = [...new Set(data.map(t => t.technician).filter(Boolean))].sort()
+      const techs = [...new Set(tickets.map(t => t.technician).filter(Boolean))].sort()
+      const requesters = [...new Set(tickets.map(t => t.requester_name || t.requester).filter(Boolean))].sort()
       setAvailableTechnicians(techs)
     } catch (e) { setError(e.message) }
     finally { setLoading(false) }
@@ -75,14 +78,13 @@ function TicketsContent() {
 
     try {
       const result = await fetchTicketsPage({
-        instance: instanceFilter,
+        instance: safeInstance,
         statuses: OPEN_STATUSES,
-        start: nextStart,
-        end: nextStart + PAGE_SIZE - 1,
+        cursor: nextCursor,
+        limit: PAGE_SIZE,
       })
 
-      const pageData = result?.data || []
-      const pagination = result?.pagination || {}
+      const pageData = result?.tickets || []
 
       setTickets(prev => {
         const map = new Map(prev.map(t => [`${t.ticket_id}-${t.instance}`, t]))
@@ -93,15 +95,15 @@ function TicketsContent() {
         return merged
       })
 
-      setHasMore(Boolean(pagination.hasMore))
-      setNextStart(pagination.nextStart || (nextStart + pageData.length))
-      setTotalTickets(pagination.total || totalTickets)
+      setHasMore(result.hasMore)
+      setNextCursor(result.nextCursor)
+      setTotalTickets(totalTickets + pageData.length)
     } catch (e) {
       setError(e.message)
     } finally {
       setLoadingMore(false)
     }
-  }, [hasMore, instanceFilter, loadingMore, nextStart, setAvailableTechnicians, totalTickets])
+  }, [hasMore, instanceFilter, loadingMore, nextCursor, setAvailableTechnicians, totalTickets])
 
   useEffect(() => {
     load(true)
@@ -275,7 +277,7 @@ function TicketsContent() {
                         {lastGroupLabel(t.group_name) !== '—' ? lastGroupLabel(t.group_name) : <em style={{ color: 'var(--text-muted)' }}>Sem grupo</em>}
                       </td>
                       <td className="col-technician" style={{ padding: '9px 12px', color: 'var(--text-secondary)' }}>
-                        {t.technician || <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em>}
+                        {t.technician_name || t.technician || <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em>}
                       </td>
                       <td style={{ padding: '9px 12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>{fmt(t.date_created)}</td>
                       <td style={{ padding: '9px 12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>{formatWaitTime(calcHoursAgo(t.date_mod))}</td>
