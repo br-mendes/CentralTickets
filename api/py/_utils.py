@@ -113,11 +113,11 @@ def last_group_label(name: str | None) -> str:
             arr = json.loads(s)
             if isinstance(arr, list):
                 filtered = [
-                    v for v in arr
+                    str(v).strip()
+                    for v in arr
                     if v and str(v).strip() and not re.match(r"^(GMX|PETA)$", str(v).strip(), re.IGNORECASE)
                 ]
-                filtered.sort(key=len, reverse=True)
-                s = str(filtered[0] if filtered else (arr[0] if arr else "")).strip()
+                s = filtered[-1] if filtered else str(arr[-1] if arr else "").strip()
         except Exception:
             pass
     if not s or s == "Não atribuído":

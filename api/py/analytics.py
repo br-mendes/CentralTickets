@@ -241,9 +241,10 @@ def analytics(
             .with_columns(
                 pl.col("entity").map_elements(process_entity, return_dtype=pl.Utf8).alias("entity_clean")
             )
-            .select([c for c in ["ticket_id", "instance", "title", "entity_clean"] if c in df.columns])
-            .head(5)
         )
+        appr_df = appr_df.select(
+            [c for c in ["ticket_id", "instance", "title", "entity_clean"] if c in appr_df.columns]
+        ).head(5)
         approval_tickets = appr_df.to_dicts()
 
     # ── SLA critical (compute once, reuse for count and preview) ─────

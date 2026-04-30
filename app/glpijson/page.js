@@ -109,28 +109,36 @@ function InstancePanel({ name, data }) {
 function SearchBar({ payload, onResults }) {
   const [q, setQ] = useState('')
 
+  const MAX_HITS = 200
+
   const search = useCallback((query) => {
     if (!query.trim() || !payload) { onResults(null); return }
     const lower = query.toLowerCase()
     const hits = []
     const walk = (obj, path) => {
+      if (hits.length >= MAX_HITS) return
       if (typeof obj === 'string' && obj.toLowerCase().includes(lower)) {
         hits.push({ path, value: obj })
       } else if (typeof obj === 'number' && String(obj).includes(lower)) {
         hits.push({ path, value: obj })
       } else if (obj && typeof obj === 'object') {
         for (const [k, v] of Object.entries(obj)) {
+          if (hits.length >= MAX_HITS) break
           walk(v, `${path}.${k}`)
         }
       }
     }
     for (const [inst, idata] of Object.entries(payload)) {
+      if (hits.length >= MAX_HITS) break
       walk(idata, inst)
     }
-    onResults(hits.slice(0, 200))
+    onResults(hits)
   }, [payload, onResults])
 
-  useEffect(() => { search(q) }, [q, search])
+  useEffect(() => {
+    const t = setTimeout(() => search(q), 180)
+    return () => clearTimeout(t)
+  }, [q, search])
 
   return (
     <div style={{ marginBottom: 24 }}>
@@ -158,10 +166,20 @@ export default function GlpiJsonPage() {
   const [results, setResults] = useState(null)
 
   useEffect(() => {
-    fetch('/api/glpijson')
-      .then(r => r.json())
-      .then(d => { setPayload(d); setLoading(false) })
-      .catch(e => { setError(e.message); setLoading(false) })
+    let cancelled = false
+    ;(async () => {
+      try {
+        const r = await fetch('/api/glpijson')
+        if (!r.ok) throw new Error(`Request failed (${r.status})`)
+        const d = await r.json()
+        if (!cancelled) setPayload(d)
+      } catch (e) {
+        if (!cancelled) setError(e.message)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
   }, [])
 
   const containerStyle = {

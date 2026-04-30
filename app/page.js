@@ -66,6 +66,7 @@ export default function DashboardPage() {
 
   // ── Derived values from analytics response ────────────────────────
   const a = analytics
+  const dataTruncated = a?.data_truncated ?? false
   const kpis        = a?.kpis       ?? {}
   const byStatusKey = Object.fromEntries((a?.by_status ?? []).map(s => [s.key, s.count]))
   const slaCritico  = a?.sla_critical ?? []
@@ -140,6 +141,12 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {dataTruncated && (
+        <div style={{ padding: '10px 16px', background: '#fff7ed', border: '1px solid #fdba74', borderRadius: 8, color: '#c2410c', fontSize: '0.82rem', marginBottom: 4 }}>
+          ⚠️ Os dados exibidos foram truncados no servidor e podem estar incompletos.
+        </div>
+      )}
+
       {/* Main stat cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '14px' }}>
         <StatCard label="Total"           value={kpis.total}      color="var(--text-primary)" />
@@ -148,7 +155,7 @@ export default function DashboardPage() {
         <StatCard label="Em Atendimento"  value={kpis.processing} color="#16a34a" href="/tickets?status=processing" />
         <StatCard label="Pendentes"       value={kpis.pending}    color="#ea580c" href="/tickets?status=pending" />
         <StatCard label="Aprovação"       value={kpis.approval}   color="#7c3aed" href="/tickets?status=approval" />
-        <StatCard label="SLA Excedido (Não resolvido)" value={kpis.sla_late_active} color="#dc2626" href="/tickets?sla=late" />
+        <StatCard label="SLA Excedido (Não resolvido)" value={kpis.sla_late_active} color="#dc2626" href="/tickets?sla=late&status=new,processing,pending,approval,pending-approval" />
         <StatCard label="SLA Excedido"    value={kpis.sla_late}   color="#dc2626" href="/tickets?sla=late" />
         {kpis.avg_resolution && kpis.avg_resolution !== '—' && (
           <StatCard label="Tempo Médio Resolução" value={kpis.avg_resolution} color="#6b7280" />
