@@ -57,6 +57,72 @@ function resolutionRate(tickets, days) {
   return { rate: Math.round((resolved.length / inPeriod.length) * 100), resolved: resolved.length, total: inPeriod.length }
 }
 
+function calculateSLAMetrics(tickets) {
+  const resolved = tickets.filter(t => t.status_key === 'solved' || t.status_key === 'closed')
+  if (resolved.length === 0) return { onTime: 0, overdue: 0, onTimeCount: 0, overdueCount: 0 }
+
+  const onTimeCount = resolved.filter(t => !t.is_sla_late && !t.is_overdue_resolve).length
+  const overdueCount = resolved.filter(t => t.is_sla_late || t.is_overdue_resolve).length
+
+  return {
+    onTime: Math.round((onTimeCount / resolved.length) * 100),
+    overdue: Math.round((overdueCount / resolved.length) * 100),
+    onTimeCount,
+    overdueCount,
+  }
+}
+
+function calculateDailyAverage(tickets, days = 30) {
+  const cutoff = new Date(Date.now() - days * 86400000)
+  const inPeriod = tickets.filter(t => t.date_created && new Date(t.date_created) >= cutoff)
+  return Math.round((inPeriod.length / days) * 10) / 10
+}
+
+function groupByTechnician(tickets) {
+  const techMap = {}
+  for (const t of tickets) {
+    const tech = t.technician || 'Não atribuído'
+    if (!techMap[tech]) {
+      techMap[tech] = { total: 0, byStatus: {}, received: 0, resolved: 0 }
+    }
+    techMap[tech].total += 1
+    techMap[tech].byStatus[t.status_key] = (techMap[tech].byStatus[t.status_key] || 0) + 1
+    techMap[tech].received += 1
+    if (t.status_key === 'solved' || t.status_key === 'closed') {
+      techMap[tech].resolved += 1
+    }
+  }
+  return Object.entries(techMap)
+    .map(([tech, data]) => ({ tech, ...data }))
+    .sort((a, b) => b.total - a.total)
+}
+
+function groupByCategory(tickets) {
+  const catMap = {}
+  for (const t of tickets) {
+    const cat = t.root_category || 'Sem categoria'
+    if (!catMap[cat]) {
+      catMap[cat] = { totalDuration: 0, count: 0, resolved: 0, avgDuration: 0 }
+    }
+    catMap[cat].count += 1
+    if (t.resolution_duration) {
+      catMap[cat].totalDuration += t.resolution_duration
+    }
+    if (t.status_key === 'solved' || t.status_key === 'closed') {
+      catMap[cat].resolved += 1
+    }
+  }
+
+  return Object.entries(catMap)
+    .map(([cat, data]) => ({
+      category: cat,
+      avgDuration: data.count > 0 ? Math.round((data.totalDuration / data.count) / 3600) : 0,
+      resolved: data.resolved,
+      total: data.count,
+    }))
+    .sort((a, b) => b.total - a.total)
+}
+
 export default function DashboardPage() {
   const [tickets, setTickets] = useState([])
   const [instanceCounts, setInstanceCounts] = useState([])
@@ -166,6 +232,7 @@ export default function DashboardPage() {
     reqTypeRows, maxReqType, incidents, requests,
     prioLabels, prioData, prioColors,
     trend, lineDatasets, chartStatusLabels, chartStatusData, chartStatusColors,
+    slaMetrics, dailyAverage, technicianData, categoryData,
   } = useMemo(() => {
     const total = tickets.length
     const byStatusKey = tickets.reduce((acc, t) => {
@@ -271,6 +338,12 @@ export default function DashboardPage() {
     const chartStatusData   = [byStatusKey.new||0, byStatusKey.processing||0, byStatusKey.pending||0, byStatusKey.approval||0, byStatusKey.solved||0, byStatusKey.closed||0]
     const chartStatusColors = ['#3b82f6', '#22c55e', '#f97316', '#7c3aed', '#6b7280', '#1f2937']
 
+    // New metrics
+    const slaMetrics = calculateSLAMetrics(tickets)
+    const dailyAverage = calculateDailyAverage(tickets)
+    const technicianData = groupByTechnician(tickets)
+    const categoryData = groupByCategory(tickets)
+
     return {
       total, byStatusKey, slaLate, peta, gmx, petaByStatus, gmxByStatus, slaCritico,
       rate7, rate30, approvalTickets, pendingTickets, avgPendingHours,
@@ -279,6 +352,7 @@ export default function DashboardPage() {
       reqTypeRows, maxReqType, incidents, requests,
       prioLabels, prioData, prioColors,
       trend, lineDatasets, chartStatusLabels, chartStatusData, chartStatusColors,
+      slaMetrics, dailyAverage, technicianData, categoryData,
     }
   }, [tickets, instanceCounts])
 
@@ -317,33 +391,38 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* FastAPI + Polars Banner */}
-      <div style={{
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        borderRadius: 'var(--radius-lg)',
-        padding: '12px 16px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '12px',
-        color: 'white',
-        fontSize: '0.85rem',
-        fontWeight: 500,
-      }}>
-        <span>⚡</span>
-        <span>Dashboard potencializado por <strong>FastAPI</strong> + <strong>Polars</strong> | Dados processados em tempo real via backend</span>
-      </div>
+       {/* Primary KPIs */}
+       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '14px' }}>
+         <StatCard label="Total" value={total} color="var(--text-primary)" />
+         <StatCard label="Incidentes" value={incidents} color="#dc2626" href="/incidentes" />
+         <StatCard label="Requisições" value={requests} color="#3b82f6" href="/tickets" />
+         <StatCard label="Média/Dia" value={dailyAverage} color="#16a34a" sub="últimos 30 dias" />
+       </div>
 
-       {/* Main stat cards */}
-       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '14px' }}>
-         <StatCard label="Total"           value={total}                      color="var(--text-primary)" />
-         <StatCard label="Incidentes"      value={incidents}                  color="#dc2626" href="/incidentes" />
-         <StatCard label="Requisições"     value={requests}                   color="#3b82f6" href="/tickets" />
-         <StatCard label="Em Atendimento"  value={byStatusKey.processing || 0} color="#16a34a" href="/tickets?status=processing" />
-         <StatCard label="Pendentes"       value={byStatusKey.pending || 0}   color="#ea580c" href="/tickets?status=pending" />
-         <StatCard label="Aprovação"       value={approvalTickets.length}     color="#7c3aed" href="/tickets?status=approval" />
-         <StatCard label="SLA Excedido (Não resolvido)" value={slaCritico.length} color="#dc2626" href="/tickets?sla=late" />
-         <StatCard label="SLA Excedido"    value={slaLate}                   color="#dc2626" href="/tickets?sla=late" />
-         {avgResolutionSec > 0 && <StatCard label="Tempo Médio Resolução" value={formatSeconds(avgResolutionSec)} color="#6b7280" sub={`${resolvedWithTime.length} tickets`} />}
+       {/* SLA & Resolution Metrics */}
+       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '14px' }}>
+         <Card style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white' }}>
+           <div style={{ fontSize: '0.75rem', fontWeight: 600, opacity: 0.9, marginBottom: '8px' }}>RESOLVIDO NO PRAZO</div>
+           <div style={{ fontSize: '2rem', fontWeight: 700 }}>{slaMetrics.onTime}%</div>
+           <div style={{ fontSize: '0.75rem', opacity: 0.8 }}>{slaMetrics.onTimeCount} tickets</div>
+         </Card>
+         <Card style={{ background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', color: 'white' }}>
+           <div style={{ fontSize: '0.75rem', fontWeight: 600, opacity: 0.9, marginBottom: '8px' }}>FORA DO PRAZO</div>
+           <div style={{ fontSize: '2rem', fontWeight: 700 }}>{slaMetrics.overdue}%</div>
+           <div style={{ fontSize: '0.75rem', opacity: 0.8 }}>{slaMetrics.overdueCount} tickets</div>
+         </Card>
+         <Card style={{ background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)', color: 'white' }}>
+           <div style={{ fontSize: '0.75rem', fontWeight: 600, opacity: 0.9, marginBottom: '8px' }}>EM ATENDIMENTO</div>
+           <div style={{ fontSize: '2rem', fontWeight: 700 }}>{byStatusKey.processing || 0}</div>
+           <div style={{ fontSize: '0.75rem', opacity: 0.8 }}>tickets ativos</div>
+         </Card>
+         {avgResolutionSec > 0 && (
+           <Card style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', color: 'white' }}>
+             <div style={{ fontSize: '0.75rem', fontWeight: 600, opacity: 0.9, marginBottom: '8px' }}>TEMPO MÉDIO</div>
+             <div style={{ fontSize: '1.8rem', fontWeight: 700 }}>{Math.round(avgResolutionSec / 3600)}h</div>
+             <div style={{ fontSize: '0.75rem', opacity: 0.8 }}>{resolvedWithTime.length} resolvidos</div>
+           </Card>
+         )}
        </div>
 
        {/* Instance breakdown */}
@@ -520,6 +599,104 @@ export default function DashboardPage() {
                 <span style={{ fontSize: '0.82rem', fontWeight: 700, width: '28px', textAlign: 'right', color: 'var(--primary)', flexShrink: 0 }}>{count}</span>
               </div>
             ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Análise Detalhada de Técnicos */}
+      {technicianData.length > 0 && (
+        <Card>
+          <SectionTitle>Análise de Técnicos - Status & Resoluções</SectionTitle>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', fontSize: '0.85rem', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: 'var(--background)' }}>
+                  <th style={thStyle}>Técnico</th>
+                  <th style={thStyle}>Recebidos</th>
+                  <th style={thStyle}>Resolvidos</th>
+                  <th style={thStyle}>Taxa Resolução</th>
+                  <th style={thStyle}>Novo</th>
+                  <th style={thStyle}>Atendimento</th>
+                  <th style={thStyle}>Pendente</th>
+                  <th style={thStyle}>Aprovação</th>
+                </tr>
+              </thead>
+              <tbody>
+                {technicianData.slice(0, 15).map(t => {
+                  const rate = t.received > 0 ? Math.round((t.resolved / t.received) * 100) : 0
+                  return (
+                    <tr key={t.tech} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={thTd}>
+                        {t.tech === 'Não atribuído' ? <em style={{ color: 'var(--text-muted)' }}>Sem técnico</em> : t.tech}
+                      </td>
+                      <td style={thTd}><strong>{t.received}</strong></td>
+                      <td style={thTd}><strong style={{ color: '#16a34a' }}>{t.resolved}</strong></td>
+                      <td style={thTd}>
+                        <span style={{
+                          background: rate >= 80 ? '#dcfce7' : rate >= 60 ? '#fef3c7' : '#fee2e2',
+                          color: rate >= 80 ? '#166534' : rate >= 60 ? '#92400e' : '#991b1b',
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          fontSize: '0.75rem',
+                          fontWeight: 600
+                        }}>{rate}%</span>
+                      </td>
+                      <td style={thTd}>{t.byStatus.new || 0}</td>
+                      <td style={thTd}>{t.byStatus.processing || 0}</td>
+                      <td style={thTd}>{t.byStatus.pending || 0}</td>
+                      <td style={thTd}>{t.byStatus.approval || 0}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {/* Análise Detalhada de Categorias */}
+      {categoryData.length > 0 && (
+        <Card>
+          <SectionTitle>Análise de Categorias - Duração & Resoluções</SectionTitle>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', fontSize: '0.85rem', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: 'var(--background)' }}>
+                  <th style={thStyle}>Categoria Raiz</th>
+                  <th style={thStyle}>Total</th>
+                  <th style={thStyle}>Resolvidos</th>
+                  <th style={thStyle}>Taxa Resolução</th>
+                  <th style={thStyle}>Duração Média (horas)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {categoryData.slice(0, 15).map(cat => {
+                  const rate = cat.total > 0 ? Math.round((cat.resolved / cat.total) * 100) : 0
+                  return (
+                    <tr key={cat.category} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={thTd}>
+                        {cat.category === 'Sem categoria' ? <em style={{ color: 'var(--text-muted)' }}>Sem categoria</em> : cat.category}
+                      </td>
+                      <td style={thTd}><strong>{cat.total}</strong></td>
+                      <td style={thTd}><strong style={{ color: '#16a34a' }}>{cat.resolved}</strong></td>
+                      <td style={thTd}>
+                        <span style={{
+                          background: rate >= 80 ? '#dcfce7' : rate >= 60 ? '#fef3c7' : '#fee2e2',
+                          color: rate >= 80 ? '#166534' : rate >= 60 ? '#92400e' : '#991b1b',
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          fontSize: '0.75rem',
+                          fontWeight: 600
+                        }}>{rate}%</span>
+                      </td>
+                      <td style={thTd}>
+                        <strong style={{ color: '#f59e0b' }}>{cat.avgDuration}h</strong>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
         </Card>
       )}
