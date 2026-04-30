@@ -115,7 +115,7 @@ def _sla_critical(df: pl.DataFrame, top: int = 8) -> list[dict]:
             try:
                 delta = now - dt.replace(tzinfo=None)
                 return max(0, delta.days)
-            except Exception:
+            except (AttributeError, TypeError, ValueError):
                 return 0
         sla = sla.with_columns(
             pl.col("due_date").map_elements(days_overdue, return_dtype=pl.Int64).alias("days_overdue")
@@ -197,7 +197,7 @@ def analytics(
                 return 0
             try:
                 return max(0, int((now_dt - dt.replace(tzinfo=None)).total_seconds() / 3600))
-            except Exception:
+            except (AttributeError, TypeError, ValueError):
                 return 0
         hours = pending_df["date_mod"].map_elements(hours_ago, return_dtype=pl.Int64)
         avg_pending_hours = int(hours.mean() or 0)
@@ -247,8 +247,12 @@ def analytics(
         ).head(5)
         approval_tickets = appr_df.to_dicts()
 
-    # ── SLA critical (compute once, reuse for count and preview) ─────
-    _sla_critical_all = _sla_critical(df, top=999)
+    # ── SLA critical count (direct filter) and preview (capped helper) ──
+    sla_late_active = df.filter(
+        (pl.col("is_sla_late").eq(True) | pl.col("is_overdue_resolve").eq(True))
+        & ~pl.col("status_key").is_in(["closed", "solved"])
+    ).height if "is_sla_late" in df.columns else 0
+    sla_critical_preview = _sla_critical(df, top=8)
 
     # ── Last sync ─────────────────────────────────────────────────────
     last_sync = None
@@ -278,7 +282,7 @@ def analytics(
             "solved": status_map.get("solved", 0),
             "closed": status_map.get("closed", 0),
             "sla_late": sla_late,
-            "sla_late_active": len(_sla_critical_all),
+            "sla_late_active": sla_late_active,
             "avg_resolution": fmt_duration(avg_resolution_sec),
             "avg_pending_hours": avg_pending_hours,
         },
@@ -300,7 +304,7 @@ def analytics(
         "trend_30d": _trend_30d(df),
         "resolution_rate_7d": _resolution_rate(df, 7),
         "resolution_rate_30d": _resolution_rate(df, 30),
-        "sla_critical": _sla_critical_all[:8],
+        "sla_critical": sla_critical_preview,
         "sla_total": sla_late,
         "approval_tickets": approval_tickets,
     }

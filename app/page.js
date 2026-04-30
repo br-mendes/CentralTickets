@@ -154,7 +154,7 @@ export default function DashboardPage() {
         <StatCard label="Requisições"     value={kpis.requests}   color="#3b82f6" href="/tickets" />
         <StatCard label="Em Atendimento"  value={kpis.processing} color="#16a34a" href="/tickets?status=processing" />
         <StatCard label="Pendentes"       value={kpis.pending}    color="#ea580c" href="/tickets?status=pending" />
-        <StatCard label="Aprovação"       value={kpis.approval}   color="#7c3aed" href="/tickets?status=approval" />
+        <StatCard label="Aprovação"       value={kpis.approval}   color="#7c3aed" href="/tickets?status=approval,pending-approval" />
         <StatCard label="SLA Excedido (Não resolvido)" value={kpis.sla_late_active} color="#dc2626" href="/tickets?sla=late&status=new,processing,pending,approval,pending-approval" />
         <StatCard label="SLA Excedido"    value={kpis.sla_late}   color="#dc2626" href="/tickets?sla=late" />
         {kpis.avg_resolution && kpis.avg_resolution !== '—' && (
@@ -282,7 +282,7 @@ export default function DashboardPage() {
               </div>
             ))}
             {kpis.approval > 5 && (
-              <Link href="/tickets?status=approval" style={{ fontSize: '0.78rem', color: 'var(--primary)', marginTop: '4px' }}>
+              <Link href="/tickets?status=approval,pending-approval" style={{ fontSize: '0.78rem', color: 'var(--primary)', marginTop: '4px' }}>
                 Ver todos os {kpis.approval} tickets em aprovação →
               </Link>
             )}
