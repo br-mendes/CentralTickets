@@ -79,13 +79,23 @@ def fetch_tickets(
     if not rows:
         return pl.DataFrame(), truncated
 
-    df = pl.DataFrame(rows, infer_schema_length=500)
+    # Pre-parse dates in Python to avoid Polars str.to_datetime ComputeError
+    # with timezone-aware ISO strings returned by Supabase (e.g. "+00:00" suffix).
+    _DATE_COLS = {"date_created", "date_mod", "date_solved", "due_date"}
+    for row in rows:
+        for col in _DATE_COLS:
+            val = row.get(col)
+            if val is None or isinstance(val, datetime):
+                if isinstance(val, datetime):
+                    row[col] = val.replace(tzinfo=None)
+                continue
+            try:
+                row[col] = datetime.fromisoformat(str(val)).replace(tzinfo=None)
+            except (ValueError, TypeError):
+                row[col] = None
 
-    for col in ("date_created", "date_mod", "date_solved", "due_date"):
-        if col in df.columns:
-            df = df.with_columns(
-                pl.col(col).str.to_datetime(format=None, strict=False, ambiguous="earliest")
-            )
+    df = pl.DataFrame(rows, infer_schema_length=len(rows))
+
     for col in ("ticket_id", "status_id", "type_id", "priority_id", "urgency",
                 "resolution_duration", "waiting_duration"):
         if col in df.columns:
