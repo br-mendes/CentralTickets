@@ -17,14 +17,14 @@ from mangum import Mangum
 
 from _utils import (
     fetch_tickets, get_supabase, process_entity, last_group_label, fmt_duration,
-    PRIORITY_LABELS, STATUS_LABELS, TYPE_LABELS,
+    allowed_origins, PRIORITY_LABELS, STATUS_LABELS, TYPE_LABELS,
 )
 
 app = FastAPI(title="CentralTickets Analytics API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins(),
     allow_methods=["GET"],
     allow_headers=["*"],
 )
@@ -122,7 +122,7 @@ def _sla_critical(df: pl.DataFrame, top: int = 8) -> list[dict]:
         ).sort("days_overdue", descending=True)
 
     cols = ["ticket_id", "instance", "title", "entity_clean", "status_label",
-            "priority_label", "technician", "requester_fullname", "due_date", "days_overdue"]
+            "priority_label", "technician", "due_date", "days_overdue"]
     cols = [c for c in cols if c in sla.columns]
 
     result = sla.select(cols).head(top).to_dicts()
@@ -261,8 +261,8 @@ def analytics(
         sync_resp = sb.table("sync_control").select("last_sync").order("last_sync", desc=True).limit(1).execute()
         if sync_resp.data:
             last_sync = sync_resp.data[0]["last_sync"]
-    except Exception:
-        pass
+    except Exception as exc:
+        print(f"[analytics] failed to fetch last_sync: {exc}", file=sys.stderr)
 
     # ── Build response ────────────────────────────────────────────────
     return {

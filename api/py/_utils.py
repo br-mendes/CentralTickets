@@ -2,10 +2,20 @@
 import re
 import json
 import os
+import sys
 from datetime import datetime, timedelta
 
 import polars as pl
 from supabase import create_client, Client
+
+
+def allowed_origins() -> list[str]:
+    """Return CORS origins from ALLOWED_ORIGINS env var, or ["*"] with a warning."""
+    raw = os.environ.get("ALLOWED_ORIGINS", "").strip()
+    if raw:
+        return [o.strip() for o in raw.split(",") if o.strip()]
+    print("[utils] ALLOWED_ORIGINS not set — defaulting to '*'. Set it in production.", file=sys.stderr)
+    return ["*"]
 
 COLS = [
     "ticket_id", "instance", "title", "entity", "status_id", "status_key",

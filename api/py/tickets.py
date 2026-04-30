@@ -16,14 +16,14 @@ import math
 
 from _utils import (
     fetch_tickets, process_entity, last_group_label, fmt_duration,
-    PRIORITY_LABELS, STATUS_LABELS,
+    allowed_origins, PRIORITY_LABELS, STATUS_LABELS,
 )
 
 app = FastAPI(title="CentralTickets Tickets API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins(),
     allow_methods=["GET"],
     allow_headers=["*"],
 )
