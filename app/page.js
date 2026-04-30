@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import Link from 'next/link'
-import { getSupabaseClient } from '@/lib/supabase/client'
+import { getSupabaseClient } from './lib/supabase/client'
 import { DoughnutChart, LineChart, BarChart } from './components/Charts'
 import {
   processEntity, lastGroupLabel, fmt, calcDaysOverdue,

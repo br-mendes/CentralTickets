@@ -1,4 +1,4 @@
-import { calculateSLA } from '@/lib/sla'
+import { calculateSLA } from '../../../lib/sla'
 
 export default function TicketCard({ ticket }) {
   const sla = calculateSLA(ticket)
