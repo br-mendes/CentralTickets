@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from datetime import datetime, timedelta, date
 
 import polars as pl
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
 
@@ -140,7 +140,7 @@ def analytics(
     instances = [i.strip().upper() for i in instance.split(",") if i.strip()]
     valid = {"PETA", "GMX"}
     if not instances or any(i not in valid for i in instances):
-        return {"error": "instance inválido. Use PETA, GMX ou PETA,GMX"}, 400
+        raise HTTPException(status_code=400, detail="instance inválido. Use PETA, GMX ou PETA,GMX")
 
     df = fetch_tickets(instances, days)
 

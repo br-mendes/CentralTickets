@@ -8,7 +8,7 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(__file__))
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
 import polars as pl
@@ -47,7 +47,7 @@ def get_tickets(
     instances = [i.strip().upper() for i in instance.split(",") if i.strip()]
     valid = {"PETA", "GMX"}
     if not instances or any(i not in valid for i in instances):
-        return {"error": "instance inválido"}, 400
+        raise HTTPException(status_code=400, detail="instance inválido. Use PETA, GMX ou PETA,GMX")
 
     df = fetch_tickets(instances, days)
 
