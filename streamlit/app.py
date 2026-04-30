@@ -145,14 +145,21 @@ def load_tickets(instances: tuple[str, ...]) -> pl.DataFrame:
     if not rows:
         return pl.DataFrame()
 
-    df = pl.DataFrame(rows, infer_schema_length=500)
+    # Pre-parse dates in Python to avoid Polars inference issues with tz-aware strings
+    _DATE_COLS = {"date_created", "date_mod", "date_solved", "due_date"}
+    for row in rows:
+        for col in _DATE_COLS:
+            val = row.get(col)
+            if val is None or isinstance(val, datetime):
+                if isinstance(val, datetime):
+                    row[col] = val.replace(tzinfo=None)
+                continue
+            try:
+                row[col] = datetime.fromisoformat(str(val)).replace(tzinfo=None)
+            except (ValueError, TypeError):
+                row[col] = None
 
-    # Cast dates
-    for col in ("date_created", "date_mod", "date_solved", "due_date"):
-        if col in df.columns:
-            df = df.with_columns(
-                pl.col(col).str.to_datetime(format=None, strict=False, ambiguous="earliest")
-            )
+    df = pl.DataFrame(rows, infer_schema_length=len(rows))
 
     # Cast integers
     for col in ("ticket_id", "status_id", "type_id", "priority_id", "urgency",
