@@ -12,7 +12,7 @@ from supabase import create_client
 
 # ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Central de Tickets Analytics",
+    page_title="CentralTickets Analytics",
     page_icon="🎫",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -110,19 +110,6 @@ def inject_custom_css() -> None:
         .stTabs [data-baseweb="tab"] {
             border-radius: 12px;
             padding: 0.5rem 0.9rem;
-        }
-
-        .section-title {
-            font-size: 1.05rem;
-            font-weight: 700;
-            margin: 0.2rem 0 0.8rem 0;
-        }
-
-        .subtle-box {
-            border: 1px solid rgba(148,163,184,0.22);
-            border-radius: 14px;
-            padding: 0.75rem 1rem;
-            background: rgba(248,250,252,0.45);
         }
 
         .kpi-card {
@@ -260,6 +247,45 @@ def make_unique_columns(df: pd.DataFrame) -> pd.DataFrame:
             cols.append(f"{col}_{seen[col]}")
     out = df.copy()
     out.columns = cols
+    return out
+
+
+def ensure_pdf_schema(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
+    out = df.copy()
+    for col in columns:
+        if col not in out.columns:
+            out[col] = pd.Series(dtype="object")
+    return out[columns]
+
+
+def monthly_agg_to_pandas(
+    df: pl.DataFrame,
+    month_col: str,
+    value_name: str,
+    resolved_only: bool = False,
+) -> pd.DataFrame:
+    if df.is_empty():
+        return pd.DataFrame(columns=["Mês", value_name])
+
+    base = df
+    if resolved_only:
+        base = base.filter(pl.col("is_resolved"))
+
+    src_col = "created_month" if month_col == "created_month" else "solved_month"
+
+    agg = (
+        base.filter(pl.col(src_col).is_not_null())
+        .group_by(src_col)
+        .agg(pl.len().alias(value_name))
+        .rename({src_col: "Mês"})
+        .sort("Mês")
+    )
+
+    if agg.is_empty():
+        return pd.DataFrame(columns=["Mês", value_name])
+
+    out = agg.to_pandas()
+    out = ensure_pdf_schema(out, ["Mês", value_name])
     return out
 
 
@@ -408,7 +434,7 @@ def enrich_df(df: pl.DataFrame) -> pl.DataFrame:
 
 # ── Sidebar ──────────────────────────────────────────────────────────────────
 def render_sidebar() -> dict:
-    st.sidebar.title("🎫 Central de Tickets")
+    st.sidebar.title("🎫 CentralTickets")
     st.sidebar.markdown("---")
 
     instance_opt = st.sidebar.selectbox(
@@ -827,43 +853,20 @@ def chart_technician_monthly(df: pl.DataFrame, technician: str) -> go.Figure:
 
     base = df.filter(pl.col("technician_label") == technician)
 
-    opened = (
-        base.filter(pl.col("created_month").is_not_null())
-        .group_by("created_month")
-        .agg(pl.len().alias("Recebidos"))
-        .rename({"created_month": "Mês"})
-        .sort("Mês")
-    )
+    pdf_opened = monthly_agg_to_pandas(base, "created_month", "Recebidos", resolved_only=False)
+    pdf_resolved = monthly_agg_to_pandas(base, "solved_month", "Resolvidos", resolved_only=True)
 
-    resolved = (
-        base.filter(pl.col("is_resolved") & pl.col("solved_month").is_not_null())
-        .group_by("solved_month")
-        .agg(pl.len().alias("Resolvidos"))
-        .rename({"solved_month": "Mês"})
-        .sort("Mês")
-    )
+    pdf_opened = ensure_pdf_schema(pdf_opened, ["Mês", "Recebidos"])
+    pdf_resolved = ensure_pdf_schema(pdf_resolved, ["Mês", "Resolvidos"])
 
-    pdf_opened = safe_pandas(opened)
-    pdf_resolved = safe_pandas(resolved)
+    monthly = pd.merge(pdf_opened, pdf_resolved, on="Mês", how="outer").fillna(0)
 
-    if pdf_opened.empty and pdf_resolved.empty:
+    if monthly.empty:
         return go.Figure()
 
-    monthly = (
-        pd.merge(pdf_opened, pdf_resolved, on="Mês", how="outer")
-        .fillna(0)
-        .sort_values("Mês")
-    )
-
-    if "Recebidos" in monthly.columns:
-        monthly["Recebidos"] = monthly["Recebidos"].astype(int)
-    else:
-        monthly["Recebidos"] = 0
-
-    if "Resolvidos" in monthly.columns:
-        monthly["Resolvidos"] = monthly["Resolvidos"].astype(int)
-    else:
-        monthly["Resolvidos"] = 0
+    monthly["Recebidos"] = monthly["Recebidos"].astype(int)
+    monthly["Resolvidos"] = monthly["Resolvidos"].astype(int)
+    monthly = monthly.sort_values("Mês")
 
     fig = go.Figure()
     fig.add_trace(go.Bar(x=monthly["Mês"], y=monthly["Recebidos"], name="Recebidos", marker_color="#2563eb"))
@@ -994,31 +997,20 @@ def technician_monthly_table(df: pl.DataFrame, technician: str) -> pd.DataFrame:
 
     base = df.filter(pl.col("technician_label") == technician)
 
-    opened = (
-        base.filter(pl.col("created_month").is_not_null())
-        .group_by("created_month")
-        .agg(pl.len().alias("Recebidos"))
-        .rename({"created_month": "Mês"})
-        .sort("Mês")
-        .to_pandas()
-    )
+    opened = monthly_agg_to_pandas(base, "created_month", "Recebidos", resolved_only=False)
+    resolved = monthly_agg_to_pandas(base, "solved_month", "Resolvidos", resolved_only=True)
 
-    resolved = (
-        base.filter(pl.col("is_resolved") & pl.col("solved_month").is_not_null())
-        .group_by("solved_month")
-        .agg(pl.len().alias("Resolvidos"))
-        .rename({"solved_month": "Mês"})
-        .sort("Mês")
-        .to_pandas()
-    )
+    opened = ensure_pdf_schema(opened, ["Mês", "Recebidos"])
+    resolved = ensure_pdf_schema(resolved, ["Mês", "Resolvidos"])
 
-    if opened.empty and resolved.empty:
-        return pd.DataFrame()
+    out = pd.merge(opened, resolved, on="Mês", how="outer").fillna(0)
 
-    out = pd.merge(opened, resolved, on="Mês", how="outer").fillna(0).sort_values("Mês")
-    out["Recebidos"] = out.get("Recebidos", 0).astype(int)
-    out["Resolvidos"] = out.get("Resolvidos", 0).astype(int)
-    return out
+    if out.empty:
+        return pd.DataFrame(columns=["Mês", "Recebidos", "Resolvidos"])
+
+    out["Recebidos"] = out["Recebidos"].astype(int)
+    out["Resolvidos"] = out["Resolvidos"].astype(int)
+    return out.sort_values("Mês")
 
 
 def category_duration_table(df: pl.DataFrame) -> pd.DataFrame:
@@ -1333,7 +1325,7 @@ def main() -> None:
     n_total = len(raw_df)
     n_filtered = len(df)
 
-    st.title("Central de Tickets Analytics")
+    st.title("CentralTickets Analytics")
     st.caption(
         f"📊 {n_filtered:,} tickets exibidos de {n_total:,} carregados  •  "
         f"Cache atualizado: {datetime.now().strftime('%H:%M:%S')}"
