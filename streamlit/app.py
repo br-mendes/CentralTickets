@@ -13,7 +13,7 @@ from supabase import create_client
 # ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Central de Tickets Analytics",
-    page_icon="📊",
+    page_icon="🎫",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -82,7 +82,7 @@ ONE_YEAR_DAYS = 365
 PAGE_SIZE = 1000
 
 
-# ── UI ───────────────────────────────────────────────────────────────────────
+# ── UI / CSS ─────────────────────────────────────────────────────────────────
 def inject_custom_css() -> None:
     st.markdown(
         """
@@ -91,37 +91,98 @@ def inject_custom_css() -> None:
             padding-top: 1rem;
             padding-bottom: 1rem;
         }
+
         div[data-testid="stMetric"] {
             background: linear-gradient(180deg, rgba(37,99,235,0.04), rgba(37,99,235,0.01));
             border: 1px solid rgba(148,163,184,0.25);
             padding: 14px 16px;
             border-radius: 16px;
         }
+
         div[data-testid="stMetricLabel"] p {
             font-weight: 600;
         }
+
         .stTabs [data-baseweb="tab-list"] {
             gap: 0.5rem;
         }
+
         .stTabs [data-baseweb="tab"] {
             border-radius: 12px;
             padding: 0.5rem 0.9rem;
         }
+
         .section-title {
             font-size: 1.05rem;
             font-weight: 700;
             margin: 0.2rem 0 0.8rem 0;
         }
+
         .subtle-box {
             border: 1px solid rgba(148,163,184,0.22);
             border-radius: 14px;
             padding: 0.75rem 1rem;
             background: rgba(248,250,252,0.45);
         }
+
+        .kpi-card {
+            border: 1px solid rgba(148,163,184,0.25);
+            border-radius: 16px;
+            padding: 14px 16px;
+            background: linear-gradient(180deg, rgba(37,99,235,0.04), rgba(37,99,235,0.01));
+            min-height: 104px;
+        }
+
+        .kpi-label {
+            font-size: 0.92rem;
+            font-weight: 600;
+            color: rgba(15,23,42,0.85);
+            margin-bottom: 0.45rem;
+        }
+
+        .kpi-value {
+            font-size: 1.85rem;
+            line-height: 1.1;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .kpi-inline {
+            display: flex;
+            align-items: baseline;
+            gap: 0.55rem;
+            flex-wrap: wrap;
+        }
+
+        .kpi-mini {
+            font-size: 0.78rem;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .kpi-help {
+            margin-top: 0.35rem;
+            font-size: 0.75rem;
+            color: #64748b;
+        }
         </style>
         """,
         unsafe_allow_html=True,
     )
+
+
+def render_custom_kpi(label: str, value: str | int | float, mini: str | None = None, help_text: str | None = None) -> None:
+    html = f"""
+    <div class="kpi-card">
+        <div class="kpi-label">{label}</div>
+        <div class="kpi-inline">
+            <div class="kpi-value">{value}</div>
+            {f'<div class="kpi-mini">{mini}</div>' if mini else ''}
+        </div>
+        {f'<div class="kpi-help">{help_text}</div>' if help_text else ''}
+    </div>
+    """
+    st.markdown(html, unsafe_allow_html=True)
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -185,6 +246,21 @@ def safe_pandas(df: pl.DataFrame) -> pd.DataFrame:
 
 def current_period_days(filters: dict) -> int:
     return max((filters["date_to"].date() - filters["date_from"].date()).days + 1, 1)
+
+
+def make_unique_columns(df: pd.DataFrame) -> pd.DataFrame:
+    cols = []
+    seen = {}
+    for col in df.columns:
+        if col not in seen:
+            seen[col] = 0
+            cols.append(col)
+        else:
+            seen[col] += 1
+            cols.append(f"{col}_{seen[col]}")
+    out = df.copy()
+    out.columns = cols
+    return out
 
 
 # ── Supabase ─────────────────────────────────────────────────────────────────
@@ -288,6 +364,7 @@ def enrich_df(df: pl.DataFrame) -> pl.DataFrame:
         .alias("group_label"),
 
         pl.col("date_created").dt.strftime("%Y-%m").alias("created_month"),
+
         pl.when(pl.col("date_solved").is_not_null())
         .then(pl.col("date_solved").dt.strftime("%Y-%m"))
         .otherwise(None)
@@ -331,7 +408,7 @@ def enrich_df(df: pl.DataFrame) -> pl.DataFrame:
 
 # ── Sidebar ──────────────────────────────────────────────────────────────────
 def render_sidebar() -> dict:
-    st.sidebar.title("📊 Central de Tickets")
+    st.sidebar.title("🎫 Central de Tickets")
     st.sidebar.markdown("---")
 
     instance_opt = st.sidebar.selectbox(
@@ -442,25 +519,35 @@ def render_kpis(df: pl.DataFrame, filters: dict) -> None:
     row1 = st.columns(4)
     row2 = st.columns(5)
 
-    metrics1 = [
-        ("Total", total),
-        ("Incidentes", incidents),
-        ("Requisições", requests),
-        ("Resolvidos", resolved),
-    ]
-    metrics2 = [
-        ("% no prazo", f"{on_time_pct}%"),
-        ("% fora do prazo", f"{late_pct}%"),
-        ("Recebidos/dia", avg_received_day),
-        ("Em Atendimento", processing),
-        ("Pendentes", pending),
-    ]
+    with row1[0]:
+        st.metric("Total", total)
+    with row1[1]:
+        st.metric("Incidentes", incidents)
+    with row1[2]:
+        st.metric("Requisições", requests)
+    with row1[3]:
+        st.metric("Resolvidos", resolved)
 
-    for col, (label, value) in zip(row1, metrics1):
-        col.metric(label, value)
-
-    for col, (label, value) in zip(row2, metrics2):
-        col.metric(label, value)
+    with row2[0]:
+        render_custom_kpi(
+            "% no prazo",
+            f"{on_time_pct}%",
+            mini=f"({resolved_on_time})",
+            help_text="Quantidade ao lado da porcentagem",
+        )
+    with row2[1]:
+        render_custom_kpi(
+            "% fora do prazo",
+            f"{late_pct}%",
+            mini=f"({resolved_late})",
+            help_text="Quantidade ao lado da porcentagem",
+        )
+    with row2[2]:
+        st.metric("Recebidos/dia", avg_received_day)
+    with row2[3]:
+        st.metric("Em Atendimento", processing)
+    with row2[4]:
+        st.metric("Pendentes", pending)
 
     if sla_late > 0:
         st.caption(f"⚠️ {sla_late} ticket(s) com SLA excedido no recorte atual.")
@@ -883,12 +970,21 @@ def technician_status_table(df: pl.DataFrame) -> pd.DataFrame:
 
     out = pd.crosstab(pdf["technician_label"], pdf["status_label"]).reset_index()
 
-    ordered_status = [v for v in STATUS_LABELS.values() if v in out.columns]
+    ordered_status_raw = [v for v in STATUS_LABELS.values() if v in out.columns]
+
+    ordered_status = []
+    seen = set()
+    for col in ordered_status_raw:
+        if col not in seen:
+            ordered_status.append(col)
+            seen.add(col)
+
     other_cols = [c for c in out.columns if c not in ["technician_label", *ordered_status]]
     out = out[["technician_label", *ordered_status, *other_cols]]
 
     total_cols = [c for c in out.columns if c != "technician_label"]
     out["Total"] = out[total_cols].sum(axis=1)
+
     return out.sort_values(["Total", "technician_label"], ascending=[False, True])
 
 
@@ -1005,7 +1101,7 @@ def render_technicians_tab(df: pl.DataFrame) -> None:
 
     with c1:
         st.markdown("#### Total por status para cada técnico")
-        status_tbl = technician_status_table(df)
+        status_tbl = make_unique_columns(technician_status_table(df))
         st.dataframe(status_tbl, use_container_width=True, height=430)
 
     with c2:
@@ -1027,11 +1123,8 @@ def render_technicians_tab(df: pl.DataFrame) -> None:
         st.plotly_chart(chart_technician_monthly(df, selected_tech), use_container_width=True)
     with c4:
         st.markdown("#### Tabela mensal")
-        st.dataframe(
-            technician_monthly_table(df, selected_tech),
-            use_container_width=True,
-            height=340,
-        )
+        monthly_tbl = make_unique_columns(technician_monthly_table(df, selected_tech))
+        st.dataframe(monthly_tbl, use_container_width=True, height=340)
 
 
 def render_categories_tab(df: pl.DataFrame) -> None:
@@ -1050,18 +1143,12 @@ def render_categories_tab(df: pl.DataFrame) -> None:
     c3, c4 = st.columns(2)
     with c3:
         st.markdown("#### Tabela de duração média")
-        st.dataframe(
-            category_duration_table(df),
-            use_container_width=True,
-            height=360,
-        )
+        duration_tbl = make_unique_columns(category_duration_table(df))
+        st.dataframe(duration_tbl, use_container_width=True, height=360)
     with c4:
         st.markdown("#### Tabela de resolvidos por mês")
-        st.dataframe(
-            category_resolved_monthly_table(df),
-            use_container_width=True,
-            height=360,
-        )
+        resolved_tbl = make_unique_columns(category_resolved_monthly_table(df))
+        st.dataframe(resolved_tbl, use_container_width=True, height=360)
 
 
 def render_sla_tab(df: pl.DataFrame) -> None:
@@ -1086,8 +1173,10 @@ def render_sla_tab(df: pl.DataFrame) -> None:
     col1.metric("SLA excedido total", sla_df.height)
     col2.metric("SLA excedido em aberto", active_sla.height)
     col3.metric("% com SLA excedido", f"{sla_pct}%")
-    col4.metric("% resolvidos no prazo", f"{on_time_pct}%")
-    col5.metric("% resolvidos fora do prazo", f"{late_pct}%")
+    with col4:
+        render_custom_kpi("% resolvidos no prazo", f"{on_time_pct}%", mini=f"({resolved_on_time})")
+    with col5:
+        render_custom_kpi("% resolvidos fora do prazo", f"{late_pct}%", mini=f"({resolved_late})")
 
     if not active_sla.is_empty():
         st.markdown("#### Críticos não resolvidos — top 20")
@@ -1122,7 +1211,7 @@ def render_sla_tab(df: pl.DataFrame) -> None:
         if "Dias em atraso" in out.columns:
             out = out.sort("Dias em atraso", descending=True)
 
-        st.dataframe(out.head(20).to_pandas(), use_container_width=True, height=420)
+        st.dataframe(make_unique_columns(out.head(20).to_pandas()), use_container_width=True, height=420)
 
     if not sla_df.is_empty() and "entity_clean" in sla_df.columns:
         st.markdown("#### SLA excedido por entidade")
@@ -1212,9 +1301,11 @@ def render_reports_tab(df: pl.DataFrame) -> None:
         "title": "Título",
     })
 
-    st.dataframe(out.to_pandas(), use_container_width=True, height=520)
+    out_pdf = make_unique_columns(out.to_pandas())
 
-    csv = out.to_pandas().to_csv(index=False).encode("utf-8")
+    st.dataframe(out_pdf, use_container_width=True, height=520)
+
+    csv = out_pdf.to_csv(index=False).encode("utf-8")
     st.download_button(
         "⬇️ Exportar CSV",
         csv,
