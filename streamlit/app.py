@@ -278,7 +278,7 @@ def chart_status(df: pl.DataFrame) -> go.Figure:
         df.group_by("status_key")
         .agg(pl.len().alias("count"))
         .with_columns(
-            pl.col("status_key").replace(STATUS_LABELS, default="Outro").alias("label")
+            pl.col("status_key").replace(list(STATUS_LABELS.keys()), list(STATUS_LABELS.values()), default="Outro").alias("label")
         )
         .sort("count", descending=True)
     )
@@ -443,9 +443,9 @@ def render_sla_tab(df: pl.DataFrame) -> None:
 
         display = active_sla.with_columns([
             pl.col("entity").map_elements(process_entity, return_dtype=pl.Utf8).alias("Entidade"),
-            pl.col("status_key").replace(STATUS_LABELS, default="—").alias("Status"),
-            pl.col("priority_id").cast(pl.Int64, strict=False)
-                .replace({k: v for k, v in PRIORITY_LABELS.items()}).alias("Prioridade"),
+            pl.col("status_key").replace(list(STATUS_LABELS.keys()), list(STATUS_LABELS.values()), default="—").alias("Status"),
+            pl.col("priority_id").cast(pl.Utf8, strict=False)
+                .replace([str(k) for k in PRIORITY_LABELS.keys()], list(PRIORITY_LABELS.values()), default="—").alias("Prioridade"),
         ])
 
         cols_show = ["ticket_id", "title", "Entidade", "Status", "Prioridade",
@@ -516,10 +516,10 @@ def render_reports_tab(df: pl.DataFrame) -> None:
     ] if c in result.columns]
 
     out = result.select(display_cols).with_columns([
-        pl.col("status_key").replace(STATUS_LABELS, default="—").alias("status_key"),
-        pl.col("type_id").cast(pl.Utf8).replace({"1": "Incidente", "2": "Requisição"}, default="—").alias("type_id"),
+        pl.col("status_key").replace(list(STATUS_LABELS.keys()), list(STATUS_LABELS.values()), default="—").alias("status_key"),
+        pl.col("type_id").cast(pl.Utf8).replace(["1", "2"], ["Incidente", "Requisição"], default="—").alias("type_id"),
         pl.col("priority_id").cast(pl.Utf8).replace(
-            {str(k): v for k, v in PRIORITY_LABELS.items()}, default="—"
+            [str(k) for k in PRIORITY_LABELS.keys()], list(PRIORITY_LABELS.values()), default="—"
         ).alias("priority_id"),
         pl.col("entity").map_elements(process_entity, return_dtype=pl.Utf8).alias("entity"),
         pl.col("resolution_duration").map_elements(
