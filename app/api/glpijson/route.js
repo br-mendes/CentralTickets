@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 const INSTANCES = {
   PETA: {
     base: (
+      process.env.NEXT_PUBLIC_GLPI_PETA_URL ||
       process.env.NEXT_PUBLIC_GLPI_PETA ||
       ''
     ).replace(/\/$/, ''),
@@ -11,6 +12,7 @@ const INSTANCES = {
   },
   GMX: {
     base: (
+      process.env.NEXT_PUBLIC_GLPI_GMX_URL ||
       process.env.NEXT_PUBLIC_GLPI_GMX ||
       ''
     ).replace(/\/$/, ''),
@@ -20,7 +22,7 @@ const INSTANCES = {
 }
 
 for (const [name, cfg] of Object.entries(INSTANCES)) {
-  if (!cfg.base) console.warn(`[glpijson] ${name} base URL not configured — set NEXT_PUBLIC_GLPI_${name}`)
+  if (!cfg.base) console.warn(`[glpijson] ${name} base URL not configured — set NEXT_PUBLIC_GLPI_${name}_URL`)
 }
 
 const ITEMTYPES = [

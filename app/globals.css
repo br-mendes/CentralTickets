@@ -63,7 +63,7 @@ body {
 .status-badge.new      { background: rgba(59,130,246,0.15);  color: #2563eb; }
 .status-badge.processing { background: rgba(34,197,94,0.15); color: #16a34a; }
 .status-badge.pending  { background: rgba(249,115,22,0.15);  color: #ea580c; }
-.status-badge.approval { background: rgba(249,115,22,0.15);  color: #ea580c; }
+.status-badge.approval { background: rgba(124,58,237,0.15);  color: #7c3aed; }
 .status-badge.solved   { background: rgba(107,114,128,0.15); color: #52525b; }
 .status-badge.closed   { background: rgba(31,41,55,0.25);    color: #374151; }
 .status-badge.unknown  { background: rgba(148,163,184,0.15); color: #64748b; }

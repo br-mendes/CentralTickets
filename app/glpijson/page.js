@@ -1,214 +1,237 @@
 'use client'
-
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 
 const ITEMTYPES = [
-  { name: 'Ticket', fields: '1,2,3,4,5,7,8,9,10,12,14,15,17,18,19,20,22,55,80,83,151' },
-  { name: 'Change', fields: '1,2,3,4,5,7,8,9,10,12,14,15,17,18,19,20,55,80' },
-  { name: 'User', fields: '1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20' },
-  { name: 'Entity', fields: '1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20' },
-  { name: 'Group', fields: '1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20' },
-  { name: 'Computer', fields: '1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20' },
-  { name: 'Software', fields: '1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20' },
-  { name: 'TicketCategory', fields: '1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20' },
-  { name: 'RequestType', fields: '1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20' },
-  { name: 'SLA', fields: '1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20' },
+  'Ticket', 'Change', 'User', 'Entity', 'Group',
+  'Computer', 'Software', 'License', 'TicketCategory', 'SLA', 'RequestType',
 ]
 
-const API_CONFIG = {
-  PETA: {
-    url: process.env.NEXT_PUBLIC_GLPI_PETA,
-    userToken: process.env.PETA_USER_TOKEN,
-    appToken: process.env.PETA_APP_TOKEN,
+// ── JSON tree renderer ────────────────────────────────────────────────────────
+
+function JsonNode({ data, depth = 0 }) {
+  const [open, setOpen] = useState(depth < 2)
+  if (data === null || data === undefined) return <span style={s.null}>null</span>
+  if (typeof data === 'boolean') return <span style={s.bool}>{String(data)}</span>
+  if (typeof data === 'number') return <span style={s.num}>{data}</span>
+  if (typeof data === 'string') return <span style={s.str}>"{data}"</span>
+
+  const isArray = Array.isArray(data)
+  const entries = isArray ? data.map((v, i) => [i, v]) : Object.entries(data)
+  const preview = isArray
+    ? `[ ${entries.length} items ]`
+    : `{ ${entries.slice(0, 3).map(([k]) => k).join(', ')}${entries.length > 3 ? ', …' : ''} }`
+
+  if (entries.length === 0) return <span style={s.muted}>{isArray ? '[]' : '{}'}</span>
+
+  return (
+    <span>
+      <button onClick={() => setOpen(o => !o)} style={s.toggle}>{open ? '▾' : '▸'}</button>
+      {!open && <span style={s.muted}> {preview}</span>}
+      {open && (
+        <span>
+          {entries.map(([k, v]) => (
+            <div key={k} style={{ marginLeft: 16 }}>
+              <span style={s.key}>{isArray ? k : `"${k}"`}</span>
+              <span style={s.colon}>: </span>
+              <JsonNode data={v} depth={depth + 1} />
+            </div>
+          ))}
+        </span>
+      )}
+    </span>
+  )
+}
+
+const s = {
+  key:    { color: '#93c5fd' },
+  str:    { color: '#86efac' },
+  num:    { color: '#fcd34d' },
+  bool:   { color: '#f9a8d4' },
+  null:   { color: '#94a3b8' },
+  muted:  { color: '#64748b' },
+  colon:  { color: '#94a3b8' },
+  toggle: {
+    background: 'none', border: 'none', cursor: 'pointer',
+    color: '#94a3b8', padding: '0 2px', fontSize: '0.7rem',
   },
-  GMX: {
-    url: process.env.NEXT_PUBLIC_GLPI_GMX,
-    userToken: process.env.GMX_USER_TOKEN,
-    appToken: process.env.GMX_APP_TOKEN,
-  },
 }
 
-async function initSession(config) {
-  const res = await fetch(`${config.url}/initSession`, {
-    headers: { 
-      'Content-Type': 'application/json', 
-      'Authorization': `user_token ${config.userToken}`, 
-      'App-Token': config.appToken 
-    },
-  })
-  if (!res.ok) throw new Error(`Auth failed: ${res.status}`)
-  const data = await res.json()
-  return data.session_token
+// ── Panel for one instance ────────────────────────────────────────────────────
+
+function InstancePanel({ name, data }) {
+  const [active, setActive] = useState('root')
+
+  const tabs = [
+    { key: 'root', label: 'API root', content: data.root },
+    ...ITEMTYPES.map(t => ({ key: t, label: t, content: data.searchOptions?.[t] })),
+  ]
+
+  const cur = tabs.find(t => t.key === active)
+
+  return (
+    <div style={{ marginBottom: 32, border: '1px solid #1e293b', borderRadius: 8, overflow: 'hidden' }}>
+      {/* Instance header */}
+      <div style={{ background: '#0f172a', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <span style={{ fontWeight: 700, fontSize: '0.95rem', color: '#38bdf8' }}>{name}</span>
+        <span style={{ fontSize: '0.72rem', color: '#475569' }}>{data.base}</span>
+      </div>
+
+      {/* Tab bar */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, background: '#0f172a', padding: '0 12px 8px' }}>
+        {tabs.map(t => (
+          <button
+            key={t.key}
+            onClick={() => setActive(t.key)}
+            style={{
+              padding: '4px 10px', borderRadius: 4, fontSize: '0.72rem', border: 'none', cursor: 'pointer',
+              background: active === t.key ? '#1e40af' : '#1e293b',
+              color: active === t.key ? '#fff' : '#94a3b8',
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Content */}
+      <div style={{ padding: 16, background: '#020617', fontFamily: 'monospace', fontSize: '0.75rem', lineHeight: 1.6, overflowX: 'auto' }}>
+        {cur?.content !== undefined
+          ? <JsonNode data={cur.content} depth={0} />
+          : <span style={s.muted}>Sem dados</span>
+        }
+      </div>
+    </div>
+  )
 }
 
-async function fetchItem(config, itemtype, fields) {
-  const token = await initSession(config)
-  let url = `${config.url}/search/${itemtype}?range=0-0&expand_dropdowns=true&get_hateoas=false`
-  fields.split(',').forEach((id, i) => url += `&forcedisplay[${i}]=${id}`)
-  
-  const res = await fetch(url, {
-    headers: { 
-      'Content-Type': 'application/json', 
-      'Session-Token': token, 
-      'App-Token': config.appToken 
-    },
-  })
-  if (!res.ok) return { error: `HTTP ${res.status}` }
-  const data = await res.json()
-  return data.data?.[0] || { note: 'Nenhum registro' }
-}
+// ── Search across all loaded data ─────────────────────────────────────────────
 
-export default function GLPIJson() {
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [instance, setInstance] = useState('PETA')
+function SearchBar({ payload, onResults }) {
+  const [q, setQ] = useState('')
 
-  useEffect(() => {
-    loadData()
-  }, [instance])
+  const MAX_HITS = 200
 
-  const loadData = async () => {
-    setLoading(true)
-    setError(null)
-    
-    try {
-      const config = API_CONFIG[instance]
-      if (!config.url || !config.userToken || !config.appToken) {
-        throw new Error(`Configuração incomplete for ${instance}`)
-      }
-
-      const results = { _instance: instance, _timestamp: new Date().toISOString() }
-      
-      for (const it of ITEMTYPES) {
-        try {
-          results[it.name] = await fetchItem(config, it.name, it.fields)
-        } catch (e) {
-          results[it.name] = { error: String(e) }
+  const search = useCallback((query) => {
+    if (!query.trim() || !payload) { onResults(null); return }
+    const lower = query.toLowerCase()
+    const hits = []
+    const walk = (obj, path) => {
+      if (hits.length >= MAX_HITS) return
+      if (typeof obj === 'string' && obj.toLowerCase().includes(lower)) {
+        hits.push({ path, value: obj })
+      } else if (typeof obj === 'number' && String(obj).includes(lower)) {
+        hits.push({ path, value: obj })
+      } else if (obj && typeof obj === 'object') {
+        for (const [k, v] of Object.entries(obj)) {
+          if (hits.length >= MAX_HITS) break
+          walk(v, `${path}.${k}`)
         }
       }
-      
-      setData(results)
-    } catch (e) {
-      setError(e.message)
     }
-    
-    setLoading(false)
+    for (const [inst, idata] of Object.entries(payload)) {
+      if (hits.length >= MAX_HITS) break
+      walk(idata, inst)
+    }
+    onResults(hits)
+  }, [payload, onResults])
+
+  useEffect(() => {
+    const t = setTimeout(() => search(q), 180)
+    return () => clearTimeout(t)
+  }, [q, search])
+
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <input
+        value={q}
+        onChange={e => setQ(e.target.value)}
+        placeholder="Buscar em todos os campos (nome, ID, label…)"
+        style={{
+          width: '100%', boxSizing: 'border-box', padding: '8px 14px',
+          background: '#0f172a', border: '1px solid #1e293b', borderRadius: 6,
+          color: '#e2e8f0', fontFamily: 'monospace', fontSize: '0.82rem',
+          outline: 'none',
+        }}
+      />
+    </div>
+  )
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
+export default function GlpiJsonPage() {
+  const [payload, setPayload] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [results, setResults] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const r = await fetch('/api/glpijson')
+        if (!r.ok) throw new Error(`Request failed (${r.status})`)
+        const d = await r.json()
+        if (!cancelled) setPayload(d)
+      } catch (e) {
+        if (!cancelled) setError(e.message)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [])
+
+  const containerStyle = {
+    minHeight: '100vh', background: '#020617', color: '#e2e8f0',
+    fontFamily: 'ui-monospace, monospace', padding: '24px 20px',
   }
 
   if (loading) return (
-    <div style={{ 
-      minHeight: '100vh', 
-      background: '#020617', 
-      color: '#475569', 
-      fontFamily: 'ui-monospace, monospace', 
-      padding: 40, 
-      display: 'flex', 
-      alignItems: 'center', 
-      justifyContent: 'center' 
-    }}>
-      🔄 Consultando GLPI ({instance}) em tempo real...
+    <div style={{ ...containerStyle, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569' }}>
+      Consultando GLPI…
     </div>
   )
 
   if (error) return (
-    <div style={{ padding: 40, color: '#ef4444', background: '#0a0a0a', minHeight: '100vh', fontFamily: 'monospace' }}>
-      <h2>Erro:</h2>
-      <pre>{error}</pre>
-      <button onClick={loadData} style={{ padding: '10px 20px', marginTop: 20, cursor: 'pointer' }}>
-        Tentar novamente
-      </button>
+    <div style={{ ...containerStyle, color: '#f87171' }}>
+      Erro: {error}
     </div>
   )
 
   return (
-    <div style={{ 
-      padding: 20, 
-      fontFamily: 'ui-monospace, monospace', 
-      fontSize: 12,
-      background: '#0a0a0a',
-      minHeight: '100vh',
-      color: '#e5e5e5'
-    }}>
-      <div style={{ marginBottom: 20, display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'space-between' }}>
-        <div>
-          <h1 style={{ margin: 0, color: '#fff', fontSize: 20 }}>GLPI JSON - Tempo Real</h1>
-          <span style={{ color: '#666', fontSize: 11 }}>
-            {data?._timestamp ? `Atualizado: ${new Date(data._timestamp).toLocaleString()}` : ''}
-          </span>
+    <div style={containerStyle}>
+      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+        <div style={{ marginBottom: 24 }}>
+          <h1 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#38bdf8', margin: 0 }}>
+            GLPI JSON Explorer
+          </h1>
+          <p style={{ fontSize: '0.72rem', color: '#475569', margin: '4px 0 0' }}>
+            listSearchOptions · PETA + GMX · /apirest.php
+          </p>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <select 
-            value={instance} 
-            onChange={e => setInstance(e.target.value)}
-            style={{ 
-              padding: '8px 12px', 
-              borderRadius: 6, 
-              border: '1px solid #333', 
-              background: '#1a1a1a', 
-              color: '#fff',
-              fontSize: 14
-            }}
-          >
-            <option value="PETA">PETA</option>
-            <option value="GMX">GMX</option>
-          </select>
-          <button 
-            onClick={loadData}
-            style={{ 
-              padding: '8px 16px', 
-              borderRadius: 6, 
-              border: '1px solid #2563eb', 
-              background: '#2563eb', 
-              color: '#fff',
-              cursor: 'pointer',
-              fontSize: 14
-            }}
-          >
-            🔄 Atualizar
-          </button>
-        </div>
-      </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: 15 }}>
-        {ITEMTYPES.map(it => (
-          <div key={it.name} style={{ 
-            background: '#111', 
-            border: '1px solid #222', 
-            borderRadius: 8,
-            overflow: 'hidden'
-          }}>
-            <div style={{ 
-              background: '#1a1a1a', 
-              padding: '8px 12px', 
-              borderBottom: '1px solid #222',
-              fontWeight: 'bold',
-              color: '#22c55e',
-              fontSize: 13
-            }}>
-              {it.name}
+        <SearchBar payload={payload} onResults={setResults} />
+
+        {results !== null ? (
+          <div>
+            <div style={{ fontSize: '0.72rem', color: '#475569', marginBottom: 12 }}>
+              {results.length} resultado(s)
             </div>
-            <pre style={{ 
-              margin: 0, 
-              padding: 12, 
-              fontSize: 10, 
-              overflow: 'auto', 
-              maxHeight: 250,
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-word'
-            }}>
-{JSON.stringify(data?.[it.name] || {}, null, 2)}
-            </pre>
+            {results.map((r, i) => (
+              <div key={i} style={{ background: '#0f172a', borderRadius: 6, padding: '8px 14px', marginBottom: 6, fontSize: '0.75rem' }}>
+                <div style={{ color: '#94a3b8', marginBottom: 2 }}>{r.path}</div>
+                <div style={{ color: '#86efac' }}>{JSON.stringify(r.value)}</div>
+              </div>
+            ))}
           </div>
-        ))}
+        ) : (
+          <>
+            {payload?.peta && <InstancePanel name="PETA" data={payload.peta} />}
+            {payload?.gmx  && <InstancePanel name="GMX"  data={payload.gmx}  />}
+          </>
+        )}
       </div>
-
-      <details style={{ marginTop: 30, color: '#666' }}>
-        <summary style={{ cursor: 'pointer' }}>JSON completo</summary>
-        <pre style={{ background: '#111', padding: 20, overflow: 'auto', maxHeight: 600, fontSize: 10 }}>
-{JSON.stringify(data, null, 2)}
-        </pre>
-      </details>
     </div>
   )
 }

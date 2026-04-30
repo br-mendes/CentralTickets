@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/py/analytics.py": { "maxDuration": 30 },
+    "api/py/tickets.py":   { "maxDuration": 30 },
+    "api/py/sla.py":       { "maxDuration": 30 }
+  }
+}
