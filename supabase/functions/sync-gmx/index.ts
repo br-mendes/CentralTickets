@@ -6,9 +6,9 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
 const INST_NAME = 'GMX' as const
 const INST = {
-  BASE_URL:   Deno.env.get('GLPI_GMX_URL')        ?? '',
-  USER_TOKEN: Deno.env.get('GLPI_GMX_USER_TOKEN') ?? '',
-  APP_TOKEN:  Deno.env.get('GLPI_GMX_APP_TOKEN')  ?? '',
+  BASE_URL:   Deno.env.get('NEXT_PUBLIC_GLPI_GMX') ?? '',
+  USER_TOKEN: Deno.env.get('GMX_USER_TOKEN') ?? '',
+  APP_TOKEN:  Deno.env.get('GMX_APP_TOKEN')  ?? '',
 }
 
 const MAX_PAGES_SWEEP       = 100
@@ -17,7 +17,7 @@ const INCREMENTAL_WINDOW    = 15
 const BACKFILL_TECH         = 100
 const BACKFILL_SOL          = 50
 
-const DISPLAY_FIELDS = [1,2,3,4,5,7,8,10,12,14,15,17,18,19,20,22,55,80,83,151]
+const DISPLAY_FIELDS = [1,2,3,4,5,7,8,9,10,12,14,15,17,18,19,20,22,55,80,83,151]
 
 const STRIP = [
   /^gmx\s+tecnologia\s*[>\\/|]\s*/i,
@@ -35,6 +35,18 @@ function glpiStr(v: unknown): string {
     return String(o.completename ?? o.name ?? o.id ?? '')
   }
   return String(v)
+}
+
+function glpiId(v: unknown): number {
+  if (!v) return 0
+  if (typeof v === 'number') return v
+  if (typeof v === 'string') { const n = parseInt(v); return isNaN(n) ? 0 : n }
+  if (typeof v === 'object') {
+    const o = v as Record<string, unknown>
+    if (typeof o.id === 'number') return o.id
+    if (typeof o.id === 'string') { const n = parseInt(o.id); return isNaN(n) ? 0 : n }
+  }
+  return 0
 }
 
 function norm(v: unknown): string {
@@ -127,10 +139,11 @@ async function fetchPage(url: string, token: string) {
 
 interface TD {
   ticket_id: number; instance: string; title: string
-  entity: string; entity_full: string; category: string; root_category: string
+  entity: string; entity_full: string; entity_id: number
+  category: string; root_category: string
   status_id: number; status_key: string; status_name: string
-  group_name: string; technician: string; technician_id: number
-  requester: string; requester_id: number
+  group_name: string; group_id: number; technician: string; technician_id: number
+  requester: string; requester_id: number; request_type: string; request_type_id: number
   urgency: number; impact: number; priority_id: number; type_id: number
   global_validation: number
   date_created: string|null; date_mod: string|null; due_date: string|null
@@ -156,14 +169,17 @@ function processRows(rows: any[]): TD[] {
       title:               glpiStr(r[1]) || 'Sem t├¡tulo',
       entity:              norm(r[80] || ''),
       entity_full:         r[80] || '',
+      entity_id:           glpiId(r[80]),
       category:            cat,
       root_category:       rootCat(cat),
       status_id:           sid,
       status_key:          statusKey(sid, gv),
       status_name:         statusName(sid, gv),
       group_name:          norm(r[8] || ''),
+      group_id:            glpiId(r[8]),
       technician:          '', technician_id: 0,
-      requester:           glpiStr(r[10]), requester_id: 0,
+      requester:           glpiStr(r[10]), requester_id: glpiId(r[10]),
+      request_type:        glpiStr(r[9]), request_type_id: glpiId(r[9]),
       urgency:             parseInt(r[4]) || 3,
       impact:              parseInt(r[5]) || 3,
       priority_id:         parseInt(r[3]) || 3,
@@ -209,6 +225,32 @@ async function fetchTechs(tickets: TD[], token: string): Promise<Map<number,{nam
   return map
 }
 
+async function fetchRequesters(tickets: TD[], token: string): Promise<Map<number,{name:string,id:number}>> {
+  const map = new Map<number,{name:string,id:number}>()
+  for (let i = 0; i < tickets.length; i += 5) {
+    const sl = tickets.slice(i, i + 5)
+    const rs = await Promise.all(sl.map(async t => {
+      try {
+        let r1 = await fetch(`${INST.BASE_URL}/Ticket/${t.ticket_id}/Ticket_User`, { headers: hdrs(token) })
+        if (r1.status === 401) { token = await initSession(); r1 = await fetch(`${INST.BASE_URL}/Ticket/${t.ticket_id}/Ticket_User`, { headers: hdrs(token) }) }
+        if (!r1.ok) return null
+        const actors = await r1.json()
+        if (!Array.isArray(actors)) return null
+        // Type 1 = Requester (solicitante)
+        const req = actors.find((a: any) => a.type === 1)
+        if (!req?.users_id) return null
+        const r2 = await fetch(`${INST.BASE_URL}/User/${req.users_id}`, { headers: hdrs(token) })
+        if (!r2.ok) return { id: req.users_id, name: String(req.users_id) }
+        const u = await r2.json()
+        return { id: req.users_id, name: [u.firstname, u.realname].filter(Boolean).join(' ') || u.name || String(req.users_id) }
+      } catch { return null }
+    }))
+    rs.forEach((res, idx) => { if (res) map.set(sl[idx].ticket_id, res) })
+    if (i + 5 < tickets.length) await new Promise(r => setTimeout(r, 300))
+  }
+  return map
+}
+
 async function fetchSols(tickets: TD[], token: string): Promise<Map<number,{solution:string,date_solved:string|null}>> {
   const map = new Map<number,{solution:string,date_solved:string|null}>()
   const solved = tickets.filter(t => t.status_key === 'solved' || t.status_key === 'closed')
@@ -239,10 +281,12 @@ async function upsert(tickets: TD[], withEnrichment: boolean): Promise<void> {
       tickets.slice(i, i + 100).map(t => {
         const base: Record<string, unknown> = {
           ticket_id: t.ticket_id, instance: t.instance,
-          title: t.title, entity: t.entity, entity_full: t.entity_full,
+          title: t.title, entity: t.entity, entity_full: t.entity_full, entity_id: t.entity_id,
           category: t.category, root_category: t.root_category,
           status_id: t.status_id, status_key: t.status_key, status_name: t.status_name,
-          group_name: t.group_name, requester: t.requester, requester_id: t.requester_id,
+          group_name: t.group_name, group_id: t.group_id,
+          requester: t.requester, requester_id: t.requester_id,
+          request_type: t.request_type, request_type_id: t.request_type_id,
           urgency: t.urgency, impact: t.impact, priority_id: t.priority_id, type_id: t.type_id,
           global_validation: t.global_validation,
           date_created: t.date_created, date_mod: t.date_mod, due_date: t.due_date,
@@ -261,7 +305,7 @@ async function upsert(tickets: TD[], withEnrichment: boolean): Promise<void> {
       }),
       { onConflict: 'ticket_id,instance' }
     )
-    if (error) console.error(`[upsert] batch ${i}:`, error.message)
+    if (error) throw new Error(`[upsert] batch ${i}: ${error.message}`)
   }
 }
 
@@ -280,6 +324,27 @@ async function backfillTechs(token: string): Promise<void> {
       .eq('ticket_id', tid).eq('instance', INST_NAME)
   ))
   console.log(`[${INST_NAME}] backfill techs: ${techMap.size} atualizados`)
+}
+
+async function backfillRequesters(token: string): Promise<void> {
+  console.log(`[${INST_NAME}] backfillRequesters: looking for tickets with requester_id=0`)
+  const { data } = await supabase.from('tickets_cache').select('ticket_id')
+    .eq('instance', INST_NAME).eq('requester_id', 0)
+    .not('requester', 'is', null)
+    .limit(BACKFILL_TECH)
+  if (!data?.length) {
+    console.log(`[${INST_NAME}] backfillRequesters: none found`)
+    return
+  }
+  console.log(`[${INST_NAME}] backfill requesters: ${data.length}`)
+  const placeholders = data.map(r => ({ ticket_id: r.ticket_id, instance: INST_NAME } as TD))
+  const reqMap = await fetchRequesters(placeholders, token)
+  if (!reqMap.size) return
+  await Promise.all(Array.from(reqMap.entries()).map(([tid, req]) =>
+    supabase.from('tickets_cache').update({ requester: req.name, requester_id: req.id, updated_at: new Date().toISOString() })
+      .eq('ticket_id', tid).eq('instance', INST_NAME)
+  ))
+  console.log(`[${INST_NAME}] backfill requesters: ${reqMap.size} atualizados`)
 }
 
 async function backfillSols(token: string): Promise<void> {
@@ -381,6 +446,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
         console.log(`[${INST_NAME}] enriching ${all.length} tickets`)
         const techMap = await fetchTechs(all, token)
         all.forEach(t => { const tech = techMap.get(t.ticket_id); if (tech) { t.technician = tech.name; t.technician_id = tech.id } })
+        const reqMap = await fetchRequesters(all, token)
+        all.forEach(t => { const req = reqMap.get(t.ticket_id); if (req) { t.requester = req.name; t.requester_id = req.id } })
         const solMap = await fetchSols(all, token)
         all.forEach(t => { const sol = solMap.get(t.ticket_id); if (sol) { t.solution = sol.solution; if (sol.date_solved) t.date_solved = sol.date_solved } })
         await upsert(all, true)
@@ -390,6 +457,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     if (mode === 'incremental') {
       await backfillTechs(token)
+      await backfillRequesters(token)
       await backfillSols(token)
     }
 

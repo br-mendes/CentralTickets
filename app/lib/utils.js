@@ -23,8 +23,7 @@ export function lastGroupLabel(name) {
       if (Array.isArray(arr)) {
         const filtered = arr
           .filter(v => v && String(v).trim() && !/^(GMX|PETA)$/i.test(String(v).trim()))
-          .sort((a, b) => b.length - a.length)
-        str = String(filtered[0] || arr[0] || '').trim()
+        str = String(filtered[filtered.length - 1] || arr[arr.length - 1] || '').trim()
       }
     } catch { /* not JSON */ }
   }
@@ -168,30 +167,34 @@ export function calcPendingTime(dateModStr) {
   return formatWaitTime(calcHoursAgo(dateModStr))
 }
 
-/** Build 30-day trend data: {labels, opened, closed} */
+/** Build 30-day trend data: {labels, opened, closed} — O(n+30) via day-keyed maps */
 export function build30DayTrend(tickets) {
+  const openedByDay = {}
+  const closedByDay = {}
+
+  for (const t of tickets) {
+    if (t.date_created) {
+      const d = new Date(t.date_created)
+      d.setHours(0, 0, 0, 0)
+      openedByDay[d.getTime()] = (openedByDay[d.getTime()] || 0) + 1
+    }
+    const sk = t.status_key; const sid = Number(t.status_id)
+    if ((sk === 'closed' || sk === 'solved' || sid === 5 || sid === 6) && t.date_mod) {
+      const d = new Date(t.date_mod)
+      d.setHours(0, 0, 0, 0)
+      closedByDay[d.getTime()] = (closedByDay[d.getTime()] || 0) + 1
+    }
+  }
+
   const now = new Date()
   const labels = [], opened = [], closed = []
-
   for (let i = 29; i >= 0; i--) {
     const d = new Date(now)
     d.setDate(d.getDate() - i)
+    d.setHours(0, 0, 0, 0)
     labels.push(d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }))
-
-    const start = new Date(d); start.setHours(0, 0, 0, 0)
-    const end   = new Date(d); end.setHours(23, 59, 59, 999)
-
-    opened.push(tickets.filter(t => {
-      const dt = t.date_created ? new Date(t.date_created) : null
-      return dt && dt >= start && dt <= end
-    }).length)
-
-    closed.push(tickets.filter(t => {
-      const sk = t.status_key; const sid = Number(t.status_id)
-      const isClosed = sk === 'closed' || sk === 'solved' || sid === 5 || sid === 6
-      const dt = t.date_mod ? new Date(t.date_mod) : null
-      return isClosed && dt && dt >= start && dt <= end
-    }).length)
+    opened.push(openedByDay[d.getTime()] || 0)
+    closed.push(closedByDay[d.getTime()] || 0)
   }
 
   return { labels, opened, closed }

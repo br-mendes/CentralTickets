@@ -1,0 +1,5 @@
+fastapi>=0.100.0,<0.137
+mangum>=0.20.0,<0.22
+polars>=0.20.0
+pyarrow>=11.0.0
+supabase>=2.4.0
